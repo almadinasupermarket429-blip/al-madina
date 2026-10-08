@@ -30,7 +30,7 @@ export type Cart = {
   subtotal: number;
 };
 
-export async function getOrCreateCartId(identity: CartIdentity): Promise<string> {
+async function getOrCreateCartId(identity: CartIdentity): Promise<string> {
   if ("userId" in identity) {
     const existing = await prisma.$queryRaw<{ id: string }[]>`
       select id from carts where user_id = ${identity.userId}::uuid limit 1

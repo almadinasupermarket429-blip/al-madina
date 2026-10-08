@@ -22,10 +22,13 @@ test.describe("admin", () => {
     await page.locator("form input").nth(0).fill("wrong-user");
     await page.locator('input[type="password"]').fill("wrong-pass");
     await page.locator("form button").click();
-    await expect(page.getByText(/ungültig/i)).toBeVisible();
+    // bcrypt + a cold dev-server compile can take ~5 s under parallel test load.
+    await expect(page.getByText(/ungültig/i)).toBeVisible({ timeout: 15_000 });
   });
 
   test("products page: create, verify on storefront, then delete", async ({ page, request }) => {
+    // Create + storefront check + three cleanup calls, each a cold compile on the dev server.
+    test.setTimeout(90_000);
     // A unique name per run means a leftover row from an interrupted previous
     // run can never collide with this run's own strict-mode locator checks.
     const name = `Playwright Test Product ${Date.now()}`;
@@ -63,6 +66,13 @@ test.describe("admin", () => {
         await deleteBtn.click();
         await expect(page.getByText(name)).toBeHidden();
       }
+      // The UI removes the row optimistically, so make sure the product is really gone
+      // server-side before removing the category its save auto-created.
+      const all: { id: string; name: string }[] = await (await page.request.get("/api/products")).json();
+      for (const p of all.filter((x) => x.name === name)) await page.request.delete(`/api/products/${p.id}`);
+      const categories: { id: string; name: string; productCount: number }[] = await (await page.request.get("/api/admin/categories")).json();
+      const testCategory = categories.find((c) => c.name === "Playwright Test Category" && c.productCount === 0);
+      if (testCategory) await page.request.delete(`/api/admin/categories/${testCategory.id}`);
     }
   });
 });

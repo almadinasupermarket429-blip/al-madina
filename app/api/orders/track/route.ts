@@ -1,11 +1,11 @@
 // app/api/orders/track/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getOrderByNumber } from "@/lib/orders";
+import { getOrderByNumber, publicOrder } from "@/lib/orders";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const ip = clientIp(req);
-  const { allowed } = rateLimit(`order-track:${ip}`, 15, 60_000);
+  const { allowed } = await rateLimit(`order-track:${ip}`, 15, 60_000);
   if (!allowed) {
     return NextResponse.json({ error: "Zu viele Versuche. Bitte versuchen Sie es in einer Minute erneut." }, { status: 429 });
   }
@@ -21,5 +21,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Keine Bestellung mit dieser Bestellnummer und E-Mail gefunden." }, { status: 404 });
   }
 
-  return NextResponse.json(order);
+  return NextResponse.json(publicOrder(order));
 }

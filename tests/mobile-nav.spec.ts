@@ -6,6 +6,8 @@ import { test, expect } from "@playwright/test";
 // future change can't silently reintroduce it.
 
 test("no horizontal overflow on the homepage", async ({ page }) => {
+  // networkidle waits for every product image; slow on a cold dev server.
+  test.setTimeout(60_000);
   await page.goto("/");
   await page.waitForLoadState("networkidle");
 
@@ -74,7 +76,7 @@ test("search: opens from hamburger, closes hamburger, filters, and self-closes",
   // here must match actual catalog content, not the German UI strings.
   await searchInput.fill("Coffee");
   // Filtering is live — the grid should narrow to matches as you type.
-  await expect(page.locator(".product-grid")).toContainText(/Coffee/i);
+  await expect(page.locator(".product-grid").first()).toContainText(/Coffee/i);
 
   await searchInput.press("Enter");
   await expect(page.locator(".mobile-search")).toBeHidden();

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw, XCircle } from "lucide-react";
 import OrderTimeline, { TrackableOrder } from "@/app/components/OrderTimeline";
 import { useLanguage } from "@/lib/i18n";
 
@@ -19,6 +19,17 @@ export default function AccountOrderDetailPage() {
       .then((res) => (res.ok ? res.json() : null))
       .then(setOrder);
   }, [params.id]);
+
+  const [cancelError, setCancelError] = useState("");
+
+  async function cancel() {
+    if (!confirm(t("Diese Bestellung wirklich stornieren?", "Really cancel this order?"))) return;
+    setCancelError("");
+    const res = await fetch(`/api/account/orders/${params.id}`, { method: "DELETE" });
+    const data = await res.json();
+    if (!res.ok) setCancelError(data.error);
+    else setOrder(data);
+  }
 
   function reorder() {
     setReordering(true);
@@ -42,10 +53,18 @@ export default function AccountOrderDetailPage() {
                 <span className="eyebrow">{t("Bestellung", "Order")}</span>
                 <h1 style={{ fontSize: 26 }}>#{order.orderNumber}</h1>
               </div>
-              <button className="primary-btn" onClick={reorder} disabled={reordering}>
-                <RefreshCw size={16} /> {t("Erneut bestellen", "Reorder")}
-              </button>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {order.status === "PLACED" && (
+                  <button className="outline-btn" onClick={cancel} style={{ color: "#b3261e" }}>
+                    <XCircle size={16} /> {t("Stornieren", "Cancel")}
+                  </button>
+                )}
+                <button className="primary-btn" onClick={reorder} disabled={reordering}>
+                  <RefreshCw size={16} /> {t("Erneut bestellen", "Reorder")}
+                </button>
+              </div>
             </div>
+            {cancelError && <div className="checkout-error" style={{ marginBottom: 16 }}>{cancelError}</div>}
 
             <OrderTimeline order={order} />
           </div>

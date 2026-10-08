@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isUuid } from "@/lib/orders";
 
 type RelatedProduct = { id: string; name: string; image: string | null; category: string | null };
 
@@ -8,6 +9,7 @@ type RelatedProduct = { id: string; name: string; image: string | null; category
 // item has no order history yet (e.g. it's brand new).
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) return NextResponse.json({ error: "Produkt nicht gefunden." }, { status: 404 });
 
   const product = await prisma.$queryRaw<{ id: string; category_id: string | null }[]>`
     select id, category_id from products where id = ${id}::uuid

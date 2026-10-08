@@ -13,6 +13,10 @@ if (existsSync(".env")) {
   }
 }
 
+// E2E_PORT lets the suite run beside another local dev server that already owns :3000.
+const PORT = Number(process.env.E2E_PORT || 3000);
+const BASE_URL = `http://localhost:${PORT}`;
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
@@ -24,13 +28,13 @@ export default defineConfig({
   retries: 0,
   reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: BASE_URL,
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "npm run dev",
-    url: "http://localhost:3000",
+    command: `npx next dev -p ${PORT}`,
+    url: BASE_URL,
     reuseExistingServer: true,
     timeout: 60_000,
   },

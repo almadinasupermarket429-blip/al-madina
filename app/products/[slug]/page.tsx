@@ -1,8 +1,11 @@
 // app/products/[slug]/page.tsx
+import { cache } from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { STORE } from "@/lib/store-info";
 import { StarRating } from "@/app/components/StarRating";
 import { VariantSelector, type Variant } from "@/app/components/VariantSelector";
 
@@ -27,7 +30,8 @@ type VariantRow = {
 
 type ReviewStatsRow = { average: string | null; count: string };
 
-async function getProduct(slug: string): Promise<ProductRow | null> {
+// cache(): generateMetadata and the page both need the product — one query per request.
+const getProduct = cache(async function getProduct(slug: string): Promise<ProductRow | null> {
   const rows = await prisma.$queryRaw<ProductRow[]>`
     select p.id, p.name, p.slug, p.description, p.image_url, p.unit_note,
            c.name as category_name
@@ -37,7 +41,7 @@ async function getProduct(slug: string): Promise<ProductRow | null> {
     limit 1
   `;
   return rows[0] ?? null;
-}
+});
 
 async function getVariants(productId: string): Promise<Variant[]> {
   const rows = await prisma.$queryRaw<VariantRow[]>`
@@ -61,6 +65,26 @@ async function getReviewStats(productId: string) {
   return { average: Number(rows[0]?.average ?? 0), count: Number(rows[0]?.count ?? 0) };
 }
 
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await getProduct(slug);
+  if (!product) return { title: "Produkt nicht gefunden" };
+  const description =
+    product.description?.slice(0, 160) ||
+    `${product.name} bei ${STORE.name} in ${STORE.city} — online bestellen, bar bei Lieferung oder Abholung bezahlen.`;
+  return {
+    title: product.name,
+    description,
+    alternates: { canonical: `/products/${product.slug}` },
+    openGraph: {
+      title: `${product.name} | ${STORE.name}`,
+      description,
+      images: product.image_url ? [{ url: product.image_url }] : undefined,
+      type: "website",
+    },
+  };
+}
+
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const product = await getProduct(slug);
@@ -69,8 +93,36 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const [variants, reviewStats] = await Promise.all([getVariants(product.id), getReviewStats(product.id)]);
   if (variants.length === 0) notFound();
 
+  const inStock = variants.some((v) => v.stock_quantity > 0);
+  const prices = variants.map((v) => v.price);
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description ?? undefined,
+    image: product.image_url ?? undefined,
+    category: product.category_name ?? undefined,
+    offers: {
+      "@type": "AggregateOffer",
+      priceCurrency: "EUR",
+      lowPrice: Math.min(...prices).toFixed(2),
+      highPrice: Math.max(...prices).toFixed(2),
+      offerCount: variants.length,
+      availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      seller: { "@type": "GroceryStore", name: STORE.name },
+    },
+    ...(reviewStats.count > 0
+      ? { aggregateRating: { "@type": "AggregateRating", ratingValue: reviewStats.average.toFixed(1), reviewCount: reviewStats.count } }
+      : {}),
+  };
+
   return (
     <main className="min-h-screen bg-[#f8f7f3] text-[#18201b] flex flex-col items-center py-12 px-4 md:px-8">
+      <script
+        type="application/ld+json"
+        // JSON.stringify can't produce "</script>" on its own, but product text is admin-entered — escape "<" anyway.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+      />
       <div className="w-full max-w-xl bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-black/5">
         <Link href="/" className="text-btn" style={{ display: "inline-flex", marginBottom: 24 }}>
           <ArrowLeft size={16} /> Zurück zum Shop

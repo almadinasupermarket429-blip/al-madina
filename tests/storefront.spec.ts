@@ -3,14 +3,15 @@ import { test, expect } from "@playwright/test";
 test("homepage loads with German as the default language", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("lang", "de");
-  await expect(page.getByText("Ihre Arabisch Speisekammer,")).toBeVisible();
-  await expect(page.locator(".product-grid")).toBeVisible();
+  await expect(page.getByText("Ihr arabischer & türkischer Markt,")).toBeVisible();
+  // .first(): a "Top rated" / "Recently viewed" grid can follow the main catalog grid.
+  await expect(page.locator(".product-grid").first()).toBeVisible();
 });
 
 test("language toggle switches to English and persists across navigation", async ({ page }) => {
   await page.goto("/");
   await page.locator(".language-btn").click();
-  await expect(page.getByText("Your Turkish pantry,")).toBeVisible();
+  await expect(page.getByText("Your Arabic & Turkish market,")).toBeVisible();
 
   // Persistence is via a shared context + localStorage, not per-page state —
   // this is what "translate everything" actually required.
@@ -31,9 +32,10 @@ test("add to cart updates the cart badge and drawer", async ({ page }) => {
   await page.goto("/");
   await page.waitForSelector(".product-grid .product-card");
 
-  await page.locator(".product-card", { hasText: STABLE_PRODUCT_TEXT }).locator(".add-btn").click();
+  await page.locator(".product-grid").first().locator(".product-card", { hasText: STABLE_PRODUCT_TEXT }).locator(".add-btn").click();
 
-  await expect(page.locator(".cart-btn i")).toHaveText("1");
+  // First /api/cart call compiles the route on the dev server.
+  await expect(page.locator(".cart-btn i")).toHaveText("1", { timeout: 15_000 });
 
   await page.locator(".cart-btn").click();
   await expect(page.locator(".cart-drawer")).toBeVisible();
@@ -53,7 +55,8 @@ test("product detail page loads via a real product link", async ({ page }) => {
 test("legal pages are reachable from the footer", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("link", { name: "Impressum" }).click();
-  await expect(page).toHaveURL(/\/impressum/);
+  // Client-side navigation waits for the dev server to compile /impressum on first visit.
+  await expect(page).toHaveURL(/\/impressum/, { timeout: 20_000 });
   await expect(page.locator("h1")).toHaveText("Impressum");
 });
 

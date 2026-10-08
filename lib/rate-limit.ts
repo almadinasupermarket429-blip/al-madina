@@ -1,43 +1,59 @@
 import type { NextRequest } from "next/server";
+import { createHash } from "crypto";
+import { prisma } from "./prisma";
 
-// Best-effort in-memory rate limiter for auth-adjacent endpoints (login,
-// register, order tracking) — slows down brute-force/credential-stuffing
-// and order-number enumeration without adding an external dependency.
-//
-// Caveat: state is per server process. On a multi-instance deployment
-// (e.g. several serverless/edge instances) each instance counts separately,
-// so the *effective* limit is roughly (this limit × instance count). Good
-// enough as a first line of defense for a single-region small-store app;
-// swap for a shared store (Redis, Upstash) if this ever needs to be exact.
+// Rate limiter for auth-adjacent endpoints (login, register, password reset,
+// coupon checks, order tracking) — slows down brute-force/credential-stuffing
+// and enumeration. Counters live in Postgres (table rate_limits), so the limit
+// holds across every server instance, not per process. Keys are hashed, so
+// no emails or IPs are stored in plain text.
 
-type Bucket = { count: number; resetAt: number };
-
-const buckets = new Map<string, Bucket>();
-
-// Periodic sweep so the map doesn't grow unbounded over the process lifetime.
-const sweepTimer = setInterval(() => {
-  const now = Date.now();
-  for (const [key, bucket] of buckets) {
-    if (now > bucket.resetAt) buckets.delete(key);
-  }
-}, 5 * 60 * 1000);
-sweepTimer.unref?.();
-
-export function rateLimit(key: string, limit: number, windowMs: number): { allowed: boolean; retryAfterMs: number } {
-  const now = Date.now();
-  const bucket = buckets.get(key);
-
-  if (!bucket || now > bucket.resetAt) {
-    buckets.set(key, { count: 1, resetAt: now + windowMs });
+export async function rateLimit(
+  key: string,
+  limit: number,
+  windowMs: number
+): Promise<{ allowed: boolean; retryAfterMs: number }> {
+  const hashed = createHash("sha256").update(key).digest("hex");
+  const resetAt = new Date(Date.now() + windowMs);
+  try {
+    // One atomic statement: start a new window if the old one expired, otherwise count up.
+    const rows = await prisma.$queryRaw<{ count: number; reset_at: Date }[]>`
+      insert into rate_limits (key, count, reset_at) values (${hashed}, 1, ${resetAt})
+      on conflict (key) do update set
+        count = case when rate_limits.reset_at <= now() then 1 else rate_limits.count + 1 end,
+        reset_at = case when rate_limits.reset_at <= now() then excluded.reset_at else rate_limits.reset_at end
+      returning count, reset_at
+    `;
+    // Occasionally sweep expired counters so the table stays small.
+    if (Math.random() < 0.01) {
+      await prisma.$executeRaw`delete from rate_limits where reset_at < now()`;
+    }
+    const { count, reset_at } = rows[0];
+    if (count > limit) return { allowed: false, retryAfterMs: new Date(reset_at).getTime() - Date.now() };
+    return { allowed: true, retryAfterMs: 0 };
+  } catch (err) {
+    // Fail open: a limiter hiccup must not lock every customer out of logging in.
+    console.error("[rate-limit] check failed", err);
     return { allowed: true, retryAfterMs: 0 };
   }
+}
 
-  if (bucket.count >= limit) {
-    return { allowed: false, retryAfterMs: bucket.resetAt - now };
+/**
+ * True if `key` has already used up `limit` in its current window — without
+ * counting this call. Used for "failed attempts only" limits: check with this
+ * first, and call rateLimit() only when an attempt actually fails.
+ */
+export async function isRateLimited(key: string, limit: number): Promise<boolean> {
+  const hashed = createHash("sha256").update(key).digest("hex");
+  try {
+    const rows = await prisma.$queryRaw<{ count: number }[]>`
+      select count from rate_limits where key = ${hashed} and reset_at > now()
+    `;
+    return (rows[0]?.count ?? 0) >= limit;
+  } catch (err) {
+    console.error("[rate-limit] check failed", err);
+    return false;
   }
-
-  bucket.count += 1;
-  return { allowed: true, retryAfterMs: 0 };
 }
 
 /**
@@ -46,11 +62,18 @@ export function rateLimit(key: string, limit: number, windowMs: number): { allow
  * `x-forwarded-for` is client-settable on any request that doesn't pass
  * through a proxy that overwrites it, so a client can spoof a fresh value
  * per request and get a brand-new rate-limit bucket every time — defeating
- * the whole point. `x-vercel-forwarded-for` is set by Vercel's edge network
- * itself and cannot be overridden by the client, so prefer it when present.
+ * the whole point. So, in order of trust:
+ *  - `x-vercel-forwarded-for`: set by Vercel's edge network, not client-settable.
+ *  - `x-real-ip`: overwritten by nginx / most reverse proxies.
+ *  - the LAST `x-forwarded-for` entry: the one appended by the nearest proxy
+ *    (a client can only prepend fake entries, not replace that one).
+ * With no proxy in front at all, every header is client-controlled — which is
+ * why login/password routes also rate-limit per account, not just per IP.
  */
 export function clientIp(req: NextRequest): string {
-  const trusted = req.headers.get("x-vercel-forwarded-for");
-  if (trusted) return trusted.split(",")[0].trim();
-  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const vercel = req.headers.get("x-vercel-forwarded-for");
+  if (vercel) return vercel.split(",")[0].trim();
+  const realIp = req.headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
+  return req.headers.get("x-forwarded-for")?.split(",").pop()?.trim() || "unknown";
 }

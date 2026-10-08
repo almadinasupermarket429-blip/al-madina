@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession, isOwner } from "@/lib/auth";
-import { getAdminProductView, replaceVariants, resolveCategoryId, uniqueProductSlug } from "@/lib/catalog-admin";
+import { getAdminProductView, parseTags, replaceVariants, resolveCategoryId, uniqueProductSlug } from "@/lib/catalog-admin";
 
 type ProductRow = {
   id: string;
@@ -19,6 +19,7 @@ type ProductRow = {
   image: string | null;
   badge: string | null;
   unitNote: string | null;
+  tags: string[];
   active: boolean;
   sortOrder: number;
   createdAt: Date;
@@ -39,7 +40,8 @@ type ProductRow = {
 // Public: list products (storefront). Admins get inactive products too.
 export async function GET() {
   const session = await getAdminSession();
-  const whereClause = session ? Prisma.empty : Prisma.sql`where p.is_active = true`;
+  // Shoppers don't see hidden products, or products in a hidden category.
+  const whereClause = session ? Prisma.empty : Prisma.sql`where p.is_active = true and coalesce(c.is_active, true)`;
 
   const rows = await prisma.$queryRaw<ProductRow[]>(Prisma.sql`
     with variant_agg as (
@@ -63,7 +65,8 @@ export async function GET() {
     )
     select
       p.id, p.name, c.name as category, p.description, p.image_url as image,
-      p.badge, p.unit_note as "unitNote", p.is_active as active, p.sort_order as "sortOrder",
+      p.badge, p.unit_note as "unitNote", p.tags, p.is_active as active, p.sort_order as "sortOrder",
+      p.slug, coalesce(c.sort_order, 9999) as "categorySortOrder",
       p.created_at as "createdAt", p.updated_at as "updatedAt",
       coalesce(va.sizes, '[]'::json) as sizes,
       coalesce(ra.rating_average, 0) as "ratingAverage",
@@ -73,7 +76,7 @@ export async function GET() {
     left join variant_agg va on va.product_id = p.id
     left join review_agg ra on ra.product_id = p.id
     ${whereClause}
-    order by p.sort_order asc, p.created_at desc
+    order by coalesce(c.sort_order, 9999) asc, p.sort_order asc, p.created_at desc
   `);
 
   const products = rows.map((p) => ({
@@ -91,7 +94,7 @@ export async function POST(req: NextRequest) {
   if (!isOwner(session)) return NextResponse.json({ error: "Inhaberzugriff erforderlich." }, { status: 403 });
 
   const body = await req.json();
-  const { name, category, description, image, badge, unitNote, active, sizes } = body;
+  const { name, category, description, image, badge, unitNote, active, sizes, tags } = body;
 
   if (!name || !category || !image || !Array.isArray(sizes) || sizes.length === 0) {
     return NextResponse.json(
@@ -105,8 +108,8 @@ export async function POST(req: NextRequest) {
 
   const productId = await prisma.$transaction(async (tx) => {
     const created = await tx.$queryRaw<{ id: string }[]>`
-      insert into products (category_id, name, slug, description, image_url, badge, unit_note, is_active)
-      values (${categoryId}::uuid, ${name.trim()}, ${slug}, ${description || null}, ${image}, ${badge || null}, ${unitNote || null}, ${active ?? true})
+      insert into products (category_id, name, slug, description, image_url, badge, unit_note, is_active, tags)
+      values (${categoryId}::uuid, ${name.trim()}, ${slug}, ${description || null}, ${image}, ${badge || null}, ${unitNote || null}, ${active ?? true}, ${parseTags(tags)}::text[])
       returning id
     `;
     const id = created[0].id;

@@ -25,12 +25,42 @@ import {
   User,
   ArrowUpDown,
   Menu,
+  Navigation,
+  Tag,
+  Beef,
+  Ticket,
+  CalendarClock,
+  Repeat,
 } from "lucide-react";
+import { STORE, OPENING_HOURS, storeOpenState } from "@/lib/store-info";
+import { DEFAULT_SETTINGS, deliveryFeeFor, type StoreSettings } from "@/lib/settings-shared";
 
-const MAP_URL = "https://www.google.com/maps/search/?api=1&query=Al-Madina%20Markt%2C%20Landwehrstra%C3%9Fe%2012%2C%2097421%20Schweinfurt%2C%20Germany";
-const PHONE = "+49 163 8707437";
-const FREE_DELIVERY_THRESHOLD = 40;
-const DELIVERY_FEE = 3.99;
+const MAP_URL = STORE.mapUrl;
+const PHONE = STORE.phoneDisplay;
+const PHONE_LINK = `tel:${STORE.phoneE164}`;
+
+type Slot = { id: string; date: string; start: string; end: string; remaining: number };
+
+/** Swaps a dead product photo (e.g. a removed Unsplash image) for the store logo instead of a broken-image icon. */
+function imageFallback(e: React.SyntheticEvent<HTMLImageElement>) {
+  const img = e.currentTarget;
+  if (img.dataset.fallback) return;
+  img.dataset.fallback = "1";
+  img.src = "/logo.png";
+  img.style.objectFit = "contain";
+  img.style.padding = "18%";
+  img.style.background = "#f3efe6";
+}
+
+function slotLabel(slot: { date: string; start: string; end: string }, language: string) {
+  const d = new Date(`${slot.date}T12:00:00Z`).toLocaleDateString(language === "de" ? "de-DE" : "en-GB", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "UTC",
+  });
+  return `${d}, ${slot.start}–${slot.end}`;
+}
 
 type ProductSize = { id: string; label: string; price: number; oldPrice: number | null; stock: number };
 type Product = {
@@ -41,6 +71,8 @@ type Product = {
   image: string;
   badge: string | null;
   unitNote: string | null;
+  tags: string[];
+  slug: string;
   sizes: ProductSize[];
   ratingAverage: number;
   ratingCount: number;
@@ -108,6 +140,25 @@ export default function Home() {
   const [recentlyViewedIds, setRecentlyViewedIds] = useState<string[]>([]);
 
   const [productsError, setProductsError] = useState(false);
+  const [settings, setSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [openState, setOpenState] = useState<ReturnType<typeof storeOpenState> | null>(null);
+
+  useEffect(() => {
+    fetch("/api/store")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setSettings(data.settings);
+        setSlots(data.slots ?? []);
+      })
+      .catch(() => {});
+    // Computed client-side only so the server-rendered HTML never disagrees with the visitor's clock.
+    setOpenState(storeOpenState());
+    const timer = setInterval(() => setOpenState(storeOpenState()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Cart-fetch responses can arrive out of order (e.g. the initial GET on
   // mount racing a near-instant "add to cart" click) — this guards against
@@ -187,15 +238,22 @@ export default function Home() {
     return () => observer.disconnect();
   }, [products]);
 
-  const categories = useMemo(() => ["All", ...Array.from(new Set(products.map((p) => p.category)))], [products]);
+  const categories = useMemo(() => {
+    const list = ["All", ...Array.from(new Set(products.map((p) => p.category).filter(Boolean)))];
+    if (products.some((p) => p.sizes.some((s) => s.oldPrice && s.oldPrice > s.price))) list.splice(1, 0, "Offers");
+    return list;
+  }, [products]);
+  const allTags = useMemo(() => Array.from(new Set(products.flatMap((p) => p.tags ?? []))).sort(), [products]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const matches = products.filter((p) => {
-      const matchesCategory = category === "All" || p.category === category;
-      const haystack = `${p.name} ${p.category} ${p.description ?? ""}`.toLowerCase();
+      const matchesCategory =
+        category === "All" || (category === "Offers" ? p.sizes.some((s) => s.oldPrice && s.oldPrice > s.price) : p.category === category);
+      const haystack = `${p.name} ${p.category} ${p.description ?? ""} ${(p.tags ?? []).join(" ")}`.toLowerCase();
       const matchesQuery = q === "" || haystack.includes(q);
-      return matchesCategory && matchesQuery;
+      const matchesTag = !tagFilter || (p.tags ?? []).includes(tagFilter);
+      return matchesCategory && matchesQuery && matchesTag;
     });
 
     const sorted = [...matches];
@@ -203,7 +261,7 @@ export default function Home() {
     else if (sort === "price-desc") sorted.sort((a, b) => (b.sizes[0]?.price ?? 0) - (a.sizes[0]?.price ?? 0));
     else if (sort === "rating") sorted.sort((a, b) => b.ratingAverage - a.ratingAverage || b.ratingCount - a.ratingCount);
     return sorted;
-  }, [products, category, query, sort]);
+  }, [products, category, query, sort, tagFilter]);
 
   // "Customers also liked" — top-rated products, shown as a recommendations rail.
   const recommended = useMemo(
@@ -350,8 +408,22 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#f8f7f3] text-[#18201b]">
       <div className="topbar">
-        {t("Kostenlose Abholung in Schweinfurt", "Free pickup in Schweinfurt")} · <strong>€{FREE_DELIVERY_THRESHOLD}+</strong>{" "}
-        {t("für kostenlose Lieferung · Zahlung bar bei Lieferung/Abholung", "for free delivery · Cash on delivery/pickup")}
+        {!settings.acceptingOrders ? (
+          <strong>{settings.closedMessage}</strong>
+        ) : settings.announcement ? (
+          <strong>{settings.announcement}</strong>
+        ) : (
+          <>
+            {t("Kostenlose Abholung in Schweinfurt", "Free pickup in Schweinfurt")}
+            {settings.freeDeliveryThreshold > 0 && (
+              <>
+                {" "}
+                · <strong>€{settings.freeDeliveryThreshold}+</strong> {t("für kostenlose Lieferung", "for free delivery")}
+              </>
+            )}{" "}
+            · {t("Zahlung bar bei Lieferung/Abholung", "Cash on delivery/pickup")}
+          </>
+        )}
       </div>
 
       <header className="sticky top-0 z-40 border-b border-black/5 bg-[#f8f7f3]/95 backdrop-blur-xl">
@@ -387,7 +459,7 @@ export default function Home() {
               <button onClick={() => setLanguage(language === "de" ? "en" : "de")} className="language-btn" aria-label={t("Sprache wechseln", "Change language")}>
                 {language === "de" ? "English" : "Deutsch"}
               </button>
-              <a className="icon-btn hidden sm:flex" href={`tel:${PHONE.replace(/\s/g, "")}`} aria-label={t("Al-Madina anrufen", "Call Al-Madina")}>
+              <a className="icon-btn hidden sm:flex" href={PHONE_LINK} aria-label={t("Al-Madina anrufen", "Call Al-Madina")}>
                 <Phone size={19} />
               </a>
               <a className="icon-btn" href="/track" aria-label={t("Bestellung verfolgen", "Track order")} title={t("Bestellung verfolgen", "Track order")}>
@@ -448,7 +520,7 @@ export default function Home() {
             <a href="/account" onClick={() => setMobileNavOpen(false)}>
               <User size={17} /> {account ? account.name : t("Anmelden", "Sign in")}
             </a>
-            <a href={`tel:${PHONE.replace(/\s/g, "")}`} onClick={() => setMobileNavOpen(false)}>
+            <a href={PHONE_LINK} onClick={() => setMobileNavOpen(false)}>
               <Phone size={17} /> {PHONE}
             </a>
             <div className="mobile-nav-divider" />
@@ -470,14 +542,14 @@ export default function Home() {
             <Sparkles size={15} /> {t("Authentischer Geschmack. Jeden Tag frisch.", "Authentic taste. Fresh every day.")}
           </div>
           <h1>
-            {t("Ihre Arabisch Speisekammer,", "Your Turkish pantry,")}
+            {t("Ihr arabischer & türkischer Markt,", "Your Arabic & Turkish market,")}
             <br />
             <em>{t("ganz in Ihrer Nähe.", "right around the corner.")}</em>
           </h1>
           <p>
             {t(
-              "Von frischem Gemüse und warmem Simit bis zu Olivenöl, Gewürzen, Meze und Süßigkeiten – entdecken Sie die Aromen der Türkei, sorgfältig für Ihren Alltag ausgewählt.",
-              "From fresh vegetables and warm simit to olive oil, spices, meze and sweets — discover the flavours of Turkey, chosen for your everyday table."
+              "Supermarkt und Halal-Metzgerei unter einem Dach: frisches Fleisch, Gemüse, warmes Brot, Olivenöl, Gewürze, Meze und Süßigkeiten – sorgfältig für Ihren Alltag ausgewählt.",
+              "Supermarket and halal butcher under one roof: fresh meat, vegetables, warm bread, olive oil, spices, meze and sweets — chosen for your everyday table."
             )}
           </p>
           <div className="hero-actions">
@@ -489,11 +561,19 @@ export default function Home() {
             </a>
           </div>
           <div className="trust-row">
+            {openState && (
+              <span className={openState.open ? "open-badge open" : "open-badge"}>
+                <i />
+                {openState.open
+                  ? t(`Jetzt geöffnet · bis ${openState.closesAt} Uhr`, `Open now · until ${openState.closesAt}`)
+                  : t(`Geschlossen · öffnet ${openState.nextOpen ?? ""}`, `Closed · opens ${openState.nextOpen ?? ""}`)}
+              </span>
+            )}
             <span>
               <Check /> {t("Täglich frisch", "Fresh daily")}
             </span>
             <span>
-              <Check /> {t("Halal-Auswahl", "Halal selection")}
+              <Check /> {t("Halal-Metzgerei", "Halal butcher")}
             </span>
             <span>
               <Check /> {t("Familiengeführt", "Family run")}
@@ -536,13 +616,13 @@ export default function Home() {
           <span>{t("Täglich ausgewählt", "Selected daily")}</span>
         </div>
         <div>
-          <Star />
-          <b>{t("Qualität zuerst", "Quality first")}</b>
-          <span>{t("Bewährte Klassiker", "Trusted classics")}</span>
+          <Beef />
+          <b>{t("Halal-Metzgerei", "Halal butcher")}</b>
+          <span>{t("Frisch an der Theke", "Fresh at the counter")}</span>
         </div>
         <div>
           <Clock3 />
-          <b>{t("7 Tage geöffnet", "Open 7 days")}</b>
+          <b>{t("Mo–Sa geöffnet", "Open Mon–Sat")}</b>
           <span>07:00 — 20:00</span>
         </div>
       </section>
@@ -563,7 +643,7 @@ export default function Home() {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {categories.map((c) => (
               <button key={c} className={category === c ? "category active" : "category"} onClick={() => setCategory(c)}>
-                {c === "All" ? t("Alle", "All") : c}
+                {c === "All" ? t("Alle", "All") : c === "Offers" ? t("🏷 Angebote", "🏷 Offers") : c}
               </button>
             ))}
           </div>
@@ -581,6 +661,16 @@ export default function Home() {
             </select>
           </label>
         </div>
+        {allTags.length > 0 && (
+          <div className="tag-row" role="group" aria-label={t("Nach Merkmal filtern", "Filter by attribute")}>
+            <Tag size={14} />
+            {allTags.map((tag) => (
+              <button key={tag} className={tagFilter === tag ? "tag-chip active" : "tag-chip"} aria-pressed={tagFilter === tag} onClick={() => setTagFilter(tagFilter === tag ? null : tag)}>
+                {tag}
+              </button>
+            ))}
+          </div>
+        )}
         {mobileSearchOpen && (
           <div className="mobile-search md:hidden" ref={mobileSearchRef}>
             <Search size={17} />
@@ -705,7 +795,7 @@ export default function Home() {
           <img src="https://images.unsplash.com/photo-1604719312566-8912e9227c6a?auto=format&fit=crop&w=1200&q=88" alt="Grocery store shelves" />
         </div>
         <div className="story-copy">
-          <span className="eyebrow">{t("Unsere kleine Ecke der Türkei", "Our little corner of Turkey")}</span>
+          <span className="eyebrow">{t("Unsere kleine Ecke des Orients", "Our little corner of the Orient")}</span>
           <h2>
             {t("Ein Markt rund um", "A market built around")} <em>{t("die gemeinsame Tafel.", "the shared table.")}</em>
           </h2>
@@ -717,7 +807,7 @@ export default function Home() {
           </p>
           <div className="quote">
             <div className="stars">★★★★★</div>
-            <p>{t("„Eine warme, großzügige Auswahl Arabischr und mediterraner Favoriten.“", "“A warm, generous selection of Turkish and Mediterranean favourites.”")}</p>
+            <p>{t("„Eine warme, großzügige Auswahl arabischer, türkischer und mediterraner Favoriten.“", "“A warm, generous selection of Arabic, Turkish and Mediterranean favourites.”")}</p>
           </div>
           <a href={MAP_URL} target="_blank" rel="noreferrer" className="outline-btn">
             <MapPin size={17} /> {t("Route planen", "Get directions")}
@@ -733,27 +823,47 @@ export default function Home() {
               <h2>
                 {t("Wir sehen uns bei", "See you at")} <em>Al-Madina.</em>
               </h2>
-              <p>
-                Landwehrstraße 12
-                <br />
-                97421 Schweinfurt, Germany
+              <p className="store-arabic" dir="rtl" lang="ar">
+                {STORE.arabicName}
               </p>
+              <p>
+                {STORE.street}
+                <br />
+                {STORE.postalCode} {STORE.city}, {t("Deutschland", "Germany")}
+              </p>
+              <ul className="service-list">
+                {STORE.services.map((svc) => (
+                  <li key={svc.key}>
+                    <Check size={15} /> {t(svc.de, svc.en)}
+                  </li>
+                ))}
+              </ul>
               <div className="visit-links">
-                <a href={MAP_URL} target="_blank" rel="noreferrer">
-                  <MapPin size={17} /> {t("Google Maps öffnen", "Open in Google Maps")}
+                <a href={STORE.directionsUrl} target="_blank" rel="noreferrer">
+                  <Navigation size={17} /> {t("Route planen", "Get directions")}
                 </a>
-                <a href={`tel:${PHONE.replace(/\s/g, "")}`}>
+                <a href={PHONE_LINK}>
                   <Phone size={17} /> {PHONE}
+                </a>
+                <a href={MAP_URL} target="_blank" rel="noreferrer">
+                  <MapPin size={17} /> Plus Code: {STORE.plusCode}
                 </a>
               </div>
               <div className="hours">
-                <b>{t("Öffnungszeiten", "Opening hours")}</b>
-                <span>
-                  Mon — Sat <strong>07:00 — 20:00</strong>
-                </span>
-                <span>
-                  {t("Sonntag", "Sunday")} <strong>{t("Geschlossen", "Closed")}</strong>
-                </span>
+                <b style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  {t("Öffnungszeiten", "Opening hours")}
+                  {openState && (
+                    <span className={openState.open ? "open-badge open" : "open-badge"}>
+                      <i />
+                      {openState.open ? t("Jetzt geöffnet", "Open now") : t("Geschlossen", "Closed")}
+                    </span>
+                  )}
+                </b>
+                {OPENING_HOURS.map((h) => (
+                  <span key={h.day} className={openState && new Date().getDay() === h.day ? "today" : undefined}>
+                    {t(h.de, h.en)} <strong>{h.open ? `${h.open} — ${h.close}` : t("Geschlossen", "Closed")}</strong>
+                  </span>
+                ))}
               </div>
             </div>
             <div className="map-card">
@@ -761,7 +871,7 @@ export default function Home() {
               <div className="pin">
                 <MapPin size={26} />
                 <b>Al-Madina</b>
-                <small>Landwehrstraße 12</small>
+                <small>{STORE.street}</small>
               </div>
               <a href={MAP_URL} target="_blank" rel="noreferrer" className="map-overlay">
                 {t("In Google Maps öffnen", "Open in Google Maps")} <ArrowRight size={15} />
@@ -782,7 +892,7 @@ export default function Home() {
                   <small>market · seit 1998</small>
                 </span>
               </a>
-              <p className="footer-note">{t("Arabisch & mediterrane Lebensmittel für Ihren Alltag.", "Turkish & Mediterranean groceries for your everyday table.")}</p>
+              <p className="footer-note">{t("Arabische, türkische & mediterrane Lebensmittel und Halal-Fleisch für Ihren Alltag.", "Arabic, Turkish & Mediterranean groceries and halal meat for your everyday table.")}</p>
             </div>
             <div className="footer-links">
               <div>
@@ -796,8 +906,13 @@ export default function Home() {
                 <a href={MAP_URL} target="_blank" rel="noreferrer">
                   Google Maps
                 </a>
-                <a href={`tel:${PHONE.replace(/\s/g, "")}`}>{t("Anrufen", "Call")}</a>
+                <a href={PHONE_LINK}>{t("Anrufen", "Call")}</a>
                 <a href="#visit">{t("Öffnungszeiten", "Opening hours")}</a>
+                <span className="footer-hours">
+                  {t("Mo–Sa 07:00–20:00", "Mon–Sat 07:00–20:00")}
+                  <br />
+                  {t("So geschlossen", "Sun closed")}
+                </span>
               </div>
               <div>
                 <b>{t("Folgen", "Follow")}</b>
@@ -817,7 +932,9 @@ export default function Home() {
             </div>
           </div>
           <div className="footer-bottom">
-            <span>© 2026 Al-Madina Market.</span>
+            <span>
+              © {new Date().getFullYear()} {STORE.name} · {STORE.street}, {STORE.postalCode} {STORE.city}
+            </span>
             <span>{t("Zahlung ausschließlich in bar bei Lieferung oder Abholung.", "Payment is cash only, on delivery or pickup.")}</span>
           </div>
         </div>
@@ -859,7 +976,7 @@ export default function Home() {
                 <div className="cart-items">
                   {cart.map((item) => (
                     <div className="cart-item" key={item.key}>
-                      <img src={item.image} alt="" />
+                      <img src={item.image} alt="" onError={imageFallback} />
                       <div>
                         <b>{item.name}</b>
                         <span>
@@ -870,7 +987,7 @@ export default function Home() {
                             <Minus size={13} />
                           </button>
                           <span>{item.qty}</span>
-                          <button onClick={() => changeQty(item.key, 1)} aria-label={t("Menge erhöhen", "Increase quantity")}>
+                          <button onClick={() => changeQty(item.key, 1)} disabled={item.qty >= item.stock} aria-label={t("Menge erhöhen", "Increase quantity")}>
                             <Plus size={13} />
                           </button>
                         </div>
@@ -879,14 +996,44 @@ export default function Home() {
                   ))}
                 </div>
                 <div className="cart-summary">
+                  {settings.deliveryEnabled && settings.freeDeliveryThreshold > 0 && (
+                    <div className="free-delivery" style={{ display: "block" }}>
+                      <span>
+                        {subtotal >= settings.freeDeliveryThreshold
+                          ? t("🎉 Kostenlose Lieferung freigeschaltet!", "🎉 You've unlocked free delivery!")
+                          : t(
+                              `Noch €${(settings.freeDeliveryThreshold - subtotal).toFixed(2)} bis zur kostenlosen Lieferung`,
+                              `€${(settings.freeDeliveryThreshold - subtotal).toFixed(2)} away from free delivery`
+                            )}
+                      </span>
+                      <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Math.min(100, (subtotal / settings.freeDeliveryThreshold) * 100))}>
+                        <i style={{ width: `${Math.min(100, (subtotal / settings.freeDeliveryThreshold) * 100)}%` }} />
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <span>{t("Zwischensumme", "Subtotal")}</span>
                     <b>€{subtotal.toFixed(2)}</b>
                   </div>
-                  <small style={{ textAlign: "left" }}>
-                    {t("Lieferkosten & Abholoption werden an der Kasse gewählt.", "Delivery fee / pickup option is chosen at checkout.")}
-                  </small>
-                  <button className="primary-btn full" onClick={() => setCheckoutOpen(true)}>
+                  {settings.minimumOrder > subtotal ? (
+                    <small style={{ textAlign: "left", color: "#b3261e" }}>
+                      {t(
+                        `Mindestbestellwert €${settings.minimumOrder.toFixed(2)} — noch €${(settings.minimumOrder - subtotal).toFixed(2)}.`,
+                        `Minimum order €${settings.minimumOrder.toFixed(2)} — add €${(settings.minimumOrder - subtotal).toFixed(2)} more.`
+                      )}
+                    </small>
+                  ) : (
+                    <small style={{ textAlign: "left" }}>
+                      {t("Lieferkosten & Abholoption werden an der Kasse gewählt.", "Delivery fee / pickup option is chosen at checkout.")}
+                    </small>
+                  )}
+                  {!settings.acceptingOrders && <small style={{ textAlign: "left", color: "#b3261e" }}>{settings.closedMessage}</small>}
+                  <button
+                    className="primary-btn full"
+                    onClick={() => setCheckoutOpen(true)}
+                    disabled={!settings.acceptingOrders || settings.minimumOrder > subtotal}
+                    style={!settings.acceptingOrders || settings.minimumOrder > subtotal ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+                  >
                     {t("Zur Kasse", "Checkout")} <ArrowRight size={17} />
                   </button>
                   <small>{t("Zahlung bar bei Lieferung oder Abholung", "Cash payment on delivery or pickup")}</small>
@@ -898,7 +1045,16 @@ export default function Home() {
       )}
 
       {checkoutOpen && (
-        <CheckoutModal cart={cart} subtotal={subtotal} account={account} onClose={() => setCheckoutOpen(false)} onSuccess={clearCartAfterOrder} t={t} />
+        <CheckoutModal
+          cart={cart}
+          subtotal={subtotal}
+          account={account}
+          settings={settings}
+          slots={slots}
+          onClose={() => setCheckoutOpen(false)}
+          onSuccess={clearCartAfterOrder}
+          t={t}
+        />
       )}
 
       {activeProduct && (
@@ -955,8 +1111,13 @@ function ProductCard({
   return (
     <article className="product-card">
       <div className="product-image" onClick={onOpen} style={{ cursor: "pointer" }}>
-        <img src={product.image} alt={product.name} />
+        <img src={product.image} alt={product.name} onError={imageFallback} />
         {product.badge && <span className="product-badge">{product.badge}</span>}
+        {!product.badge && size.oldPrice && size.oldPrice > size.price && (
+          <span className="product-badge sale">−{Math.round((1 - size.price / size.oldPrice) * 100)}%</span>
+        )}
+        {size.stock === 0 && <span className="stock-flag out">{t("Ausverkauft", "Sold out")}</span>}
+        {size.stock > 0 && size.stock <= 5 && <span className="stock-flag">{t(`Nur noch ${size.stock}`, `Only ${size.stock} left`)}</span>}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -970,7 +1131,10 @@ function ProductCard({
         </button>
       </div>
       <div className="product-info">
-        <span className="product-category">{product.category}</span>
+        <span className="product-category">
+          {product.category}
+          {product.tags?.length ? <span className="product-tags"> · {product.tags.slice(0, 2).join(" · ")}</span> : null}
+        </span>
         <h3 onClick={onOpen} style={{ cursor: "pointer" }}>
           {product.name}
         </h3>
@@ -1006,9 +1170,9 @@ function ProductCard({
             {product.unitNote && <small> {product.unitNote}</small>}
             {size.oldPrice && <del>€{size.oldPrice.toFixed(2)}</del>}
           </div>
-          <button onClick={() => onAdd(size)} className="add-btn">
+          <button onClick={() => onAdd(size)} className="add-btn" disabled={size.stock === 0} aria-label={t(`${product.name} hinzufügen`, `Add ${product.name}`)}>
             <Plus size={17} />
-            <span>{t("Hinzufügen", "Add")}</span>
+            <span>{size.stock === 0 ? t("Ausverkauft", "Sold out") : t("Hinzufügen", "Add")}</span>
           </button>
         </div>
       </div>
@@ -1020,6 +1184,8 @@ function CheckoutModal({
   cart,
   subtotal,
   account,
+  settings,
+  slots,
   onClose,
   onSuccess,
   t,
@@ -1027,11 +1193,20 @@ function CheckoutModal({
   cart: CartItem[];
   subtotal: number;
   account: Account | null;
+  settings: StoreSettings;
+  slots: Slot[];
   onClose: () => void;
   onSuccess: () => void;
   t: (de: string, en: string) => string;
 }) {
-  const [fulfillment, setFulfillment] = useState<"DELIVERY" | "PICKUP">("DELIVERY");
+  const { language } = useLanguage();
+  const [fulfillment, setFulfillment] = useState<"DELIVERY" | "PICKUP">(settings.deliveryEnabled ? "DELIVERY" : "PICKUP");
+  const [slotId, setSlotId] = useState("");
+  const [substitution, setSubstitution] = useState("CALL");
+  const [couponInput, setCouponInput] = useState("");
+  const [coupon, setCoupon] = useState<{ code: string; discount: number; freeDelivery: boolean; description: string | null } | null>(null);
+  const [couponError, setCouponError] = useState("");
+  const [checkingCoupon, setCheckingCoupon] = useState(false);
   const [name, setName] = useState(account?.name ?? "");
   const [email, setEmail] = useState(account?.email ?? "");
   const [phone, setPhone] = useState(account?.phone ?? "");
@@ -1041,7 +1216,7 @@ function CheckoutModal({
   const [error, setError] = useState("");
   const [needsLogin, setNeedsLogin] = useState(false);
   const [needsVerification, setNeedsVerification] = useState(false);
-  const [success, setSuccess] = useState<{ orderNumber: string; total: number } | null>(null);
+  const [success, setSuccess] = useState<{ orderNumber: string; total: number; slot: Slot | null; fulfillment: string } | null>(null);
   const [savedAddresses, setSavedAddresses] = useState<{ id: string; label: string; address: string; isDefault: boolean }[]>([]);
 
   useEffect(() => {
@@ -1056,8 +1231,35 @@ function CheckoutModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account]);
 
-  const deliveryFee = fulfillment === "PICKUP" ? 0 : subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
-  const total = subtotal + deliveryFee;
+  const discount = coupon ? Math.min(coupon.discount, subtotal) : 0;
+  const deliveryFee = coupon?.freeDelivery ? 0 : deliveryFeeFor(settings, fulfillment, subtotal - discount);
+  const total = subtotal - discount + deliveryFee;
+
+  // A coupon's discount depends on the subtotal — drop it if the basket changes underneath it.
+  useEffect(() => {
+    setCoupon(null);
+  }, [subtotal]);
+
+  async function applyCoupon() {
+    setCouponError("");
+    if (!couponInput.trim()) return;
+    setCheckingCoupon(true);
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: couponInput, subtotal }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCoupon(null);
+        setCouponError(data.error || t("Ungültiger Code.", "Invalid code."));
+      } else setCoupon(data);
+    } catch {
+      setCouponError(t("Verbindungsfehler. Bitte versuchen Sie es erneut.", "Connection error. Please try again."));
+    }
+    setCheckingCoupon(false);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -1066,6 +1268,10 @@ function CheckoutModal({
     setNeedsVerification(false);
     if (fulfillment === "DELIVERY" && !address.trim()) {
       setError(t("Bitte geben Sie Ihre Lieferadresse an.", "Please enter a delivery address."));
+      return;
+    }
+    if (settings.requireSlot && slots.length > 0 && !slotId) {
+      setError(t("Bitte wählen Sie ein Zeitfenster.", "Please choose a time slot."));
       return;
     }
     setSubmitting(true);
@@ -1080,6 +1286,9 @@ function CheckoutModal({
           fulfillment,
           address: fulfillment === "DELIVERY" ? address : undefined,
           notes,
+          couponCode: coupon?.code,
+          slotId: slotId || undefined,
+          substitution,
           items: cart.map((c) => ({ sizeId: c.sizeId, qty: c.qty })),
         }),
       });
@@ -1091,7 +1300,7 @@ function CheckoutModal({
         setSubmitting(false);
         return;
       }
-      setSuccess({ orderNumber: data.orderNumber, total: data.total });
+      setSuccess({ orderNumber: data.orderNumber, total: data.total, slot: slots.find((s) => s.id === slotId) ?? null, fulfillment });
     } catch {
       setError(t("Verbindungsfehler. Bitte versuchen Sie es erneut.", "Connection error. Please try again."));
     }
@@ -1111,10 +1320,23 @@ function CheckoutModal({
             {t("Ihre Bestellnummer ist", "Your order number is")} <b>#{success.orderNumber}</b>.{" "}
             {t("Eine Bestätigung wurde an Ihre E-Mail gesendet.", "A confirmation has been sent to your email.")}
           </p>
+          {success.slot && (
+            <p>
+              <CalendarClock size={15} style={{ display: "inline", marginRight: 6, verticalAlign: "-2px" }} />
+              {success.fulfillment === "PICKUP" ? t("Abholung", "Pickup") : t("Lieferung", "Delivery")}: <b>{slotLabel(success.slot, language)}</b>
+            </p>
+          )}
           <div className="checkout-box">
             <span>{t("Zu zahlen (bar)", "To pay (cash)")}</span>
             <b>€{success.total.toFixed(2)}</b>
           </div>
+          <p style={{ fontSize: 12 }}>
+            {t("Sie können den Status jederzeit unter", "You can follow the status any time under")}{" "}
+            <Link href="/account" style={{ textDecoration: "underline" }}>
+              {t("Mein Konto", "My account")}
+            </Link>{" "}
+            {t("verfolgen.", ".")}
+          </p>
           <button className="primary-btn full" onClick={onSuccess}>
             {t("Fertig", "Done")} <Check size={17} />
           </button>
@@ -1133,18 +1355,52 @@ function CheckoutModal({
         <h2 style={{ fontSize: 36 }}>{t("Bar bei Lieferung oder Abholung.", "Cash on delivery or pickup.")}</h2>
         <p>{t("Es wird keine Online-Zahlung durchgeführt. Sie zahlen bar bei Erhalt.", "No online payment is taken. You pay in cash when you receive your order.")}</p>
 
+        {!settings.acceptingOrders && <div className="checkout-error">{settings.closedMessage}</div>}
+
         <div className="fulfillment-toggle">
-          <button type="button" className={fulfillment === "DELIVERY" ? "fulfillment-btn active" : "fulfillment-btn"} onClick={() => setFulfillment("DELIVERY")}>
-            <Truck size={16} /> {t("Lieferung", "Delivery")}
-          </button>
-          <button type="button" className={fulfillment === "PICKUP" ? "fulfillment-btn active" : "fulfillment-btn"} onClick={() => setFulfillment("PICKUP")}>
-            <Store size={16} /> {t("Abholung im Laden", "Pickup in store")}
-          </button>
+          {settings.deliveryEnabled && (
+            <button type="button" className={fulfillment === "DELIVERY" ? "fulfillment-btn active" : "fulfillment-btn"} onClick={() => setFulfillment("DELIVERY")}>
+              <Truck size={16} /> {t("Lieferung", "Delivery")}
+            </button>
+          )}
+          {settings.pickupEnabled && (
+            <button type="button" className={fulfillment === "PICKUP" ? "fulfillment-btn active" : "fulfillment-btn"} onClick={() => setFulfillment("PICKUP")}>
+              <Store size={16} /> {t("Abholung im Laden", "Pickup in store")}
+            </button>
+          )}
         </div>
         {fulfillment === "PICKUP" && (
           <p className="pickup-note">
-            {t("Wir packen Ihre Bestellung und sie ist zur Abholung bereit: Landwehrstraße 12, 97421 Schweinfurt.", "We'll pack your order and it'll be ready for pickup at Landwehrstraße 12, 97421 Schweinfurt.")}
+            {t(
+              `Wir packen Ihre Bestellung — Abholung im Laden oder am Straßenrand: ${STORE.street}, ${STORE.postalCode} ${STORE.city} (Mo–Sa 07:00–20:00).`,
+              `We'll pack your order — pick it up in store or at the kerb: ${STORE.street}, ${STORE.postalCode} ${STORE.city} (Mon–Sat 07:00–20:00).`
+            )}
           </p>
+        )}
+        {fulfillment === "DELIVERY" && settings.deliveryArea && (
+          <p className="pickup-note">
+            {t("Liefergebiet", "Delivery area")}: {settings.deliveryArea}
+            {settings.freeDeliveryThreshold > 0 &&
+              ` · ${t(`ab €${settings.freeDeliveryThreshold} kostenlos`, `free from €${settings.freeDeliveryThreshold}`)}`}
+          </p>
+        )}
+
+        {slots.length > 0 && (
+          <label className="checkout-label">
+            <span>
+              <CalendarClock size={14} /> {fulfillment === "PICKUP" ? t("Abholzeit", "Pickup time") : t("Lieferzeit", "Delivery time")}
+              {!settings.requireSlot && <small> ({t("optional", "optional")})</small>}
+            </span>
+            <select value={slotId} onChange={(e) => setSlotId(e.target.value)} required={settings.requireSlot}>
+              <option value="">{settings.requireSlot ? t("Bitte wählen…", "Please choose…") : t("So bald wie möglich", "As soon as possible")}</option>
+              {slots.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {slotLabel(s, language)}
+                  {s.remaining <= 2 ? ` — ${t(`noch ${s.remaining} frei`, `${s.remaining} left`)}` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
         )}
 
         <div className="checkout-fields">
@@ -1166,8 +1422,65 @@ function CheckoutModal({
               <input required placeholder={t("Lieferadresse", "Delivery address")} value={address} onChange={(e) => setAddress(e.target.value)} />
             </>
           )}
-          <textarea placeholder={t("Hinweise zur Bestellung (optional)", "Order notes (optional)")} value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+          <label className="checkout-label">
+            <span>
+              <Repeat size={14} /> {t("Falls ein Artikel fehlt", "If an item is unavailable")}
+            </span>
+            <select value={substitution} onChange={(e) => setSubstitution(e.target.value)}>
+              <option value="CALL">{t("Mich anrufen", "Call me")}</option>
+              <option value="SUBSTITUTE">{t("Durch ähnlichen Artikel ersetzen", "Replace with a similar item")}</option>
+              <option value="REMOVE">{t("Artikel weglassen", "Leave it out")}</option>
+            </select>
+          </label>
+          <textarea
+            placeholder={t("Hinweise zur Bestellung (optional, z. B. Klingel, Zuschnitt beim Fleisch)", "Order notes (optional, e.g. doorbell, how to cut the meat)")}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            maxLength={1000}
+          />
         </div>
+
+        <div className="coupon-row">
+          <Ticket size={16} />
+          <input
+            placeholder={t("Gutscheincode", "Coupon code")}
+            value={couponInput}
+            onChange={(e) => {
+              setCouponInput(e.target.value.toUpperCase());
+              setCouponError("");
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                applyCoupon();
+              }
+            }}
+            aria-label={t("Gutscheincode", "Coupon code")}
+          />
+          {coupon ? (
+            <button
+              type="button"
+              onClick={() => {
+                setCoupon(null);
+                setCouponInput("");
+              }}
+            >
+              {t("Entfernen", "Remove")}
+            </button>
+          ) : (
+            <button type="button" onClick={applyCoupon} disabled={checkingCoupon || !couponInput.trim()}>
+              {checkingCoupon ? "…" : t("Einlösen", "Apply")}
+            </button>
+          )}
+        </div>
+        {couponError && <div className="checkout-error">{couponError}</div>}
+        {coupon && (
+          <small style={{ color: "var(--leaf)", display: "block", marginTop: 6 }}>
+            <Check size={13} style={{ display: "inline", verticalAlign: "-2px" }} /> {coupon.code}
+            {coupon.description ? ` — ${coupon.description}` : ""}
+          </small>
+        )}
 
         {error && (
           <div className="checkout-error">
@@ -1200,6 +1513,14 @@ function CheckoutModal({
             <span>{t("Zwischensumme", "Subtotal")}</span>
             <span>€{subtotal.toFixed(2)}</span>
           </div>
+          {discount > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", color: "var(--leaf)" }}>
+              <span>
+                {t("Rabatt", "Discount")} ({coupon?.code})
+              </span>
+              <span>−€{discount.toFixed(2)}</span>
+            </div>
+          )}
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span>{fulfillment === "PICKUP" ? t("Abholung", "Pickup") : t("Lieferung", "Delivery")}</span>
             <span>{deliveryFee === 0 ? t("Kostenlos", "Free") : `€${deliveryFee.toFixed(2)}`}</span>
@@ -1210,7 +1531,7 @@ function CheckoutModal({
           </div>
         </div>
 
-        <button className="primary-btn full" disabled={submitting || cart.length === 0}>
+        <button className="primary-btn full" disabled={submitting || cart.length === 0 || !settings.acceptingOrders}>
           {submitting ? t("Wird gesendet…", "Placing order…") : t("Bestellung aufgeben — Bar bezahlen", "Place order — pay cash")} <Check size={17} />
         </button>
       </form>
@@ -1321,7 +1642,7 @@ function ProductDetailModal({
           <X />
         </button>
 
-        <img src={product.image} alt={product.name} style={{ width: "100%", borderRadius: 14, marginBottom: 16, maxHeight: 260, objectFit: "cover" }} />
+        <img src={product.image} alt={product.name} onError={imageFallback} style={{ width: "100%", borderRadius: 14, marginBottom: 16, maxHeight: 260, objectFit: "cover" }} />
 
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
           <div>
@@ -1349,6 +1670,20 @@ function ProductDetailModal({
         </div>
 
         {product.description && <p>{product.description}</p>}
+        {product.tags?.length > 0 && (
+          <div className="tag-row" style={{ margin: "8px 0" }}>
+            {product.tags.map((tag) => (
+              <span key={tag} className="tag-chip">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+        {product.slug && (
+          <Link href={`/products/${product.slug}`} className="text-btn" style={{ fontSize: 12 }}>
+            {t("Produktseite öffnen", "Open product page")} <ArrowRight size={13} />
+          </Link>
+        )}
 
         {product.sizes.length > 1 && (
           <div className="size-row" style={{ margin: "10px 0" }}>
@@ -1367,12 +1702,14 @@ function ProductDetailModal({
           </div>
           <button
             className="primary-btn"
+            disabled={size.stock === 0}
+            style={size.stock === 0 ? { opacity: 0.5 } : undefined}
             onClick={() => {
               onAdd(size);
               onClose();
             }}
           >
-            <Plus size={17} /> {t("Hinzufügen", "Add to basket")}
+            <Plus size={17} /> {size.stock === 0 ? t("Ausverkauft", "Sold out") : t("Hinzufügen", "Add to basket")}
           </button>
         </div>
 
@@ -1386,7 +1723,7 @@ function ProductDetailModal({
                   onClick={() => onOpenRelated(r.id)}
                   style={{ flex: "0 0 auto", width: 96, textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}
                 >
-                  <img src={r.image} alt={r.name} style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 10, marginBottom: 4 }} />
+                  <img src={r.image} alt={r.name} onError={imageFallback} style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 10, marginBottom: 4 }} />
                   <small style={{ display: "block", lineHeight: 1.2 }}>{r.name}</small>
                 </button>
               ))}

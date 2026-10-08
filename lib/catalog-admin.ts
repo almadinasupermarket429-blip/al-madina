@@ -42,11 +42,11 @@ export async function resolveCategoryId(categoryName: string): Promise<string | 
 }
 
 /** product_variants.sku is unique but not customer-facing — random suffix keeps this collision-free. */
-export function generateSku(productSlug: string): string {
+function generateSku(productSlug: string): string {
   return `${productSlug.toUpperCase().slice(0, 24)}-${randomBytes(3).toString("hex").toUpperCase()}`;
 }
 
-type AdminSize = { label: string; price: number; oldPrice?: number; stock?: number };
+type AdminSize = { id?: string; label: string; price: number; oldPrice?: number; stock?: number };
 type AdminProductView = {
   id: string;
   name: string;
@@ -55,6 +55,7 @@ type AdminProductView = {
   image: string | null;
   badge: string | null;
   unitNote: string | null;
+  tags: string[];
   active: boolean;
   sortOrder: number;
   createdAt: Date;
@@ -67,7 +68,7 @@ export async function getAdminProductView(id: string): Promise<AdminProductView 
   const rows = await prisma.$queryRaw<Omit<AdminProductView, "sizes">[]>`
     select
       p.id, p.name, c.name as category, p.description, p.image_url as image,
-      p.badge, p.unit_note as "unitNote", p.is_active as active, p.sort_order as "sortOrder",
+      p.badge, p.unit_note as "unitNote", p.tags, p.is_active as active, p.sort_order as "sortOrder",
       p.created_at as "createdAt", p.updated_at as "updatedAt"
     from products p
     left join categories c on c.id = p.category_id
@@ -87,20 +88,78 @@ export async function getAdminProductView(id: string): Promise<AdminProductView 
   return { ...product, sizes: sizes.map((s) => ({ ...s, price: Number(s.price), oldPrice: s.oldPrice != null ? Number(s.oldPrice) : null })) };
 }
 
-/** Replaces all of a product's variants — same delete+recreate semantics the old ProductSize CRUD used. */
+/**
+ * Syncs a product's variants with the admin form: sizes that carry an existing
+ * id are updated in place, new ones are inserted, and ones dropped from the
+ * form are deactivated (or deleted if nothing references them). Updating in
+ * place matters — deleting a variant cascades out of every customer's cart
+ * and nulls order_items.variant_id, which breaks "Reorder" on past orders.
+ */
 export async function replaceVariants(
   tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
   productId: string,
   productSlug: string,
   sizes: AdminSize[]
 ) {
-  await tx.$executeRaw`delete from product_variants where product_id = ${productId}::uuid`;
+  const existing = await tx.$queryRaw<{ id: string }[]>`select id from product_variants where product_id = ${productId}::uuid`;
+  const existingIds = new Set(existing.map((r) => r.id));
+  const keptIds = new Set<string>();
+
   for (let i = 0; i < sizes.length; i++) {
     const s = sizes[i];
-    const sku = generateSku(productSlug);
+    const oldPrice = s.oldPrice ? Number(s.oldPrice) : null;
+    if (s.id && existingIds.has(s.id)) {
+      keptIds.add(s.id);
+      await tx.$executeRaw`
+        update product_variants set size_label = ${s.label}, price = ${Number(s.price)}, compare_at_price = ${oldPrice},
+          stock_quantity = coalesce(${s.stock ?? null}::int, stock_quantity), sort_order = ${i}, is_active = true
+        where id = ${s.id}::uuid
+      `;
+    } else {
+      await tx.$executeRaw`
+        insert into product_variants (product_id, sku, size_label, price, compare_at_price, stock_quantity, sort_order)
+        values (${productId}::uuid, ${generateSku(productSlug)}, ${s.label}, ${Number(s.price)}, ${oldPrice}, ${s.stock ?? 999}, ${i})
+      `;
+    }
+  }
+
+  const removed = [...existingIds].filter((id) => !keptIds.has(id));
+  if (removed.length > 0) {
+    await tx.$executeRaw`delete from cart_items where variant_id = any(${removed}::uuid[])`;
     await tx.$executeRaw`
-      insert into product_variants (product_id, sku, size_label, price, compare_at_price, stock_quantity, sort_order)
-      values (${productId}::uuid, ${sku}, ${s.label}, ${Number(s.price)}, ${s.oldPrice ? Number(s.oldPrice) : null}, ${s.stock ?? 999}, ${i})
+      update product_variants set is_active = false
+      where id = any(${removed}::uuid[]) and exists (select 1 from order_items oi where oi.variant_id = product_variants.id)
+    `;
+    await tx.$executeRaw`
+      delete from product_variants
+      where id = any(${removed}::uuid[]) and not exists (select 1 from order_items oi where oi.variant_id = product_variants.id)
     `;
   }
+}
+
+/** Normalises free-form tag input ("Halal, vegan ,Bio") into a clean, de-duplicated list. */
+export function parseTags(input: unknown): string[] {
+  const raw = Array.isArray(input) ? input : typeof input === "string" ? input.split(",") : [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const t of raw) {
+    const tag = String(t).trim().slice(0, 30);
+    if (tag && !seen.has(tag.toLowerCase())) {
+      seen.add(tag.toLowerCase());
+      out.push(tag);
+    }
+  }
+  return out.slice(0, 12);
+}
+
+type CategoryRow = { id: string; name: string; slug: string; imageUrl: string | null; sortOrder: number; isActive: boolean; productCount: bigint };
+
+export async function listCategories() {
+  const rows = await prisma.$queryRaw<CategoryRow[]>`
+    select c.id, c.name, c.slug, c.image_url as "imageUrl", c.sort_order as "sortOrder", c.is_active as "isActive",
+           (select count(*) from products p where p.category_id = c.id) as "productCount"
+    from categories c
+    order by c.sort_order asc, c.name asc
+  `;
+  return rows.map((r) => ({ ...r, productCount: Number(r.productCount) }));
 }

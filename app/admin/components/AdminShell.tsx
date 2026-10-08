@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { ClipboardList, LogOut, Package, ShoppingBag, Volume2, VolumeX, BarChart3, Menu, X } from "lucide-react";
+import { ClipboardList, LogOut, Package, ShoppingBag, Volume2, VolumeX, BarChart3, Menu, X, Settings, Ticket, CalendarClock, Users, MessageSquare, Tags, UserCog } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
 type AdminMe = { username: string; role: "OWNER" | "STAFF"; adminId: string | null };
@@ -86,16 +86,25 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const isOwner = me?.role === "OWNER";
   const navItems = [
     { href: "/admin", label: t("Bestellungen", "Orders"), icon: ClipboardList },
+    { href: "/admin/slots", label: t("Zeitfenster", "Time slots"), icon: CalendarClock },
     ...(isOwner
       ? [
-          { href: "/admin/products", label: t("Produkte", "Products"), icon: Package },
+          { href: "/admin/products", label: t("Produkte & Lager", "Products & stock"), icon: Package },
+          { href: "/admin/categories", label: t("Kategorien", "Categories"), icon: Tags },
+          { href: "/admin/coupons", label: t("Gutscheine", "Coupons"), icon: Ticket },
+          { href: "/admin/customers", label: t("Kunden", "Customers"), icon: Users },
+          { href: "/admin/reviews", label: t("Bewertungen", "Reviews"), icon: MessageSquare },
           { href: "/admin/analytics", label: t("Analyse", "Analytics"), icon: BarChart3 },
+          { href: "/admin/team", label: t("Team", "Team"), icon: UserCog },
+          { href: "/admin/settings", label: t("Einstellungen", "Settings"), icon: Settings },
         ]
       : []),
   ];
 
   return (
-    <div className="min-h-screen bg-[#f4f3ee] lg:flex">
+    // translate="no": the admin has its own DE/EN switch, and browser translation rewriting
+    // live-updating text makes React crash ("insertBefore ... not a child of this node").
+    <div className="min-h-screen bg-[#f4f3ee] lg:flex" translate="no">
       <audio ref={audioRef} src="/notification.wav" preload="auto" />
       {flash && (
         <div className="fixed inset-0 pointer-events-none z-[999] ring-8 ring-[#a12e3d]/40 animate-pulse" />
@@ -220,7 +229,7 @@ function AdminNavContents({
         </div>
       )}
 
-      <nav className="flex flex-col gap-1">
+      <nav className="flex flex-col gap-1 overflow-y-auto min-h-0">
         {navItems.map(({ href, label, icon: Icon }) => (
           <a
             key={href}
@@ -234,7 +243,7 @@ function AdminNavContents({
         ))}
       </nav>
 
-      <div className="mt-auto flex flex-col gap-2">
+      <div className="mt-auto pt-4 flex flex-col gap-2">
         <button
           onClick={() => setLanguage(language === "de" ? "en" : "de")}
           className="flex items-center justify-center rounded-lg px-3 py-2.5 text-sm font-medium border border-black/10 text-black/60"
@@ -247,8 +256,13 @@ function AdminNavContents({
             soundOn ? "border-[#4f9d5f] text-[#2f6b3a] bg-[#4f9d5f]/10" : "border-black/10 text-black/60"
           }`}
         >
-          {soundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
-          {soundOn ? t("Bestellton: AN", "New-order sound: ON") : t("Bestellton aktivieren", "Enable order sound")}
+          {/* Icon and text each sit in their own stable <span>: browser translation (e.g. Chrome
+              translating this German page) wraps bare text nodes in <font>, and React then crashes
+              with "insertBefore ... not a child of this node" when it swaps the icon next to them. */}
+          <span className="flex shrink-0">{soundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}</span>
+          <span>
+            {soundOn ? t("Bestellton: AN", "New-order sound: ON") : t("Bestellton aktivieren", "Enable order sound")}
+          </span>
         </button>
         <a href="/" className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-black/50 hover:bg-black/5">
           <ShoppingBag size={16} /> {t("Shop ansehen", "View storefront")}

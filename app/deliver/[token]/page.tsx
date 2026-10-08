@@ -77,8 +77,8 @@ export default function DeliverPage() {
         </div>
 
         <div className="flex items-center gap-2 text-sm font-semibold mb-3">
-          {order.fulfillment === "PICKUP" ? <Store size={16} /> : <Truck size={16} />}
-          {order.fulfillment === "PICKUP" ? t("Abholung im Laden", "Store pickup") : t("Lieferung nach Hause", "Home delivery")}
+          <span className="flex shrink-0">{order.fulfillment === "PICKUP" ? <Store size={16} /> : <Truck size={16} />}</span>
+          <span>{order.fulfillment === "PICKUP" ? t("Abholung im Laden", "Store pickup") : t("Lieferung nach Hause", "Home delivery")}</span>
         </div>
 
         <div className="text-sm space-y-1.5 mb-4">
@@ -110,7 +110,11 @@ export default function DeliverPage() {
           <span className="text-xl font-serif">€{order.total.toFixed(2)}</span>
         </div>
 
-        {alreadyDelivered || done ? (
+        {order.status === "CANCELLED" ? (
+          <div className="flex items-center justify-center gap-2 rounded-xl bg-red-50 text-red-700 font-semibold py-3">
+            {t("Diese Bestellung wurde storniert — nicht ausliefern.", "This order was cancelled — do not deliver.")}
+          </div>
+        ) : alreadyDelivered || done ? (
           <div className="flex items-center justify-center gap-2 rounded-xl bg-green-50 text-green-700 font-semibold py-3">
             <Check size={17} />{" "}
             {order.fulfillment === "PICKUP" ? t("Als abgeholt markiert", "Marked as picked up") : t("Als zugestellt markiert", "Marked as delivered")}

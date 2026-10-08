@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession, isOwner } from "@/lib/auth";
-import { getAdminProductView, replaceVariants, resolveCategoryId } from "@/lib/catalog-admin";
+import { getAdminProductView, parseTags, replaceVariants, resolveCategoryId } from "@/lib/catalog-admin";
 import { slugify } from "@/lib/slug";
 
 // Admin only: update a product and fully replace its size list
@@ -12,7 +12,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   const body = await req.json();
-  const { name, category, description, image, badge, unitNote, active, sizes } = body;
+  const { name, category, description, image, badge, unitNote, active, sizes, tags } = body;
+
+  if (!name || !category || !image) {
+    return NextResponse.json({ error: "Name, Kategorie und Bild sind erforderlich." }, { status: 400 });
+  }
 
   const existing = await prisma.$queryRaw<{ id: string; slug: string }[]>`
     select id, slug from products where id = ${id}::uuid
@@ -31,6 +35,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         badge = ${badge || null},
         unit_note = ${unitNote || null},
         is_active = ${active ?? true},
+        tags = ${parseTags(tags)}::text[],
         updated_at = now()
       where id = ${id}::uuid
     `;

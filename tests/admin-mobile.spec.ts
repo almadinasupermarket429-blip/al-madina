@@ -22,10 +22,10 @@ test("admin orders status tabs scroll horizontally instead of wrapping", async (
   const tabRow = page.locator(".overflow-x-auto").first();
   await expect(tabRow).toBeVisible();
 
-  // All 5 tab buttons must exist and stay on one line (no wrap) — the bug
+  // All 7 status tab buttons (Active, New, Packed, Out for delivery, Completed, Cancelled, All) must exist and stay on one line (no wrap) — the bug
   // from the screenshot was flex-wrap pushing them onto a second row.
   const buttons = tabRow.locator("button");
-  await expect(buttons).toHaveCount(5);
+  await expect(buttons).toHaveCount(7);
   const boxes = await buttons.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
   const uniqueTops = new Set(boxes.map((t) => Math.round(t)));
   expect(uniqueTops.size).toBe(1);

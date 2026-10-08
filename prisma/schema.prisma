@@ -13,4 +13,6 @@ datasource db {
 // order_status_history, carts, cart_items, reviews, wishlists,
 // store_settings, delivery_slots, delivery_fee_rules) is queried via
 // prisma.$queryRaw/$executeRaw throughout lib/ and app/api/, not the
-// Prisma Client model API. See schema.sql for the actual table definitions.
+// Prisma Client model API. See db/migrations/*.sql for the actual table
+// definitions (apply with `npm run db:migrate`). Never run `prisma db push`
+// against this schema: with no models declared it would try to drop every table.

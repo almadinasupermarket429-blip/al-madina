@@ -1,125 +1,101 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
-import { getVerifiedCustomerSession } from "@/lib/customer-auth";
-import { generateOrderNumber, generateDeliveryToken, LOW_STOCK_THRESHOLD } from "@/lib/order-utils";
+import { getCustomerSession } from "@/lib/customer-auth";
+import { generateOrderNumber, generateDeliveryToken, LOW_STOCK_THRESHOLD, SUBSTITUTION_OPTIONS } from "@/lib/order-utils";
 import { broadcastOrderEvent } from "@/lib/events";
 import { sendCustomerConfirmationEmail, sendStoreNotificationEmail, sendLowStockAlert } from "@/lib/mailer";
 import { isEmailVerified } from "@/lib/email-verification";
 import { isDisposableEmail } from "@/lib/disposable-email";
 import { isPlausiblePhoneNumber } from "@/lib/phone";
-
-const FREE_DELIVERY_THRESHOLD = 40;
-const DELIVERY_FEE = 3.99;
-
-type OrderRow = {
-  id: string;
-  order_number: string;
-  customer_name: string;
-  customer_email: string;
-  customer_phone: string;
-  fulfillment: string;
-  address: string | null;
-  notes: string | null;
-  subtotal: string | number;
-  delivery_fee: string | number;
-  total: string | number;
-  delivery_token: string;
-  user_id: string | null;
-  status: string;
-  created_at: Date;
-};
+import { getOrderById, listOrders, publicOrder, type FullOrder } from "@/lib/orders";
+import { getStoreSettings, deliveryFeeFor } from "@/lib/settings";
+import { evaluateCoupon } from "@/lib/coupons";
+import { hasBookableSlots, isSlotBookable } from "@/lib/slots";
 
 type VariantRow = {
   id: string;
   product_id: string;
-  sku: string;
   size_label: string;
   price: string | number;
   stock_quantity: number;
   product_name: string;
   product_active: boolean;
+  variant_active: boolean;
 };
 
-type ItemRow = {
-  id: string;
-  order_id: string;
-  product_id: string | null;
-  variant_id: string | null;
-  name: string;
-  size_label: string | null;
-  price: string | number;
-  qty: number;
-};
+function csvCell(value: unknown): string {
+  const s = String(value ?? "");
+  // Leading =,+,-,@ would be evaluated as a formula by Excel/Sheets — neutralise it.
+  const safe = /^[=+\-@]/.test(s) ? `'${s}` : s;
+  return /[",;\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+}
 
-// Admin only: list all orders, newest first.
-export async function GET() {
+function ordersToCsv(orders: FullOrder[]): string {
+  const header = [
+    "Bestellnummer", "Datum", "Status", "Art", "Kunde", "E-Mail", "Telefon", "Adresse", "Zeitfenster",
+    "Artikel", "Zwischensumme", "Rabatt", "Gutschein", "Liefergebühr", "Gesamt",
+  ];
+  const lines = orders.map((o) =>
+    [
+      o.orderNumber,
+      new Date(o.createdAt).toLocaleString("de-DE", { timeZone: "Europe/Berlin" }),
+      o.status,
+      o.fulfillment,
+      o.customerName,
+      o.customerEmail,
+      o.customerPhone,
+      o.address ?? "",
+      o.slot ? `${o.slot.date} ${o.slot.start}-${o.slot.end}` : "",
+      o.items.map((it) => `${it.qty}x ${it.name}${it.sizeLabel ? ` (${it.sizeLabel})` : ""}`).join(" | "),
+      o.subtotal.toFixed(2),
+      o.discount.toFixed(2),
+      o.couponCode ?? "",
+      o.deliveryFee.toFixed(2),
+      o.total.toFixed(2),
+    ]
+      .map(csvCell)
+      .join(";")
+  );
+  // BOM so Excel opens umlauts correctly; ";" is the German Excel default separator.
+  return "﻿" + [header.join(";"), ...lines].join("\r\n");
+}
+
+// Admin only: list orders, newest first. Supports ?status=, ?q=, ?from=, ?to=, ?format=csv
+export async function GET(req: NextRequest) {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Nicht autorisiert" }, { status: 401 });
 
+  const sp = req.nextUrl.searchParams;
+  const date = /^\d{4}-\d{2}-\d{2}$/;
   try {
-    const ordersRaw = await prisma.$queryRaw<OrderRow[]>`
-      select id, order_number, customer_name, customer_email, customer_phone,
-             fulfillment, address, notes, subtotal, delivery_fee,
-             total, delivery_token, user_id, status, created_at
-      from orders
-      order by created_at desc
-    `;
+    const orders = await listOrders({
+      status: sp.get("status") || undefined,
+      q: sp.get("q") || undefined,
+      from: date.test(sp.get("from") ?? "") ? sp.get("from")! : undefined,
+      to: date.test(sp.get("to") ?? "") ? sp.get("to")! : undefined,
+      limit: sp.get("format") === "csv" ? 5000 : 500,
+    });
 
-    const orders = await Promise.all(
-      ordersRaw.map(async (o) => {
-        const items = await prisma.$queryRaw<ItemRow[]>`
-          select id, order_id, product_id, variant_id,
-                 name, size_label, price, qty
-          from order_items
-          where order_id = ${o.id}::uuid
-        `;
-        return {
-          id: o.id,
-          orderNumber: o.order_number,
-          customerName: o.customer_name,
-          customerEmail: o.customer_email,
-          customerPhone: o.customer_phone,
-          fulfillment: o.fulfillment,
-          address: o.address,
-          notes: o.notes,
-          subtotal: Number(o.subtotal),
-          deliveryFee: Number(o.delivery_fee),
-          total: Number(o.total),
-          deliveryToken: o.delivery_token,
-          userId: o.user_id,
-          status: o.status,
-          createdAt: o.created_at,
-          updatedAt: o.created_at,
-          items: items.map((it) => ({
-            id: it.id,
-            orderId: it.order_id,
-            productId: it.product_id,
-            variantId: it.variant_id,
-            sizeId: it.variant_id,
-            name: it.name,
-            sizeLabel: it.size_label,
-            price: Number(it.price),
-            qty: it.qty,
-          })),
-        };
-      })
-    );
-
+    if (sp.get("format") === "csv") {
+      return new NextResponse(ordersToCsv(orders), {
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": `attachment; filename="bestellungen-${new Date().toISOString().slice(0, 10)}.csv"`,
+        },
+      });
+    }
     return NextResponse.json(orders);
   } catch (err) {
     console.error("[orders GET] failed", err);
-    return NextResponse.json(
-      { error: "Bestellungen konnten nicht geladen werden.", detail: err instanceof Error ? err.message : String(err) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Bestellungen konnten nicht geladen werden." }, { status: 500 });
   }
 }
 
 // Customer only (accounts are mandatory): place a new order. Cash only — no payment is processed here at all.
 export async function POST(req: NextRequest) {
   try {
-    const customerSession = await getVerifiedCustomerSession();
+    const customerSession = await getCustomerSession();
     if (!customerSession?.userId) {
       return NextResponse.json({ error: "Bitte melden Sie sich an, um eine Bestellung aufzugeben." }, { status: 401 });
     }
@@ -130,11 +106,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const settings = await getStoreSettings();
+    if (!settings.acceptingOrders) {
+      return NextResponse.json({ error: settings.closedMessage, code: "STORE_CLOSED" }, { status: 409 });
+    }
+
     const body = await req.json().catch(() => ({}));
-    const { customerName, customerEmail, customerPhone, fulfillment, address, notes, items } = body;
+    const { customerName, customerEmail, customerPhone, fulfillment, address, notes, items, couponCode, slotId, substitution } = body;
 
     if (!customerName || !customerEmail || !customerPhone) {
       return NextResponse.json({ error: "Name, E-Mail und Telefon sind erforderlich." }, { status: 400 });
+    }
+    if (String(customerName).length > 120 || String(notes ?? "").length > 1000 || String(address ?? "").length > 300) {
+      return NextResponse.json({ error: "Eine der Angaben ist zu lang." }, { status: 400 });
     }
     if (isDisposableEmail(customerEmail)) {
       return NextResponse.json(
@@ -148,11 +132,26 @@ export async function POST(req: NextRequest) {
     if (fulfillment !== "DELIVERY" && fulfillment !== "PICKUP") {
       return NextResponse.json({ error: "fulfillment muss DELIVERY oder PICKUP sein." }, { status: 400 });
     }
+    if (fulfillment === "DELIVERY" && !settings.deliveryEnabled) {
+      return NextResponse.json({ error: "Lieferung ist derzeit nicht verfügbar — bitte wählen Sie Abholung." }, { status: 400 });
+    }
+    if (fulfillment === "PICKUP" && !settings.pickupEnabled) {
+      return NextResponse.json({ error: "Abholung ist derzeit nicht verfügbar — bitte wählen Sie Lieferung." }, { status: 400 });
+    }
     if (fulfillment === "DELIVERY" && !address) {
       return NextResponse.json({ error: "Für die Lieferung ist eine Adresse erforderlich." }, { status: 400 });
     }
+    const substitutionValue = SUBSTITUTION_OPTIONS.includes(substitution) ? substitution : "CALL";
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Ihr Warenkorb ist leer." }, { status: 400 });
+    }
+
+    if (slotId) {
+      if (typeof slotId !== "string" || !(await isSlotBookable(slotId))) {
+        return NextResponse.json({ error: "Das gewählte Zeitfenster ist nicht mehr verfügbar. Bitte wählen Sie ein anderes." }, { status: 409 });
+      }
+    } else if (settings.requireSlot && (await hasBookableSlots())) {
+      return NextResponse.json({ error: "Bitte wählen Sie ein Zeitfenster." }, { status: 400 });
     }
 
     const variantIds = items
@@ -164,7 +163,7 @@ export async function POST(req: NextRequest) {
     }
 
     const variants = await prisma.$queryRaw<VariantRow[]>`
-      select v.id, v.product_id, v.sku, v.size_label, v.price, v.stock_quantity,
+      select v.id, v.product_id, v.size_label, v.price, v.stock_quantity, v.is_active as variant_active,
              p.name as product_name, p.is_active as product_active
       from product_variants v
       join products p on p.id = v.product_id
@@ -173,25 +172,16 @@ export async function POST(req: NextRequest) {
 
     const variantMap = new Map(variants.map((v) => [v.id, v]));
 
-    const orderItemsData: {
-      productId: string;
-      variantId: string;
-      name: string;
-      sizeLabel: string;
-      price: number;
-      qty: number;
-    }[] = [];
+    const orderItemsData: { productId: string; variantId: string; name: string; sizeLabel: string; price: number; qty: number }[] = [];
 
     for (const it of items) {
       const vId = it.sizeId || it.variantId;
       const variant = variantMap.get(vId);
-      if (!variant || !variant.product_active) {
-        return NextResponse.json(
-          { error: "Einer der Artikel in Ihrem Warenkorb ist nicht mehr verfügbar." },
-          { status: 400 }
-        );
+      if (!variant || !variant.product_active || !variant.variant_active) {
+        return NextResponse.json({ error: "Einer der Artikel in Ihrem Warenkorb ist nicht mehr verfügbar." }, { status: 400 });
       }
-      const qty = Math.max(1, Math.min(50, Number(it.qty) || 1));
+      // Whole units only: a fractional qty would be charged as-is but stored rounded (1.5 → 2 items).
+      const qty = Math.max(1, Math.min(50, Math.floor(Number(it.qty)) || 1));
       if (variant.stock_quantity < qty) {
         return NextResponse.json(
           { error: `Nur noch ${variant.stock_quantity}× "${variant.product_name}" (${variant.size_label}) auf Lager.` },
@@ -208,24 +198,78 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const subtotal = orderItemsData.reduce((sum, it) => sum + it.price * it.qty, 0);
-    const deliveryFee = fulfillment === "PICKUP" ? 0 : subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
-    const total = subtotal + deliveryFee;
+    const subtotal = Math.round(orderItemsData.reduce((sum, it) => sum + it.price * it.qty, 0) * 100) / 100;
+    if (settings.minimumOrder > 0 && subtotal < settings.minimumOrder) {
+      return NextResponse.json(
+        { error: `Der Mindestbestellwert beträgt €${settings.minimumOrder.toFixed(2)}.`, code: "BELOW_MINIMUM" },
+        { status: 400 }
+      );
+    }
+
+    let discount = 0;
+    let appliedCoupon: string | null = null;
+    let freeDelivery = false;
+    if (couponCode && String(couponCode).trim()) {
+      const result = await evaluateCoupon(String(couponCode), subtotal, customerSession.userId);
+      if (!result.ok) return NextResponse.json({ error: result.error, code: "COUPON_INVALID" }, { status: 400 });
+      discount = result.discount;
+      appliedCoupon = result.coupon.code;
+      freeDelivery = result.freeDelivery;
+    }
+
+    const deliveryFee = freeDelivery ? 0 : deliveryFeeFor(settings, fulfillment, subtotal - discount);
+    const total = Math.round((subtotal - discount + deliveryFee) * 100) / 100;
 
     const orderNumber = generateOrderNumber();
     const deliveryToken = generateDeliveryToken();
 
     const orderId = await prisma.$transaction(async (tx) => {
+      // Re-check slot capacity and coupon limits under a row lock: two customers
+      // taking the last place in a slot (or the last use of a coupon) at the same
+      // instant are serialized here, and the second one is refused.
+      if (slotId) {
+        const slot = await tx.$queryRaw<{ capacity: number; is_active: boolean }[]>`
+          select capacity, is_active from delivery_slots where id = ${slotId}::uuid for update
+        `;
+        const booked = await tx.$queryRaw<{ n: number }[]>`
+          select count(*)::int as n from orders where delivery_slot_id = ${slotId}::uuid and status <> 'CANCELLED'
+        `;
+        if (!slot[0]?.is_active || booked[0].n >= slot[0].capacity) throw new Error("SLOT_FULL");
+      }
+      if (appliedCoupon) {
+        const coupon = await tx.$queryRaw<{ max_uses: number | null; once_per_customer: boolean }[]>`
+          select max_uses, once_per_customer from coupons where code = ${appliedCoupon} for update
+        `;
+        const uses = await tx.$queryRaw<{ total: number; mine: number }[]>`
+          select count(*)::int as total,
+                 count(*) filter (where user_id = ${customerSession.userId}::uuid)::int as mine
+          from orders where coupon_code = ${appliedCoupon} and status <> 'CANCELLED'
+        `;
+        if (!coupon[0]) throw new Error("COUPON_USED_UP");
+        if (coupon[0].max_uses !== null && uses[0].total >= coupon[0].max_uses) throw new Error("COUPON_USED_UP");
+        if (coupon[0].once_per_customer && uses[0].mine > 0) throw new Error("COUPON_USED_UP");
+      }
+
+      // Decrement first, guarded on stock, so two simultaneous checkouts for
+      // the last unit can't both succeed (the losing one rolls back here).
+      for (const it of orderItemsData) {
+        const updated = await tx.$executeRaw`
+          update product_variants set stock_quantity = stock_quantity - ${it.qty}
+          where id = ${it.variantId}::uuid and stock_quantity >= ${it.qty}
+        `;
+        if (updated === 0) throw new Error(`OUT_OF_STOCK:${it.name} (${it.sizeLabel})`);
+      }
+
       const orderInsert = await tx.$queryRaw<{ id: string }[]>`
         insert into orders (
           order_number, customer_name, customer_email, customer_phone,
-          fulfillment, address, notes, subtotal, delivery_fee, total,
-          delivery_token, user_id, status
+          fulfillment, address, notes, subtotal, discount, coupon_code, delivery_fee, total,
+          delivery_token, user_id, status, delivery_slot_id, substitution
         ) values (
           ${orderNumber}, ${customerName}, ${customerEmail}, ${customerPhone},
           ${fulfillment}, ${fulfillment === "DELIVERY" ? address : null}, ${notes || null},
-          ${subtotal}, ${deliveryFee}, ${total}, ${deliveryToken},
-          ${customerSession.userId}::uuid, 'PLACED'
+          ${subtotal}, ${discount}, ${appliedCoupon}, ${deliveryFee}, ${total}, ${deliveryToken},
+          ${customerSession.userId}::uuid, 'PLACED', ${slotId || null}::uuid, ${substitutionValue}
         )
         returning id
       `;
@@ -236,68 +280,16 @@ export async function POST(req: NextRequest) {
           insert into order_items (order_id, product_id, variant_id, name, size_label, price, qty)
           values (${newOrderId}::uuid, ${it.productId}::uuid, ${it.variantId}::uuid, ${it.name}, ${it.sizeLabel}, ${it.price}, ${it.qty})
         `;
-        await tx.$executeRaw`
-          update product_variants
-          set stock_quantity = stock_quantity - ${it.qty}
-          where id = ${it.variantId}::uuid
-        `;
       }
 
-      await tx.$executeRaw`
-        insert into order_status_history (order_id, status)
-        values (${newOrderId}::uuid, 'PLACED')
-      `;
-
+      await tx.$executeRaw`insert into order_status_history (order_id, status) values (${newOrderId}::uuid, 'PLACED')`;
       return newOrderId;
     });
 
-    const createdOrders = await prisma.$queryRaw<OrderRow[]>`
-      select id, order_number, customer_name, customer_email, customer_phone,
-             fulfillment, address, notes, subtotal, delivery_fee,
-             total, delivery_token, user_id, status, created_at
-      from orders
-      where id = ${orderId}::uuid
-      limit 1
-    `;
-    const orderRecord = createdOrders[0];
-    const itemsRecord = await prisma.$queryRaw<ItemRow[]>`
-      select id, order_id, product_id, variant_id,
-             name, size_label, price, qty
-      from order_items
-      where order_id = ${orderId}::uuid
-    `;
+    const fullOrder = await getOrderById(orderId);
+    if (!fullOrder) throw new Error("Order vanished right after insert");
 
-    const fullOrder = {
-      id: orderRecord.id,
-      orderNumber: orderRecord.order_number,
-      customerName: orderRecord.customer_name,
-      customerEmail: orderRecord.customer_email,
-      customerPhone: orderRecord.customer_phone,
-      fulfillment: orderRecord.fulfillment,
-      address: orderRecord.address,
-      notes: orderRecord.notes,
-      subtotal: Number(orderRecord.subtotal),
-      deliveryFee: Number(orderRecord.delivery_fee),
-      total: Number(orderRecord.total),
-      deliveryToken: orderRecord.delivery_token,
-      userId: orderRecord.user_id,
-      status: orderRecord.status,
-      createdAt: orderRecord.created_at,
-      updatedAt: orderRecord.created_at,
-      items: itemsRecord.map((it) => ({
-        id: it.id,
-        orderId: it.order_id,
-        productId: it.product_id,
-        variantId: it.variant_id,
-        sizeId: it.variant_id,
-        name: it.name,
-        sizeLabel: it.size_label,
-        price: Number(it.price),
-        qty: it.qty,
-      })),
-    };
-
-    broadcastOrderEvent({ type: "new_order", orderId: fullOrder.id, orderNumber: fullOrder.orderNumber });
+    await broadcastOrderEvent({ type: "new_order", orderId: fullOrder.id, orderNumber: fullOrder.orderNumber });
 
     // Everything below is fire-and-forget (emails, low-stock check) and must
     // not delay the response to the customer. On Vercel, an un-awaited
@@ -309,17 +301,11 @@ export async function POST(req: NextRequest) {
 
     after(async () => {
       await Promise.all([
-        sendCustomerConfirmationEmail(fullOrder).catch((e: unknown) =>
-          console.error("[mailer] customer email failed", e)
-        ),
-        sendStoreNotificationEmail(fullOrder).catch((e: unknown) =>
-          console.error("[mailer] store email failed", e)
-        ),
+        sendCustomerConfirmationEmail(fullOrder).catch((e: unknown) => console.error("[mailer] customer email failed", e)),
+        sendStoreNotificationEmail(fullOrder).catch((e: unknown) => console.error("[mailer] store email failed", e)),
       ]);
 
-      const updatedVariants = await prisma.$queryRaw<
-        { id: string; stock: number; label: string; product_name: string }[]
-      >`
+      const updatedVariants = await prisma.$queryRaw<{ id: string; stock: number; label: string; product_name: string }[]>`
         select v.id, v.stock_quantity as stock, v.size_label as label, p.name as product_name
         from product_variants v
         join products p on p.id = v.product_id
@@ -327,24 +313,35 @@ export async function POST(req: NextRequest) {
       `;
 
       if (updatedVariants.length > 0) {
-        broadcastOrderEvent({ type: "low_stock", orderId: fullOrder.id, orderNumber: fullOrder.orderNumber });
+        await broadcastOrderEvent({ type: "low_stock", orderId: fullOrder.id, orderNumber: fullOrder.orderNumber });
         await sendLowStockAlert(
           updatedVariants.map((s) => ({ productName: s.product_name, sizeLabel: s.label, stock: s.stock }))
         ).catch((e: unknown) => console.error("[mailer] low stock email failed", e));
       }
     });
 
-    return NextResponse.json(fullOrder, { status: 201 });
+    // publicOrder: the customer must not receive the driver's delivery token.
+    return NextResponse.json(publicOrder(fullOrder), { status: 201 });
   } catch (err) {
-    // This is the important part: instead of an unhandled exception producing
-    // an HTML 500 page (which crashes res.json() on the frontend and shows
-    // the generic "Verbindungsfehler"), every failure now comes back as JSON
-    // with the real Postgres/Prisma error message — check the Network tab's
-    // Response body next time this happens instead of guessing blind.
+    if (err instanceof Error && err.message === "SLOT_FULL") {
+      return NextResponse.json(
+        { error: "Das gewählte Zeitfenster ist gerade voll geworden. Bitte wählen Sie ein anderes." },
+        { status: 409 }
+      );
+    }
+    if (err instanceof Error && err.message === "COUPON_USED_UP") {
+      return NextResponse.json(
+        { error: "Dieser Gutschein wurde gerade vollständig eingelöst.", code: "COUPON_INVALID" },
+        { status: 409 }
+      );
+    }
+    if (err instanceof Error && err.message.startsWith("OUT_OF_STOCK:")) {
+      return NextResponse.json(
+        { error: `"${err.message.slice("OUT_OF_STOCK:".length)}" ist gerade ausverkauft. Bitte passen Sie Ihren Warenkorb an.` },
+        { status: 409 }
+      );
+    }
     console.error("[orders POST] failed", err);
-    return NextResponse.json(
-      { error: "Bestellung konnte nicht aufgegeben werden.", detail: err instanceof Error ? err.message : String(err) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Bestellung konnte nicht aufgegeben werden." }, { status: 500 });
   }
 }

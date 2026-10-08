@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { signAdminToken, ADMIN_COOKIE_NAME } from "@/lib/auth";
-import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { rateLimit, isRateLimited, clientIp } from "@/lib/rate-limit";
 
 /** Constant-time string comparison so a wrong-length/wrong-content guess can't be timed. */
 function safeEqual(a: string, b: string) {
@@ -12,6 +12,14 @@ function safeEqual(a: string, b: string) {
   if (bufA.length !== bufB.length) return false;
   return timingSafeEqual(bufA, bufB);
 }
+
+const ADMIN_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/",
+  maxAge: 60 * 60 * 24 * 30,
+};
 
 interface AdminUserRow {
   id: string;
@@ -22,12 +30,6 @@ interface AdminUserRow {
 }
 
 export async function POST(req: NextRequest) {
-  const ip = clientIp(req);
-  const { allowed } = rateLimit(`admin-login:${ip}`, 10, 60_000);
-  if (!allowed) {
-    return NextResponse.json({ error: "Zu viele Anmeldeversuche. Bitte versuchen Sie es in einer Minute erneut." }, { status: 429 });
-  }
-
   const { username, password } = await req.json().catch(() => ({ username: "", password: "" }));
 
   if (!username || !password) {
@@ -35,6 +37,17 @@ export async function POST(req: NextRequest) {
   }
 
   const normalizedEmail = username.trim().toLowerCase();
+  // Only failed attempts count, per IP and per account (rotating IPs doesn't help
+  // a guesser, and a busy admin logging in often never gets locked out).
+  const ipKey = `admin-login:${clientIp(req)}`;
+  const accountKey = `admin-login-user:${normalizedEmail}`;
+  if ((await isRateLimited(ipKey, 10)) || (await isRateLimited(accountKey, 10))) {
+    return NextResponse.json({ error: "Zu viele fehlgeschlagene Anmeldeversuche. Bitte versuchen Sie es in 15 Minuten erneut." }, { status: 429 });
+  }
+  const failed = async () => {
+    await Promise.all([rateLimit(ipKey, 10, 15 * 60_000), rateLimit(accountKey, 10, 15 * 60_000)]);
+    return NextResponse.json({ error: "Ungültiger Benutzername oder ungültiges Passwort." }, { status: 401 });
+  };
 
   // 1. admin_users is a role marker on top of users (user_id, role) — the
   // actual credentials (email, password_hash, full_name) live in users.
@@ -55,7 +68,7 @@ export async function POST(req: NextRequest) {
 
   if (account) {
     const valid = await bcrypt.compare(password, account.passwordHash);
-    if (!valid) return NextResponse.json({ error: "Ungültiger Benutzername oder ungültiges Passwort." }, { status: 401 });
+    if (!valid) return failed();
 
     const token = signAdminToken({
       username: account.email,
@@ -64,13 +77,7 @@ export async function POST(req: NextRequest) {
     });
 
     const res = NextResponse.json({ ok: true });
-    res.cookies.set(ADMIN_COOKIE_NAME, token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-    });
+    res.cookies.set(ADMIN_COOKIE_NAME, token, ADMIN_COOKIE_OPTIONS);
     return res;
   }
 
@@ -85,17 +92,11 @@ export async function POST(req: NextRequest) {
     !safeEqual(username, validUsername) ||
     !safeEqual(password, validPassword)
   ) {
-    return NextResponse.json({ error: "Ungültiger Benutzername oder ungültiges Passwort." }, { status: 401 });
+    return failed();
   }
 
   const token = signAdminToken({ username, role: "OWNER", adminId: null });
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(ADMIN_COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30,
-  });
+  res.cookies.set(ADMIN_COOKIE_NAME, token, ADMIN_COOKIE_OPTIONS);
   return res;
 }

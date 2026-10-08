@@ -7,6 +7,19 @@
 .btn-outline:hover{background:#f6f6f4}
 .btn-danger{display:inline-flex;align-items:center;gap:6px;background:#fff0f0;color:#b3261e;border:1px solid #f3c6c3;border-radius:999px;padding:9px 14px;font-size:13px;font-weight:600}
 .btn-danger:hover{background:#ffe3e2}
+.btn-primary:disabled,.btn-outline:disabled,.btn-danger:disabled{opacity:.5;cursor:not-allowed}
+.input{width:100%;border:1px solid rgba(0,0,0,.12);border-radius:10px;padding:9px 11px;font-size:13px;outline:none;background:#fff}
+.input:focus{border-color:#a12e3d}
+.admin-card{background:#fff;border:1px solid rgba(0,0,0,.05);border-radius:16px;padding:20px}
+.admin-label{display:block;font-size:12px;font-weight:600;color:rgba(0,0,0,.6);margin-bottom:4px}
+.admin-table{width:100%;font-size:13px;border-collapse:collapse}
+.admin-table th{text-align:left;color:rgba(0,0,0,.5);font-weight:600;padding:8px 6px;border-bottom:1px solid rgba(0,0,0,.06);white-space:nowrap}
+.admin-table td{padding:9px 6px;border-bottom:1px solid rgba(0,0,0,.05);vertical-align:top}
+.admin-switch{position:relative;width:42px;height:24px;border-radius:999px;background:rgba(0,0,0,.15);border:0;flex:none;transition:.2s}
+.admin-switch:after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.admin-switch[aria-checked="true"]{background:#4f9d5f}
+.admin-switch[aria-checked="true"]:after{left:21px}
+@media print{.no-print{display:none!important}body{background:#fff!important}}
 
 :root{--ink:#241217;--muted:#6f5f63;--cream:#fffaf0;--green:#a12e3d;--lime:#e3b23c;--leaf:#4f9d5f;--line:rgba(161,46,61,.16);--deep:#5c1119}
 *{box-sizing:border-box}html{scroll-behavior:smooth;overflow-x:hidden;width:100%}body{margin:0;background:var(--cream);font-family:Arial,Helvetica,sans-serif;color:var(--ink);width:100%}a{text-decoration:none;color:inherit}button,input{font:inherit}button{cursor:pointer}
@@ -15,7 +28,7 @@
 /* navbar — logo pinned to the true left edge, links+search centred, utilities pinned right */
 .nav-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;width:100%;gap:18px;padding:14px 20px}
 .nav-left{flex:none}
-.nav-center{grid-column:2;display:flex;align-items:center;justify-content:center;gap:26px;min-width:0;overflow-x:auto;scrollbar-width:none}
+.nav-center{grid-column:2;display:flex;align-items:center;justify-content:safe center;gap:26px;min-width:0;overflow-x:auto;scrollbar-width:none}
 .nav-center::-webkit-scrollbar{display:none}
 .nav-links{display:flex;align-items:center;gap:22px;font-size:14px;font-weight:500;white-space:nowrap;flex:none}
 .nav-search{display:flex;align-items:center;width:min(300px,26vw);flex:none;border-radius:999px;border:1px solid var(--line);background:white;padding:10px 14px}
@@ -236,3 +249,41 @@ footer>*{position:relative;z-index:1}
 .checkout-fields input,.checkout-fields textarea{border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:13px;background:#fff;outline:none;font-family:inherit;resize:vertical}
 .checkout-fields input:focus,.checkout-fields textarea:focus{border-color:#a12e3d}
 .checkout-error{background:#fdecec;color:#b3261e;border-radius:10px;padding:9px 12px;font-size:12px;margin-bottom:10px}
+
+/* ---- Store features: open-now badge, tags, sale/stock flags, free-delivery progress, coupon, slots ---- */
+.open-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#8a3a3a;background:#fbeaea;border-radius:999px;padding:4px 10px}
+.open-badge i{width:7px;height:7px;border-radius:50%;background:#c0392b;display:block}
+.open-badge.open{color:#2f6b3a;background:#e7f3e9}
+.open-badge.open i{background:#4f9d5f;box-shadow:0 0 0 3px rgba(79,157,95,.25)}
+.trust-row .open-badge svg{display:none}
+.tag-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:-10px 0 22px;color:#8a918c}
+.tag-chip{border:1px dashed var(--line);background:#fff;border-radius:999px;padding:5px 11px;font-size:11px;font-weight:600;color:#5b4a4e}
+.tag-chip.active{background:#4f9d5f;border:1px solid #4f9d5f;color:#fff}
+.product-badge.sale{background:linear-gradient(135deg,#a12e3d,#7a1a26);color:#fff}
+.stock-flag{position:absolute;left:12px;bottom:12px;background:rgba(255,255,255,.95);color:#8a5a10;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:800}
+.stock-flag.out{color:#fff;background:rgba(36,18,23,.82)}
+.product-tags{text-transform:none;letter-spacing:0;color:#4f9d5f;font-weight:700}
+.add-btn:disabled{opacity:.45;cursor:not-allowed;background:#f3f3f1}
+.add-btn:disabled:hover{background:#f3f3f1;color:inherit}
+.qty button:disabled{opacity:.35;cursor:not-allowed}
+.free-delivery span{display:block;font-size:12px;color:var(--ink);font-weight:600;margin-bottom:7px}
+.free-delivery .progress{height:7px;border-radius:999px;background:rgba(161,46,61,.1);overflow:hidden}
+.free-delivery .progress i{display:block;height:100%;background:linear-gradient(90deg,#4f9d5f,#7fb98a);border-radius:999px;transition:width .4s ease}
+.checkout-label{display:grid;gap:6px;font-size:12px;font-weight:700;color:#5b4a4e;margin:12px 0}
+.checkout-label>span{display:flex;align-items:center;gap:6px}
+.checkout-label small{font-weight:400;color:#8a918c}
+.checkout-label select{border:1px solid var(--line);border-radius:12px;padding:11px 12px;background:#fff;font-size:13px;font-weight:400;color:var(--ink)}
+.coupon-row{display:flex;align-items:center;gap:8px;border:1px dashed var(--line);background:#fff;border-radius:14px;padding:6px 6px 6px 12px;margin-top:12px;color:#a12e3d}
+.coupon-row input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
+.coupon-row button{border:0;border-radius:10px;padding:8px 12px;background:var(--ink);color:#fff;font-size:12px;font-weight:700}
+.coupon-row button:disabled{opacity:.4}
+.store-arabic{text-align:left;font:600 22px/1.4 "Noto Naskh Arabic","Geeza Pro","Arial",sans-serif!important;color:#a12e3d;margin:-6px 0 8px!important}
+.service-list{list-style:none;padding:0;margin:0 0 6px;display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13px;font-weight:600}
+.service-list li{display:flex;align-items:center;gap:5px}
+.service-list svg{color:#4f9d5f}
+.hours span.today{color:var(--ink);font-weight:700}
+.hours span.today strong{color:#a12e3d}
+.footer-hours{color:#9eaca3;font-size:11px;line-height:1.6}
+
+/* The red feature band: the accent word must not reuse the red text gradient used on light sections. */
+.feature-band h2 em{background:linear-gradient(90deg,#f3d27a,#e8c25c);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#e8c25c}

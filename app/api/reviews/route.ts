@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getVerifiedCustomerSession } from "@/lib/customer-auth";
+import { getCustomerSession } from "@/lib/customer-auth";
 
 type ReviewRow = {
   id: string;
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 
 // Customer only: leave one review per product.
 export async function POST(req: NextRequest) {
-  const session = await getVerifiedCustomerSession();
+  const session = await getCustomerSession();
   if (!session) return NextResponse.json({ error: "Bitte melden Sie sich an, um eine Bewertung abzugeben." }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));

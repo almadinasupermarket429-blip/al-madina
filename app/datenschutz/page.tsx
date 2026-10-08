@@ -63,8 +63,8 @@ export default function DatenschutzPage() {
         <Section title={t("4. Konto, Bestellungen und Kontaktdaten", "4. Account, orders, and contact data")}>
           <p style={{ marginBottom: 10 }}>
             {t(
-              "Für ein Konto verarbeiten wir Name, E-Mail-Adresse, optional Telefonnummer, und ein gehashtes Passwort. Für eine Bestellung verarbeiten wir zusätzlich Ihre Liefer-/Abholangaben, bestellte Artikel und — bei Lieferung — Ihre Adresse. Diese Daten werden zur Vertragserfüllung benötigt (Art. 6 Abs. 1 lit. b DSGVO) und ohne sie kann keine Bestellung abgewickelt werden.",
-              "For an account we process your name, email address, optionally a phone number, and a hashed password. For an order we additionally process your delivery/pickup details, ordered items, and — for delivery — your address. This data is required to fulfil the contract (Art. 6(1)(b) GDPR); without it we cannot process an order."
+              "Für ein Konto verarbeiten wir Name, E-Mail-Adresse, optional Telefonnummer, und ein gehashtes Passwort. Für eine Bestellung verarbeiten wir zusätzlich Ihre Liefer-/Abholangaben, ein gewähltes Zeitfenster, Ihren Wunsch bei nicht verfügbaren Artikeln, einen ggf. eingelösten Gutscheincode, bestellte Artikel und — bei Lieferung — Ihre Adresse. Diese Daten werden zur Vertragserfüllung benötigt (Art. 6 Abs. 1 lit. b DSGVO) und ohne sie kann keine Bestellung abgewickelt werden.",
+              "For an account we process your name, email address, optionally a phone number, and a hashed password. For an order we additionally process your delivery/pickup details, any chosen time slot, your preference for unavailable items, any coupon code redeemed, ordered items, and — for delivery — your address. This data is required to fulfil the contract (Art. 6(1)(b) GDPR); without it we cannot process an order."
             )}
           </p>
           <p>
@@ -78,8 +78,8 @@ export default function DatenschutzPage() {
         <Section title={t("5. E-Mail-Bestätigung", "5. Email verification")}>
           <p>
             {t(
-              "Bei der Registrierung senden wir einen einmaligen Bestätigungscode an Ihre E-Mail-Adresse, um zu verhindern, dass Bestellungen mit falschen oder fremden Kontaktdaten aufgegeben werden. Rechtsgrundlage: Art. 6 Abs. 1 lit. b und lit. f DSGVO.",
-              "When you register, we send a one-time verification code to your email address to prevent orders being placed with false or someone else's contact details. Legal basis: Art. 6(1)(b) and (f) GDPR."
+              "Bei der Registrierung senden wir einen einmaligen Bestätigungscode an Ihre E-Mail-Adresse, um zu verhindern, dass Bestellungen mit falschen oder fremden Kontaktdaten aufgegeben werden. Wenn Sie „Passwort vergessen“ nutzen, speichern wir für 60 Minuten nur einen gehashten Einmal-Link, der nach Gebrauch ungültig wird. Rechtsgrundlage: Art. 6 Abs. 1 lit. b und lit. f DSGVO.",
+              "When you register, we send a one-time verification code to your email address to prevent orders being placed with false or someone else's contact details. If you use “forgot password”, we store only a hashed one-time link for 60 minutes, which becomes invalid once used. Legal basis: Art. 6(1)(b) and (f) GDPR."
             )}
           </p>
         </Section>

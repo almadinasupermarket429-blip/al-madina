@@ -1,7 +1,7 @@
 // app/api/cart/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { getVerifiedCustomerSession } from "@/lib/customer-auth";
+import { getCustomerSession } from "@/lib/customer-auth";
 import {
   getCart,
   addToCart,
@@ -24,7 +24,7 @@ async function resolveIdentity(req: NextRequest): Promise<{ identity: CartIdenti
   // Verified, not just signature-checked: a stale cookie naming a since-deleted
   // user would otherwise crash the cart insert with a foreign key violation
   // instead of falling back to guest behavior.
-  const session = await getVerifiedCustomerSession();
+  const session = await getCustomerSession();
   if (session?.userId) return { identity: { userId: session.userId } };
 
   const existingToken = req.cookies.get(GUEST_COOKIE_NAME)?.value;
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
   const { identity, newGuestToken } = await resolveIdentity(req);
 
   const { variantId, quantity } = await req.json();
-  if (!variantId || !quantity || quantity < 1) {
+  if (!variantId || !Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
     return NextResponse.json({ error: "variantId und eine positive Menge sind erforderlich." }, { status: 400 });
   }
 
@@ -80,7 +80,7 @@ export async function PATCH(req: NextRequest) {
   const { identity, newGuestToken } = await resolveIdentity(req);
 
   const { itemId, quantity } = await req.json();
-  if (!itemId || quantity == null) {
+  if (!itemId || !Number.isInteger(quantity) || quantity > 99) {
     return NextResponse.json({ error: "itemId und Menge sind erforderlich." }, { status: 400 });
   }
 

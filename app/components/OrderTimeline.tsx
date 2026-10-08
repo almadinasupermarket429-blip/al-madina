@@ -1,7 +1,7 @@
 "use client";
 
-import { Check, Package, Truck, ClipboardList } from "lucide-react";
-import { ORDER_STATUSES, OrderStatus } from "@/lib/order-utils";
+import { Check, Package, Truck, ClipboardList, XCircle } from "lucide-react";
+import { ORDER_STATUSES } from "@/lib/order-utils";
 import { useLanguage } from "@/lib/i18n";
 
 type StatusEvent = { status: string; createdAt: string };
@@ -10,6 +10,12 @@ export type TrackableOrder = {
   status: string;
   fulfillment: string;
   total: number;
+  subtotal?: number;
+  discount?: number;
+  couponCode?: string | null;
+  deliveryFee?: number;
+  cancelReason?: string | null;
+  slot?: { date: string; start: string; end: string } | null;
   createdAt: string;
   items: { id: string; name: string; sizeLabel: string | null; qty: number; price: number }[];
   statusEvents: StatusEvent[];
@@ -32,9 +38,9 @@ const STEP_LABEL: Record<string, [string, string]> = {
 export default function OrderTimeline({ order }: { order: TrackableOrder }) {
   const { t } = useLanguage();
   // Pickup orders skip "out for delivery" — it doesn't apply.
-  const steps: OrderStatus[] =
-    order.fulfillment === "PICKUP" ? ORDER_STATUSES.filter((s): s is OrderStatus => s !== "OUT_FOR_DELIVERY") : [...ORDER_STATUSES];
-  const currentIdx = steps.indexOf(order.status as OrderStatus);
+  const steps: string[] = order.fulfillment === "PICKUP" ? ORDER_STATUSES.filter((s) => s !== "OUT_FOR_DELIVERY") : [...ORDER_STATUSES];
+  const cancelled = order.status === "CANCELLED";
+  const currentIdx = cancelled ? -1 : steps.indexOf(order.status);
 
   function timeFor(status: string) {
     return order.statusEvents.find((e) => e.status === status)?.createdAt;
@@ -42,7 +48,23 @@ export default function OrderTimeline({ order }: { order: TrackableOrder }) {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "flex-start", marginBottom: 24 }}>
+      {cancelled && (
+        <div className="checkout-error" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
+          <XCircle size={18} />
+          <span>
+            {t("Diese Bestellung wurde storniert.", "This order was cancelled.")}
+            {order.cancelReason ? ` (${order.cancelReason})` : ""}
+          </span>
+        </div>
+      )}
+      {order.slot && (
+        <p style={{ fontSize: 14, marginBottom: 16 }}>
+          <b>{t("Zeitfenster", "Time slot")}:</b>{" "}
+          {new Date(`${order.slot.date}T12:00:00Z`).toLocaleDateString(undefined, { weekday: "short", day: "2-digit", month: "2-digit", timeZone: "UTC" })},{" "}
+          {order.slot.start}–{order.slot.end}
+        </p>
+      )}
+      <div style={{ display: "flex", alignItems: "flex-start", marginBottom: 24, opacity: cancelled ? 0.4 : 1 }}>
         {steps.map((step, i) => {
           const Icon = STEP_ICON[step] ?? Check;
           const done = i <= currentIdx;
@@ -100,6 +122,20 @@ export default function OrderTimeline({ order }: { order: TrackableOrder }) {
           </li>
         ))}
       </ul>
+      {order.discount ? (
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "var(--green)" }}>
+          <span>
+            {t("Rabatt", "Discount")} {order.couponCode ? `(${order.couponCode})` : ""}
+          </span>
+          <span>−€{order.discount.toFixed(2)}</span>
+        </div>
+      ) : null}
+      {order.deliveryFee ? (
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+          <span>{t("Liefergebühr", "Delivery fee")}</span>
+          <span>€{order.deliveryFee.toFixed(2)}</span>
+        </div>
+      ) : null}
       <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, borderTop: "1px solid var(--line)", paddingTop: 6 }}>
         <span>{t("Gesamt (bar)", "Total (cash)")}</span>
         <span>€{order.total.toFixed(2)}</span>

@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCustomerSession, getVerifiedCustomerSession } from "@/lib/customer-auth";
+import { getCustomerSession } from "@/lib/customer-auth";
 
 type AddressRow = {
   id: string;
@@ -46,7 +46,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getVerifiedCustomerSession();
+  const session = await getCustomerSession();
   if (!session) return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
 
   const { label, line1, line2, city, postalCode, latitude, longitude, isDefault } = await req

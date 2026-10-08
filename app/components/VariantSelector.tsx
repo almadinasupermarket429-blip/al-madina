@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Plus } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import { useLanguage } from "@/lib/i18n";
@@ -69,16 +70,26 @@ export function VariantSelector({ variants }: { variants: Variant[] }) {
         </div>
         <button className="primary-btn" onClick={handleAddToCart} disabled={outOfStock || status === "adding"}>
           <Plus size={17} />
-          {outOfStock
-            ? t("Ausverkauft", "Out of stock")
-            : status === "added"
-              ? t("Hinzugefügt", "Added")
-              : status === "adding"
-                ? t("Wird hinzugefügt…", "Adding…")
-                : t("In den Warenkorb", "Add to basket")}
+          {/* Own <span> so browser translation can't break React updating this label. */}
+          <span>
+            {outOfStock
+              ? t("Ausverkauft", "Out of stock")
+              : status === "added"
+                ? t("Hinzugefügt", "Added")
+                : status === "adding"
+                  ? t("Wird hinzugefügt…", "Adding…")
+                  : t("In den Warenkorb", "Add to basket")}
+          </span>
         </button>
       </div>
 
+      {status === "added" && (
+        <p style={{ fontSize: 14, marginTop: -10, marginBottom: 16 }}>
+          <Link href="/cart" style={{ color: "#1f6b46", fontWeight: 700 }}>
+            {t("Zum Warenkorb →", "View basket →")}
+          </Link>
+        </p>
+      )}
       {status === "error" && (
         <p style={{ color: "#b3261e", fontSize: 13, marginTop: -10, marginBottom: 16 }}>
           {t("Konnte nicht zum Warenkorb hinzugefügt werden — bitte erneut versuchen.", "Couldn't add that to your cart — try again.")}

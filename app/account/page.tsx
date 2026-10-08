@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, LogOut, Package, User as UserIcon, Heart, MapPin, RefreshCw, Plus, Trash2, ShieldCheck, MailWarning, MailCheck } from "lucide-react";
+import { ArrowLeft, LogOut, Package, User as UserIcon, Heart, MapPin, RefreshCw, Plus, Trash2, ShieldCheck, MailWarning, MailCheck, KeyRound, Pencil, XCircle } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
 type Account = { id: string; name: string; email: string; phone: string | null; role: "OWNER" | "STAFF" | null; emailVerified: boolean };
@@ -24,6 +24,7 @@ const STATUS_LABEL: Record<string, [string, string]> = {
   PACKED: ["Gepackt", "Packed"],
   OUT_FOR_DELIVERY: ["Unterwegs", "Out for delivery"],
   DELIVERED: ["Zugestellt", "Delivered"],
+  CANCELLED: ["Storniert", "Cancelled"],
 };
 
 const muted = { color: "rgba(24,32,27,.6)" };
@@ -40,7 +41,16 @@ export default function AccountPage() {
   const [newCity, setNewCity] = useState("");
   const [newPostalCode, setNewPostalCode] = useState("");
   const [addressError, setAddressError] = useState("");
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
+  const [forgotMessage, setForgotMessage] = useState("");
+
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileName, setProfileName] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [profileError, setProfileError] = useState("");
+  const [profileMessage, setProfileMessage] = useState("");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -54,6 +64,8 @@ export default function AccountPage() {
   const [verifying, setVerifying] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendMessage, setResendMessage] = useState("");
+  // Set after sign-up: the account isn't logged in until the emailed code is entered.
+  const [pendingEmail, setPendingEmail] = useState("");
 
   function loadAccount() {
     fetch("/api/account/me")
@@ -67,7 +79,71 @@ export default function AccountPage() {
 
   useEffect(() => {
     loadAccount();
+    if (new URLSearchParams(window.location.search).get("forgot") === "1") setMode("forgot");
   }, []);
+
+  async function submitForgot(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setForgotMessage("");
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/account/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) setError(data.error || t("Etwas ist schiefgelaufen.", "Something went wrong."));
+      else
+        setForgotMessage(
+          t(
+            "Falls ein Konto mit dieser E-Mail existiert, haben wir Ihnen einen Link zum Zurücksetzen gesendet. Bitte prüfen Sie auch den Spam-Ordner.",
+            "If an account exists for that email, we've sent a reset link. Please also check your spam folder."
+          )
+        );
+    } catch {
+      setError(t("Verbindungsfehler. Bitte versuchen Sie es erneut.", "Connection error. Please try again."));
+    }
+    setSubmitting(false);
+  }
+
+  async function saveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    setProfileError("");
+    setProfileMessage("");
+    const body: Record<string, string> = { name: profileName, phone: profilePhone };
+    if (newPassword) {
+      body.currentPassword = currentPassword;
+      body.newPassword = newPassword;
+    }
+    const res = await fetch("/api/account/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setProfileError(data.error || t("Speichern fehlgeschlagen.", "Couldn't save."));
+      return;
+    }
+    setAccount(data.user);
+    setCurrentPassword("");
+    setNewPassword("");
+    setEditingProfile(false);
+    setProfileMessage(newPassword ? t("Profil und Passwort gespeichert.", "Profile and password saved.") : t("Profil gespeichert.", "Profile saved."));
+  }
+
+  async function cancelOrder(o: Order) {
+    if (!confirm(t(`Bestellung #${o.orderNumber} wirklich stornieren?`, `Really cancel order #${o.orderNumber}?`))) return;
+    const res = await fetch(`/api/account/orders/${o.id}`, { method: "DELETE" });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error);
+      return;
+    }
+    setOrders((cur) => cur.map((x) => (x.id === o.id ? { ...x, status: "CANCELLED" } : x)));
+  }
 
   function loadAddresses() {
     fetch("/api/account/addresses")
@@ -142,7 +218,10 @@ export default function AccountPage() {
         setSubmitting(false);
         return;
       }
-      setAccount(data);
+      if (data.pending) {
+        setPendingEmail(data.email);
+        setPassword("");
+      } else setAccount(data);
     } catch {
       setError(t("Verbindungsfehler. Bitte versuchen Sie es erneut.", "Connection error. Please try again."));
     }
@@ -163,7 +242,7 @@ export default function AccountPage() {
       const res = await fetch("/api/account/verify-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: verifyCode }),
+        body: JSON.stringify(pendingEmail ? { code: verifyCode, email: pendingEmail } : { code: verifyCode }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -172,7 +251,10 @@ export default function AccountPage() {
         return;
       }
       setVerifyCode("");
-      loadAccount();
+      if (pendingEmail) {
+        setPendingEmail("");
+        setAccount(data);
+      } else loadAccount();
     } catch {
       setVerifyError(t("Verbindungsfehler. Bitte versuchen Sie es erneut.", "Connection error. Please try again."));
     }
@@ -182,7 +264,11 @@ export default function AccountPage() {
   async function resendVerification() {
     setResendMessage("");
     setVerifyError("");
-    const res = await fetch("/api/account/resend-verification", { method: "POST" });
+    const res = await fetch("/api/account/resend-verification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(pendingEmail ? { email: pendingEmail } : {}),
+    });
     const data = await res.json();
     if (!res.ok) {
       setVerifyError(data.error || t("Der Code konnte nicht erneut gesendet werden.", "Could not resend the code."));
@@ -216,7 +302,7 @@ export default function AccountPage() {
               {t("Konto", "Account")}
             </span>
             <h1 style={{ fontSize: 30, margin: "8px 0 20px" }}>
-              {mode === "login" ? t("Anmelden", "Sign in") : t("Konto erstellen", "Create an account")}
+              {mode === "login" ? t("Anmelden", "Sign in") : mode === "register" ? t("Konto erstellen", "Create an account") : t("Passwort vergessen", "Forgot password")}
             </h1>
 
             <div className="size-row" style={{ margin: "0 0 20px" }}>
@@ -238,17 +324,67 @@ export default function AccountPage() {
               </button>
             </div>
 
+            {pendingEmail ? (
+              <form onSubmit={submitVerifyCode} className="checkout-fields">
+                <p style={{ fontSize: 13, ...muted }}>
+                  {t(
+                    `Fast geschafft! Wir haben einen 6-stelligen Code an ${pendingEmail} gesendet. Geben Sie ihn hier ein, um Ihr Konto zu aktivieren. Haben Sie bereits ein Konto mit dieser Adresse, finden Sie stattdessen einen Anmelde-Link in Ihrem Postfach.`,
+                    `Almost done! We sent a 6-digit code to ${pendingEmail}. Enter it here to activate your account. If you already have an account with this address, you'll find a sign-in link in your inbox instead.`
+                  )}
+                </p>
+                <input
+                  required
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  placeholder={t("6-stelliger Code", "6-digit code")}
+                  value={verifyCode}
+                  onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ""))}
+                  style={{ letterSpacing: 4, fontSize: 16 }}
+                />
+                {verifyError && <div className="checkout-error">{verifyError}</div>}
+                {resendMessage && <small style={{ color: "var(--green)" }}>{resendMessage}</small>}
+                <button className="primary-btn full" disabled={verifying || verifyCode.length !== 6}>
+                  {verifying ? t("Wird geprüft…", "Checking…") : t("Konto aktivieren", "Activate account")}
+                </button>
+                <button type="button" className="text-btn" style={{ justifyContent: "center", fontSize: 13 }} onClick={resendVerification} disabled={resendCooldown > 0}>
+                  {resendCooldown > 0 ? t(`Code erneut senden (${resendCooldown}s)`, `Resend code (${resendCooldown}s)`) : t("Code erneut senden", "Resend code")}
+                </button>
+                <button type="button" className="text-btn" style={{ justifyContent: "center", fontSize: 13 }} onClick={() => { setPendingEmail(""); setVerifyCode(""); setVerifyError(""); setMode("login"); }}>
+                  <ArrowLeft size={14} /> {t("Zurück zur Anmeldung", "Back to sign in")}
+                </button>
+              </form>
+            ) : mode === "forgot" ? (
+              <form onSubmit={submitForgot} className="checkout-fields">
+                <p style={{ fontSize: 13, ...muted }}>
+                  {t(
+                    "Geben Sie Ihre E-Mail-Adresse ein. Wir senden Ihnen einen Link, mit dem Sie ein neues Passwort festlegen können.",
+                    "Enter your email address and we'll send you a link to set a new password."
+                  )}
+                </p>
+                <input required type="email" autoComplete="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                {error && <div className="checkout-error">{error}</div>}
+                {forgotMessage && <small style={{ color: "var(--green)" }}>{forgotMessage}</small>}
+                <button className="primary-btn full" disabled={submitting}>
+                  {submitting ? t("Bitte warten…", "Please wait…") : t("Link senden", "Send link")}
+                </button>
+                <button type="button" className="text-btn" style={{ justifyContent: "center", fontSize: 13 }} onClick={() => setMode("login")}>
+                  <ArrowLeft size={14} /> {t("Zurück zur Anmeldung", "Back to sign in")}
+                </button>
+              </form>
+            ) : (
             <form onSubmit={submit} className="checkout-fields">
               {mode === "register" && (
                 <input required placeholder={t("Vollständiger Name", "Full name")} value={name} onChange={(e) => setName(e.target.value)} />
               )}
-              <input required type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input required type="email" autoComplete="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
               {mode === "register" && (
                 <input placeholder={t("Telefon (optional)", "Phone (optional)")} value={phone} onChange={(e) => setPhone(e.target.value)} />
               )}
               <input
                 required
                 type="password"
+                autoComplete={mode === "register" ? "new-password" : "current-password"}
                 placeholder={mode === "register" ? t("Passwort (mind. 8 Zeichen)", "Password (min. 8 characters)") : t("Passwort", "Password")}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -257,7 +393,21 @@ export default function AccountPage() {
               <button className="primary-btn full" style={{ marginTop: 4 }} disabled={submitting}>
                 {submitting ? t("Bitte warten…", "Please wait…") : mode === "login" ? t("Anmelden", "Sign in") : t("Konto erstellen", "Create account")}
               </button>
+              {mode === "login" && (
+                <button
+                  type="button"
+                  className="text-btn"
+                  style={{ justifyContent: "center", fontSize: 13 }}
+                  onClick={() => {
+                    setError("");
+                    setMode("forgot");
+                  }}
+                >
+                  <KeyRound size={14} /> {t("Passwort vergessen?", "Forgot your password?")}
+                </button>
+              )}
             </form>
+            )}
           </div>
         )}
 
@@ -293,6 +443,73 @@ export default function AccountPage() {
                 </button>
               </div>
             </div>
+
+            {/* Profile */}
+            <section className="bg-white rounded-xl border border-black/5 shadow-sm" style={{ padding: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                <h2 style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 18 }}>
+                  <UserIcon size={18} /> {t("Profil", "Profile")}
+                </h2>
+                {!editingProfile && (
+                  <button
+                    className="text-btn"
+                    style={{ fontSize: 13, padding: 0 }}
+                    onClick={() => {
+                      setProfileName(account.name);
+                      setProfilePhone(account.phone ?? "");
+                      setProfileError("");
+                      setProfileMessage("");
+                      setEditingProfile(true);
+                    }}
+                  >
+                    <Pencil size={14} /> {t("Bearbeiten", "Edit")}
+                  </button>
+                )}
+              </div>
+              {!editingProfile ? (
+                <div style={{ fontSize: 14, marginTop: 10, display: "grid", gap: 4 }}>
+                  <span>
+                    <b>{t("Name", "Name")}:</b> {account.name}
+                  </span>
+                  <span>
+                    <b>{t("Telefon", "Phone")}:</b> {account.phone || <span style={mutedLight}>{t("nicht angegeben", "not set")}</span>}
+                  </span>
+                  {profileMessage && <small style={{ color: "var(--green)" }}>{profileMessage}</small>}
+                </div>
+              ) : (
+                <form onSubmit={saveProfile} className="checkout-fields" style={{ gridTemplateColumns: "1fr 1fr", marginBottom: 0 }}>
+                  <input required placeholder={t("Vollständiger Name", "Full name")} value={profileName} onChange={(e) => setProfileName(e.target.value)} />
+                  <input placeholder={t("Telefon", "Phone")} value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} />
+                  <small style={{ gridColumn: "1 / -1", ...muted }}>{t("Passwort ändern (optional)", "Change password (optional)")}</small>
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder={t("Aktuelles Passwort", "Current password")}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                  />
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={8}
+                    placeholder={t("Neues Passwort (mind. 8)", "New password (min. 8)")}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                  {profileError && (
+                    <div className="checkout-error" style={{ gridColumn: "1 / -1" }}>
+                      {profileError}
+                    </div>
+                  )}
+                  <div style={{ gridColumn: "1 / -1", display: "flex", gap: 8 }}>
+                    <button className="primary-btn">{t("Speichern", "Save")}</button>
+                    <button type="button" className="text-btn" onClick={() => setEditingProfile(false)}>
+                      {t("Abbrechen", "Cancel")}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </section>
 
             {/* Email verification */}
             {account.emailVerified ? (
@@ -404,9 +621,16 @@ export default function AccountPage() {
                         <span>
                           {t("Gesamt (bar)", "Total (cash)")} · €{o.total.toFixed(2)}
                         </span>
-                        <Link href={`/?reorder=${o.id}`} className="text-btn" style={{ fontSize: 13, padding: 0 }}>
-                          <RefreshCw size={14} /> {t("Erneut bestellen", "Reorder")}
-                        </Link>
+                        <span style={{ display: "flex", gap: 14 }}>
+                          {o.status === "PLACED" && (
+                            <button className="text-btn" style={{ fontSize: 13, padding: 0, color: "#b3261e" }} onClick={() => cancelOrder(o)}>
+                              <XCircle size={14} /> {t("Stornieren", "Cancel")}
+                            </button>
+                          )}
+                          <Link href={`/?reorder=${o.id}`} className="text-btn" style={{ fontSize: 13, padding: 0 }}>
+                            <RefreshCw size={14} /> {t("Erneut bestellen", "Reorder")}
+                          </Link>
+                        </span>
                       </div>
                     </div>
                   ))}

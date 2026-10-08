@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAdminSession } from "@/lib/auth";
-import { orderEvents, type OrderEvent } from "@/lib/events";
+import { subscribeOrderEvents } from "@/lib/events";
 
 export const dynamic = "force-dynamic";
 
@@ -15,33 +15,33 @@ export async function GET(req: NextRequest) {
 
   const encoder = new TextEncoder();
 
-  let onEvent: (event: OrderEvent) => void = () => {};
+  let unsubscribe = () => {};
   let heartbeat: ReturnType<typeof setInterval>;
+  const stop = () => {
+    unsubscribe();
+    clearInterval(heartbeat);
+  };
 
   const stream = new ReadableStream({
     start(controller) {
-      controller.enqueue(encoder.encode(`event: ready\ndata: {}\n\n`));
-
-      onEvent = (event: OrderEvent) => {
-        controller.enqueue(encoder.encode(`event: order\ndata: ${JSON.stringify(event)}\n\n`));
+      // A tab that just went away makes enqueue throw; stop instead of breaking the other tabs.
+      const send = (chunk: string) => {
+        try {
+          controller.enqueue(encoder.encode(chunk));
+        } catch {
+          stop();
+        }
       };
-      orderEvents.on("event", onEvent);
+      send(`event: ready\ndata: {}\n\n`);
+      unsubscribe = subscribeOrderEvents((event) => send(`event: order\ndata: ${JSON.stringify(event)}\n\n`));
 
       // Keep the connection alive through proxies/load balancers.
-      heartbeat = setInterval(() => {
-        controller.enqueue(encoder.encode(`: heartbeat\n\n`));
-      }, 25000);
+      heartbeat = setInterval(() => send(`: heartbeat\n\n`), 25000);
     },
-    cancel() {
-      orderEvents.off("event", onEvent);
-      clearInterval(heartbeat);
-    },
+    cancel: stop,
   });
 
-  req.signal.addEventListener("abort", () => {
-    orderEvents.off("event", onEvent);
-    clearInterval(heartbeat);
-  });
+  req.signal.addEventListener("abort", stop);
 
   return new Response(stream, {
     headers: {
