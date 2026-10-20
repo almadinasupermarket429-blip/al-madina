@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
-import { JWT_SECRET } from "@/lib/jwt-secret";
+import { verifyToken } from "@/lib/tokens";
 
 // Keep these in sync with ADMIN_COOKIE_NAME / CUSTOMER_COOKIE_NAME in lib/auth.ts / lib/customer-auth.ts
 const ADMIN_COOKIE_NAME = "almadina_admin_session";
 const CUSTOMER_COOKIE_NAME = "almadina_customer_session";
-const encodedSecret = new TextEncoder().encode(JWT_SECRET);
 
 const OWNER_ONLY_PREFIXES = [
   "/admin/products",
@@ -67,19 +65,14 @@ async function adminGate(req: NextRequest): Promise<NextResponse | null> {
 
   // Admin cookie from /admin/login: its role is in the token, so owner-only
   // pages can be gated right here (the API re-checks against the database).
-  if (adminToken) {
-    try {
-      const { payload } = await jwtVerify(adminToken, encodedSecret);
-      // Customer tokens share the secret — only a token minted by /admin/login counts here.
-      if (payload.typ !== "admin") throw new Error("not an admin token");
-      const isOwnerOnlyPage = OWNER_ONLY_PREFIXES.some((p) => pathname.startsWith(p));
-      if (isOwnerOnlyPage && payload.role !== "OWNER") {
-        return NextResponse.redirect(new URL("/admin", req.url));
-      }
-      return null;
-    } catch {
-      // invalid/expired admin cookie — fall through to the customer check
+  // Customer tokens share the secret — only a token minted by /admin/login counts here.
+  const adminPayload = adminToken ? await verifyToken(adminToken) : null;
+  if (adminPayload?.typ === "admin") {
+    const isOwnerOnlyPage = OWNER_ONLY_PREFIXES.some((p) => pathname.startsWith(p));
+    if (isOwnerOnlyPage && adminPayload.role !== "OWNER") {
+      return NextResponse.redirect(new URL("/admin", req.url));
     }
+    return null;
   }
 
   // Shared login path: this only confirms a valid customer session exists.
@@ -87,14 +80,7 @@ async function adminGate(req: NextRequest): Promise<NextResponse | null> {
   // database lookup — that happens in getAdminSession(), used by every
   // admin API route and by AdminShell's own /api/admin/me check on
   // mount, which redirects to /admin/login if the answer is "no."
-  if (customerToken) {
-    try {
-      await jwtVerify(customerToken, encodedSecret);
-      return null;
-    } catch {
-      // invalid/expired — fall through to redirect
-    }
-  }
+  if (customerToken && (await verifyToken(customerToken))) return null;
 
   return NextResponse.redirect(new URL("/admin/login", req.url));
 }

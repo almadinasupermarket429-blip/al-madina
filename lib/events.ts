@@ -18,7 +18,7 @@ const bus: Bus = globalForEvents.orderEventBus ?? { emitter: new EventEmitter(),
 bus.emitter.setMaxListeners(50);
 globalForEvents.orderEventBus = bus;
 
-export type OrderEvent =
+type OrderEvent =
   | { type: "new_order"; orderId: string; orderNumber: string }
   | { type: "order_updated"; orderId: string; status: string }
   | { type: "low_stock"; orderId: string; orderNumber: string };

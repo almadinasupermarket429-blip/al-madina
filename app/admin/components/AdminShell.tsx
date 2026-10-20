@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { ClipboardList, LogOut, Package, ShoppingBag, Volume2, VolumeX, BarChart3, Menu, X, Settings, Ticket, CalendarClock, Users, MessageSquare, Tags, UserCog } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
@@ -264,9 +265,9 @@ function AdminNavContents({
             {soundOn ? t("Bestellton: AN", "New-order sound: ON") : t("Bestellton aktivieren", "Enable order sound")}
           </span>
         </button>
-        <a href="/" className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-black/50 hover:bg-black/5">
+        <Link href="/" className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-black/50 hover:bg-black/5">
           <ShoppingBag size={16} /> {t("Shop ansehen", "View storefront")}
-        </a>
+        </Link>
         <button onClick={handleLogout} className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-black/50 hover:bg-black/5">
           <LogOut size={16} /> {t("Abmelden", "Log out")}
         </button>

@@ -76,7 +76,7 @@ export async function PATCH(req: NextRequest) {
   const res = NextResponse.json({ user: await loadUser(session.userId) });
   // Keep this device logged in with a session issued after the password change.
   if (newPassword !== undefined) {
-    res.cookies.set(CUSTOMER_COOKIE_NAME, signCustomerToken(session), CUSTOMER_COOKIE_OPTIONS);
+    res.cookies.set(CUSTOMER_COOKIE_NAME, await signCustomerToken(session), CUSTOMER_COOKIE_OPTIONS);
   }
   return res;
 }

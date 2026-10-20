@@ -1,35 +1,29 @@
 // lib/auth.ts
-import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { prisma } from "./prisma";
 import { getCustomerSession } from "./customer-auth";
-import { JWT_SECRET } from "./jwt-secret";
+import { signToken, verifyToken } from "./tokens";
 
 const COOKIE_NAME = "almadina_admin_session";
-const SECRET = JWT_SECRET;
 
-export type AdminRole = "OWNER" | "STAFF";
+type AdminRole = "OWNER" | "STAFF";
 
-export type AdminTokenPayload = {
+type AdminTokenPayload = {
   username: string; // email for a real admin account, or the .env ADMIN_USERNAME for the fallback login
   role: AdminRole;
   adminId: string | null; // the users.id for a real admin account, null for the .env fallback
 };
 
-export function signAdminToken(payload: AdminTokenPayload) {
+export function signAdminToken(payload: AdminTokenPayload): Promise<string> {
   // typ marks this as an admin token: customer tokens are signed with the same
   // secret and must never be accepted in the admin cookie.
-  return jwt.sign({ ...payload, typ: "admin" }, SECRET, { expiresIn: "30d" });
+  return signToken({ ...payload, typ: "admin" }, "30d");
 }
 
-function verifyAdminToken(token: string): (AdminTokenPayload & { iat?: number }) | null {
-  try {
-    const payload = jwt.verify(token, SECRET) as Record<string, unknown>;
-    if (payload.typ !== "admin" || (payload.role !== "OWNER" && payload.role !== "STAFF")) return null;
-    return payload as unknown as AdminTokenPayload & { iat?: number };
-  } catch {
-    return null;
-  }
+async function verifyAdminToken(token: string): Promise<(AdminTokenPayload & { iat?: number }) | null> {
+  const payload = await verifyToken(token);
+  if (!payload || payload.typ !== "admin" || (payload.role !== "OWNER" && payload.role !== "STAFF")) return null;
+  return payload as unknown as AdminTokenPayload & { iat?: number };
 }
 
 /** OWNER-only areas (analytics, product editing, review moderation, team management). */
@@ -64,7 +58,7 @@ async function lookupAdmin(userId: string, iat?: number): Promise<{ role: AdminR
 export async function getAdminSession(): Promise<AdminTokenPayload | null> {
   const store = await cookies();
   const adminToken = store.get(COOKIE_NAME)?.value;
-  const payload = adminToken ? verifyAdminToken(adminToken) : null;
+  const payload = adminToken ? await verifyAdminToken(adminToken) : null;
   if (payload) {
     if (payload.adminId === null) {
       // .env fallback: valid only while that username is still the configured one.

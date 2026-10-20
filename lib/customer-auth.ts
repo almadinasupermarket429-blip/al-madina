@@ -1,19 +1,17 @@
-import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
-import { JWT_SECRET } from "./jwt-secret";
+import { signToken, verifyToken } from "./tokens";
 import { prisma } from "./prisma";
 
 const COOKIE_NAME = "almadina_customer_session";
-const SECRET = JWT_SECRET;
 
-export type CustomerTokenPayload = {
+type CustomerTokenPayload = {
   userId: string;
   email: string;
   iat?: number;
 };
 
-export function signCustomerToken(payload: CustomerTokenPayload) {
-  return jwt.sign({ userId: payload.userId, email: payload.email, typ: "customer" }, SECRET, { expiresIn: "60d" });
+export function signCustomerToken(payload: CustomerTokenPayload): Promise<string> {
+  return signToken({ userId: payload.userId, email: payload.email, typ: "customer" }, "60d");
 }
 
 /**
@@ -21,14 +19,10 @@ export function signCustomerToken(payload: CustomerTokenPayload) {
  * token is accepted here only if it actually carries a customer userId and
  * isn't marked as an admin token.
  */
-function verifyCustomerToken(token: string): CustomerTokenPayload | null {
-  try {
-    const payload = jwt.verify(token, SECRET) as Record<string, unknown>;
-    if (payload.typ === "admin" || typeof payload.userId !== "string") return null;
-    return payload as unknown as CustomerTokenPayload;
-  } catch {
-    return null;
-  }
+async function verifyCustomerToken(token: string): Promise<CustomerTokenPayload | null> {
+  const payload = await verifyToken(token);
+  if (!payload || payload.typ === "admin" || typeof payload.userId !== "string") return null;
+  return payload as unknown as CustomerTokenPayload;
 }
 
 export const CUSTOMER_COOKIE_NAME = COOKIE_NAME;
@@ -52,7 +46,7 @@ export async function getCustomerSession(): Promise<CustomerTokenPayload | null>
   const store = await cookies();
   const token = store.get(COOKIE_NAME)?.value;
   if (!token) return null;
-  const session = verifyCustomerToken(token);
+  const session = await verifyCustomerToken(token);
   if (!session) return null;
   const rows = await prisma.$queryRaw<{ changed: number | null }[]>`
     select floor(extract(epoch from password_changed_at))::int as changed

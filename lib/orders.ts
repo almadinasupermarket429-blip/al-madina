@@ -221,7 +221,7 @@ export async function getOrdersByUserId(userId: string): Promise<FullOrder[]> {
   return Promise.all(rows.map(assemble));
 }
 
-export type OrderFilters = {
+type OrderFilters = {
   status?: string; // a single status, or "ACTIVE" for everything not delivered/cancelled
   q?: string; // matches order number, customer name, email or phone
   from?: string; // YYYY-MM-DD, inclusive

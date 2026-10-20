@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     const valid = await bcrypt.compare(password, account.passwordHash);
     if (!valid) return failed();
 
-    const token = signAdminToken({
+    const token = await signAdminToken({
       username: account.email,
       role: account.role,
       adminId: account.id
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
     return failed();
   }
 
-  const token = signAdminToken({ username, role: "OWNER", adminId: null });
+  const token = await signAdminToken({ username, role: "OWNER", adminId: null });
   const res = NextResponse.json({ ok: true });
   res.cookies.set(ADMIN_COOKIE_NAME, token, ADMIN_COOKIE_OPTIONS);
   return res;

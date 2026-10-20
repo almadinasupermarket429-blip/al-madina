@@ -6,9 +6,9 @@
 
 import { prisma } from "./prisma";
 
-export type CouponType = "PERCENT" | "FIXED" | "FREE_DELIVERY";
+type CouponType = "PERCENT" | "FIXED" | "FREE_DELIVERY";
 
-export type Coupon = {
+type Coupon = {
   id: string;
   code: string;
   description: string | null;
@@ -62,7 +62,7 @@ async function findCoupon(code: string): Promise<Coupon | null> {
   return rows[0] ? shape(rows[0]) : null;
 }
 
-export type CouponResult =
+type CouponResult =
   | { ok: true; coupon: Coupon; discount: number; freeDelivery: boolean }
   | { ok: false; error: string };
 
@@ -96,7 +96,7 @@ export async function evaluateCoupon(code: string, subtotal: number, userId: str
   return { ok: true, coupon, discount, freeDelivery: coupon.discountType === "FREE_DELIVERY" };
 }
 
-export type CouponInput = {
+type CouponInput = {
   code?: string;
   description?: string;
   discountType?: string;

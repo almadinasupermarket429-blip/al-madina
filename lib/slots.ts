@@ -5,7 +5,7 @@
 
 import { prisma } from "./prisma";
 
-export type Slot = {
+type Slot = {
   id: string;
   date: string; // YYYY-MM-DD
   start: string; // HH:MM

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Lock, ShoppingBag } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
@@ -81,9 +82,9 @@ export default function AdminLoginPage() {
           <Lock size={15} /> {loading ? t("Anmeldung läuft…", "Signing in…") : t("Anmelden", "Sign in")}
         </button>
 
-        <a href="/" className="mt-5 flex items-center justify-center gap-2 text-xs text-black/40 hover:text-black/70">
+        <Link href="/" className="mt-5 flex items-center justify-center gap-2 text-xs text-black/40 hover:text-black/70">
           <ShoppingBag size={13} /> {t("Zurück zum Shop", "Back to storefront")}
-        </a>
+        </Link>
       </form>
     </main>
   );

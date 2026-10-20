@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     role: user.role,
     emailVerified: true,
   });
-  res.cookies.set(CUSTOMER_COOKIE_NAME, signCustomerToken({ userId: user.id, email: user.email }), CUSTOMER_COOKIE_OPTIONS);
+  res.cookies.set(CUSTOMER_COOKIE_NAME, await signCustomerToken({ userId: user.id, email: user.email }), CUSTOMER_COOKIE_OPTIONS);
   if (guestToken) res.cookies.delete(GUEST_CART_COOKIE_NAME);
   return res;
 }

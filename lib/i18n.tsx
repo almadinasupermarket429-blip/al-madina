@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
-export type Language = "de" | "en";
+type Language = "de" | "en";
 
 const STORAGE_KEY = "almadina_language";
 

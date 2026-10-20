@@ -24,7 +24,6 @@ export function generateDeliveryToken() {
 
 /** The forward progression of an order. CANCELLED is a terminal side-state, not a step. */
 export const ORDER_STATUSES = ["PLACED", "PACKED", "OUT_FOR_DELIVERY", "DELIVERED"] as const;
-export type OrderStatus = (typeof ORDER_STATUSES)[number] | "CANCELLED";
 
 /** What the store should do if an item is unavailable when packing. */
 export const SUBSTITUTION_OPTIONS = ["SUBSTITUTE", "CALL", "REMOVE"];

@@ -9,7 +9,7 @@ import { STORE } from "@/lib/store-info";
 import { StarRating } from "@/app/components/StarRating";
 import { VariantSelector, type Variant } from "@/app/components/VariantSelector";
 import { ProductGallery, ProductDetails } from "@/app/components/ProductDetails";
-import { absoluteImage, sizedImage } from "@/lib/images";
+import { absoluteImage } from "@/lib/images";
 
 type ProductRow = {
   id: string;

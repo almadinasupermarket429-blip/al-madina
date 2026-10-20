@@ -28,7 +28,7 @@ export async function createEmailVerification(userId: string): Promise<string> {
   return code;
 }
 
-export type VerifyResult = "OK" | "INVALID" | "EXPIRED" | "TOO_MANY_ATTEMPTS" | "NO_PENDING_CODE";
+type VerifyResult = "OK" | "INVALID" | "EXPIRED" | "TOO_MANY_ATTEMPTS" | "NO_PENDING_CODE";
 
 /** Checks a submitted code against the stored hash, marking the account verified on success. */
 export async function verifyEmailCode(userId: string, submittedCode: string): Promise<VerifyResult> {

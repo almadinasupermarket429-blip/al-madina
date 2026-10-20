@@ -44,7 +44,6 @@ export function CartView({ initialCart, cartMinimum }: { initialCart: Cart; cart
         {cart.items.map((item) => (
           <div className="cart-item" key={item.id}>
             {item.image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img src={sizedImage(item.image_url, 200)} alt={item.product_name} />
             ) : (
               <div style={{ width: 75, height: 75, borderRadius: 12, background: "#eee" }} />
