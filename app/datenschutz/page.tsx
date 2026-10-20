@@ -122,8 +122,8 @@ export default function DatenschutzPage() {
             </li>
             <li>
               {t(
-                "Neon Inc., USA — Datenbank, in der Konto- und Bestelldaten gespeichert werden. Serverstandort: [PLATZHALTER — z. B. Frankfurt am Main (EU)].",
-                "Neon Inc., USA — database storing account and order data. Server location: [PLACEHOLDER — e.g. Frankfurt am Main (EU)]."
+                "Neon Inc., USA — Datenbank, in der Konto- und Bestelldaten gespeichert werden. Serverstandort: Frankfurt am Main, Deutschland (EU).",
+                "Neon Inc., USA — database storing account and order data. Server location: Frankfurt am Main, Germany (EU)."
               )}
             </li>
             <li>
