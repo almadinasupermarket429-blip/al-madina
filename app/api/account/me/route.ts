@@ -80,3 +80,72 @@ export async function PATCH(req: NextRequest) {
   }
   return res;
 }
+
+/**
+ * Delete account (GDPR Art. 17). Requires the current password.
+ *
+ * Personal data on the account is erased: name, email, phone, password, addresses,
+ * wishlist, cart, reviews and pending codes. Past orders are kept, because German tax
+ * and commercial law requires business records for 6–10 years (§ 147 AO, § 257 HGB);
+ * they stay linked to an anonymous placeholder account that can no longer sign in.
+ */
+export async function DELETE(req: NextRequest) {
+  const session = await getCustomerSession();
+  if (!session) return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
+
+  if (!(await rateLimit(`delete-account-user:${session.userId}`, 5, 15 * 60_000)).allowed) {
+    return NextResponse.json({ error: "Zu viele Versuche. Bitte versuchen Sie es später erneut." }, { status: 429 });
+  }
+
+  const { password } = (await req.json().catch(() => ({}))) as { password?: string };
+  const rows = await prisma.$queryRaw<{ password_hash: string; role: string | null }[]>`
+    select u.password_hash, a.role from users u left join admin_users a on a.user_id = u.id
+    where u.id = ${session.userId}::uuid and u.deleted_at is null
+  `;
+  const user = rows[0];
+  if (!user) return NextResponse.json({ error: "Konto nicht gefunden." }, { status: 404 });
+  if (!password || !(await bcrypt.compare(password, user.password_hash))) {
+    return NextResponse.json({ error: "Das Passwort ist falsch." }, { status: 400 });
+  }
+  if (user.role) {
+    return NextResponse.json(
+      { error: "Dieses Konto hat Zugang zur Verwaltung. Bitte entfernen Sie zuerst den Zugang im Team-Bereich." },
+      { status: 409 }
+    );
+  }
+
+  const open = await prisma.$queryRaw<{ n: bigint }[]>`
+    select count(*) as n from orders where user_id = ${session.userId}::uuid and status not in ('DELIVERED', 'CANCELLED')
+  `;
+  if (Number(open[0]?.n ?? 0) > 0) {
+    return NextResponse.json(
+      { error: "Sie haben noch eine offene Bestellung. Sie können Ihr Konto löschen, sobald sie geliefert oder storniert ist." },
+      { status: 409 }
+    );
+  }
+
+  const unusablePassword = await bcrypt.hash(crypto.randomUUID() + crypto.randomUUID(), 10);
+  await prisma.$transaction([
+    prisma.$executeRaw`delete from addresses where user_id = ${session.userId}::uuid`,
+    prisma.$executeRaw`delete from wishlists where user_id = ${session.userId}::uuid`,
+    prisma.$executeRaw`delete from reviews where user_id = ${session.userId}::uuid`,
+    prisma.$executeRaw`delete from carts where user_id = ${session.userId}::uuid`,
+    prisma.$executeRaw`delete from email_verifications where user_id = ${session.userId}::uuid`,
+    prisma.$executeRaw`delete from password_resets where user_id = ${session.userId}::uuid`,
+    prisma.$executeRaw`
+      update users set
+        email = ${`deleted-${session.userId}@deleted.invalid`},
+        full_name = 'Gelöschtes Konto',
+        phone = null,
+        password_hash = ${unusablePassword},
+        password_changed_at = now(),
+        email_verified_at = null,
+        deleted_at = now()
+      where id = ${session.userId}::uuid
+    `,
+  ]);
+
+  const res = NextResponse.json({ ok: true });
+  res.cookies.set(CUSTOMER_COOKIE_NAME, "", { path: "/", maxAge: 0 });
+  return res;
+}

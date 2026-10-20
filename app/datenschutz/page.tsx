@@ -69,8 +69,8 @@ export default function DatenschutzPage() {
           </p>
           <p>
             {t(
-              "Bestelldaten unterliegen gesetzlichen Aufbewahrungsfristen für Geschäftsunterlagen (i. d. R. 6–10 Jahre nach §§ 147 AO, 257 HGB) und werden danach gelöscht.",
-              "Order data is subject to statutory retention periods for business records (generally 6–10 years under German tax/commercial law) and is deleted afterward."
+              "Bestelldaten unterliegen gesetzlichen Aufbewahrungsfristen für Geschäftsunterlagen (i. d. R. 6–10 Jahre nach §§ 147 AO, 257 HGB). Wie lange wir welche Daten speichern, steht in Abschnitt 9.",
+              "Order data is subject to statutory retention periods for business records (generally 6–10 years under German tax/commercial law). Section 9 explains how long we keep which data."
             )}
           </p>
         </Section>
@@ -87,8 +87,8 @@ export default function DatenschutzPage() {
         <Section title={t("6. Bewertungen und Wunschliste", "6. Reviews and wishlist")}>
           <p>
             {t(
-              "Wenn Sie eine Produktbewertung abgeben, werden Ihr angezeigter Name, die Bewertung und Ihr Kommentar öffentlich auf der Produktseite angezeigt. Ihre Wunschliste ist nur für Ihr eigenes Konto sichtbar.",
-              "If you leave a product review, your displayed name, rating, and comment are shown publicly on the product page. Your wishlist is only visible to your own account."
+              "Wenn Sie eine Produktbewertung abgeben, werden Ihr Vorname mit dem Anfangsbuchstaben Ihres Nachnamens (z. B. „Ahmed K.“), die Bewertung und Ihr Kommentar öffentlich auf der Produktseite angezeigt. Rechtsgrundlage ist Ihre Einwilligung durch das Absenden (Art. 6 Abs. 1 lit. a DSGVO); Sie können eine Bewertung jederzeit löschen lassen. Ihre Wunschliste ist nur für Ihr eigenes Konto sichtbar.",
+              "If you leave a product review, your first name and the initial of your last name (e.g. “Ahmed K.”), the rating and your comment are shown publicly on the product page. The legal basis is your consent by submitting it (Art. 6(1)(a) GDPR); you can have a review removed at any time. Your wishlist is only visible to your own account."
             )}
           </p>
         </Section>
@@ -96,8 +96,8 @@ export default function DatenschutzPage() {
         <Section title={t("7. Cookies", "7. Cookies")}>
           <p>
             {t(
-              "Wir setzen ausschließlich technisch notwendige Cookies ein (Login-Sitzung, Warenkorb) — keine Analyse- oder Marketing-Cookies. Details finden Sie in unseren ",
-              "We only use strictly necessary cookies (login session, shopping cart) — no analytics or marketing cookies. See our "
+              "Wir setzen ausschließlich technisch notwendige Cookies ein (Login-Sitzung, Warenkorb) — keine Analyse- oder Marketing-Cookies. Zusätzlich speichert Ihr Browser lokal nur Ihre gewählte Sprache und dass Sie den Cookie-Hinweis geschlossen haben. Rechtsgrundlage ist § 25 Abs. 2 Nr. 2 TDDDG (unbedingt erforderlich für den von Ihnen gewünschten Dienst). Details finden Sie in unseren ",
+              "We only use strictly necessary cookies (login session, shopping cart) — no analytics or marketing cookies. In addition, your browser stores only your chosen language and that you closed the cookie notice. Legal basis: § 25(2) no. 2 TDDDG (strictly necessary for the service you requested). See our "
             )}
             <Link href="/cookie-einstellungen" style={{ color: "var(--green)", fontWeight: 700, textDecoration: "underline" }}>
               {t("Cookie-Einstellungen", "cookie settings")}
@@ -114,19 +114,57 @@ export default function DatenschutzPage() {
             )}
           </p>
           <ul style={{ paddingLeft: 20, listStyle: "disc", display: "grid", gap: 6 }}>
-            <li>{t("Hosting/Betrieb der Website (z. B. Vercel Inc.)", "Website hosting/operation (e.g. Vercel Inc.)")}</li>
-            <li>{t("Datenbank-Hosting (z. B. Neon)", "Database hosting (e.g. Neon)")}</li>
-            <li>{t("E-Mail-Versand für Bestellbestätigungen (SMTP-Anbieter)", "Email delivery for order confirmations (SMTP provider)")}</li>
+            <li>
+              {t(
+                "Vercel Inc., USA — Hosting und Betrieb der Website (verarbeitet u. a. IP-Adressen beim Seitenaufruf).",
+                "Vercel Inc., USA — website hosting and operation (processes e.g. IP addresses when pages are loaded)."
+              )}
+            </li>
+            <li>
+              {t(
+                "Neon Inc., USA — Datenbank, in der Konto- und Bestelldaten gespeichert werden. Serverstandort: [PLATZHALTER — z. B. Frankfurt am Main (EU)].",
+                "Neon Inc., USA — database storing account and order data. Server location: [PLACEHOLDER — e.g. Frankfurt am Main (EU)]."
+              )}
+            </li>
+            <li>
+              {t(
+                "Cloudinary Ltd., USA — Speicherung der Produktfotos. Die Bilder werden über unseren eigenen Server ausgeliefert; Ihr Browser verbindet sich nicht direkt mit Cloudinary, und es werden dabei keine Daten von Ihnen an Cloudinary übermittelt.",
+                "Cloudinary Ltd., USA — storage of product photos. Images are delivered through our own server; your browser does not connect to Cloudinary directly, and none of your data is sent to Cloudinary."
+              )}
+            </li>
+            <li>
+              {t(
+                "[PLATZHALTER — E-Mail-Anbieter, z. B. Google Ireland Ltd. (Google Workspace)] — Versand von Bestätigungs-, Status- und Bestellbenachrichtigungs-E-Mails.",
+                "[PLACEHOLDER — email provider, e.g. Google Ireland Ltd. (Google Workspace)] — sending confirmation, status and order notification emails."
+              )}
+            </li>
           </ul>
           <p style={{ marginTop: 10 }}>
             {t(
-              "Einige dieser Anbieter können Daten außerhalb der EU/des EWR verarbeiten; in diesem Fall stellen wir geeignete Garantien sicher (z. B. EU-Standardvertragsklauseln). [PLATZHALTER — bitte konkrete Anbieter und Serverstandorte ergänzen]",
-              "Some of these providers may process data outside the EU/EEA; where this is the case, appropriate safeguards are in place (e.g. EU Standard Contractual Clauses). [PLACEHOLDER — please confirm the actual providers and server locations]"
+              "Mit allen Anbietern bestehen Verträge zur Auftragsverarbeitung nach Art. 28 DSGVO. Soweit Daten in die USA übermittelt werden, geschieht dies auf Grundlage des EU-US Data Privacy Framework (Art. 45 DSGVO) bzw. der EU-Standardvertragsklauseln (Art. 46 DSGVO).",
+              "We have data processing agreements under Art. 28 GDPR with all providers. Where data is transferred to the USA, this is based on the EU-US Data Privacy Framework (Art. 45 GDPR) or the EU Standard Contractual Clauses (Art. 46 GDPR)."
+            )}
+          </p>
+          <p style={{ marginTop: 10 }}>
+            {t(
+              "Bei Lieferungen erhält unser Lieferpersonal über einen persönlichen Link nur Name, Telefonnummer, Lieferadresse, Hinweise und die bestellten Artikel. Dieser Link funktioniert 48 Stunden nach Zustellung oder Stornierung nicht mehr.",
+              "For deliveries, our delivery staff receive only your name, phone number, delivery address, notes and the ordered items through a personal link. The link stops working 48 hours after delivery or cancellation."
             )}
           </p>
         </Section>
 
-        <Section title={t("9. Keine automatisierte Entscheidungsfindung", "9. No automated decision-making")}>
+        <Section title={t("9. Speicherdauer", "9. How long we keep data")}>
+          <ul style={{ paddingLeft: 20, listStyle: "disc", display: "grid", gap: 6 }}>
+            <li>{t("Kundenkonto: bis Sie es löschen (in Ihrem Konto unter „Konto löschen“).", "Customer account: until you delete it (in your account under “Delete account”).")}</li>
+            <li>{t("Nicht per E-Mail bestätigte Registrierungen: 7 Tage.", "Sign-ups never confirmed by email: 7 days.")}</li>
+            <li>{t("Warenkorb ohne Konto: 90 Tage nach der letzten Änderung.", "Shopping cart without an account: 90 days after the last change.")}</li>
+            <li>{t("Bestätigungscodes und Links zum Zurücksetzen des Passworts: bis sie benutzt werden oder ablaufen (höchstens 60 Minuten).", "Verification codes and password-reset links: until used or expired (at most 60 minutes).")}</li>
+            <li>{t("Bestellungen: 10 Jahre (gesetzliche Aufbewahrungspflicht), danach automatische Löschung. Wenn Sie Ihr Konto löschen, bleiben die Bestellungen bis dahin ohne Verbindung zu einem Konto gespeichert.", "Orders: 10 years (statutory retention), then deleted automatically. If you delete your account, orders are kept until then without a link to any account.")}</li>
+            <li>{t("Server-Logdateien: gemäß den Einstellungen unseres Hosting-Anbieters, in der Regel wenige Tage.", "Server log files: according to our hosting provider's settings, usually a few days.")}</li>
+          </ul>
+        </Section>
+
+        <Section title={t("10. Keine automatisierte Entscheidungsfindung", "10. No automated decision-making")}>
           <p>
             {t(
               "Wir setzen kein Profiling oder automatisierte Entscheidungsfindung im Sinne von Art. 22 DSGVO ein.",
@@ -135,11 +173,11 @@ export default function DatenschutzPage() {
           </p>
         </Section>
 
-        <Section title={t("10. Ihre Rechte", "10. Your rights")}>
+        <Section title={t("11. Ihre Rechte", "11. Your rights")}>
           <p style={{ marginBottom: 10 }}>
             {t(
-              "Sie haben das Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch (Art. 21 DSGVO). Wenden Sie sich hierzu an die oben genannte Kontaktadresse.",
-              "You have the right to access (Art. 15), rectification (Art. 16), erasure (Art. 17), restriction of processing (Art. 18), data portability (Art. 20), and objection (Art. 21 GDPR). Contact us at the address above to exercise these rights."
+              "Sie haben das Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch (Art. 21 DSGVO). Wenden Sie sich hierzu an die oben genannte Kontaktadresse. Ihr Konto können Sie jederzeit selbst in Ihrem Kundenkonto löschen.",
+              "You have the right to access (Art. 15), rectification (Art. 16), erasure (Art. 17), restriction of processing (Art. 18), data portability (Art. 20), and objection (Art. 21 GDPR). Contact us at the address above to exercise these rights. You can delete your account yourself at any time in your customer account."
             )}
           </p>
           <p>

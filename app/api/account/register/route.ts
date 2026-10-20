@@ -8,6 +8,7 @@
 //   - existing email: nothing changes; the owner gets an "you already have an
 //     account" email with login and password-reset links instead.
 import { NextRequest, NextResponse, after } from "next/server";
+import { runCleanupIfDue } from "@/lib/cleanup";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
@@ -17,6 +18,8 @@ import { createEmailVerification } from "@/lib/email-verification";
 import { sendAccountExistsEmail, sendVerificationEmail } from "@/lib/mailer";
 
 export async function POST(req: NextRequest) {
+  // Housekeeping: delete personal data past its retention period (runs at most every 6 h).
+  after(runCleanupIfDue);
   const ip = clientIp(req);
   if (!(await rateLimit(`register:${ip}`, 5, 60_000)).allowed) {
     return NextResponse.json({ error: "Zu viele Versuche. Bitte versuchen Sie es in einer Minute erneut." }, { status: 429 });

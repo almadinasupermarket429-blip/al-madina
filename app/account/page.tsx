@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { sizedImage } from "@/lib/images";
 import Link from "next/link";
+import { DeleteAccount } from "@/app/components/DeleteAccount";
 import { ArrowLeft, LogOut, Package, User as UserIcon, Heart, MapPin, RefreshCw, Plus, Trash2, ShieldCheck, MailWarning, MailCheck, KeyRound, Pencil, XCircle } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
@@ -391,6 +392,12 @@ export default function AccountPage() {
                 onChange={(e) => setPassword(e.target.value)}
               />
               {error && <div className="checkout-error">{error}</div>}
+              {mode === "register" && (
+                <p className="privacy-note">
+                  {t("Wir verwenden Ihre Angaben, um Ihr Konto zu führen und Bestellungen abzuwickeln. Details in unserer ", "We use your details to run your account and handle your orders. Details in our ")}
+                  <Link href="/datenschutz">{t("Datenschutzerklärung", "Privacy Policy")}</Link>.
+                </p>
+              )}
               <button className="primary-btn full" style={{ marginTop: 4 }} disabled={submitting}>
                 {submitting ? t("Bitte warten…", "Please wait…") : mode === "login" ? t("Anmelden", "Sign in") : t("Konto erstellen", "Create account")}
               </button>
@@ -511,6 +518,15 @@ export default function AccountPage() {
                 </form>
               )}
             </section>
+
+            <DeleteAccount
+              t={t}
+              onDeleted={() => {
+                setAccount(null);
+                setOrders([]);
+                window.location.href = "/";
+              }}
+            />
 
             {/* Email verification */}
             {account.emailVerified ? (

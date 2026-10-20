@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse, after } from "next/server";
+import { runCleanupIfDue } from "@/lib/cleanup";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
 import { getCustomerSession } from "@/lib/customer-auth";
@@ -94,6 +95,8 @@ export async function GET(req: NextRequest) {
 
 // Customer only (accounts are mandatory): place a new order. Cash only — no payment is processed here at all.
 export async function POST(req: NextRequest) {
+  // Housekeeping: delete personal data past its retention period (runs at most every 6 h).
+  after(runCleanupIfDue);
   try {
     const customerSession = await getCustomerSession();
     if (!customerSession?.userId) {

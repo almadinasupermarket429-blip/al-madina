@@ -1,5 +1,6 @@
 // app/api/account/login/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
+import { runCleanupIfDue } from "@/lib/cleanup";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { signCustomerToken, CUSTOMER_COOKIE_NAME, CUSTOMER_COOKIE_OPTIONS } from "@/lib/customer-auth";
@@ -19,6 +20,8 @@ type UserRow = {
 };
 
 export async function POST(req: NextRequest) {
+  // Housekeeping: delete personal data past its retention period (runs at most every 6 h).
+  after(runCleanupIfDue);
   const body = await req.json().catch(() => ({}));
   const { email, password } = body as { email?: string; password?: string };
 

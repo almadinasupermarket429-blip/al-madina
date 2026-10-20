@@ -411,23 +411,16 @@ export default function Home() {
       .then((items: Product[]) => setLiked(items.map((p) => p.id)));
   }, [account]);
 
-  // Track recently viewed products locally (per device), Amazon-style.
+  // Recently viewed products for this visit only. Kept in memory, not on the device:
+  // storing it would need consent under §25 TDDDG, since it isn't strictly necessary.
   function trackRecentlyViewed(id: string) {
-    try {
-      const raw = localStorage.getItem("almadina_recently_viewed");
-      const ids: string[] = raw ? JSON.parse(raw) : [];
-      const next = [id, ...ids.filter((x) => x !== id)].slice(0, 10);
-      localStorage.setItem("almadina_recently_viewed", JSON.stringify(next));
-      setRecentlyViewedIds(next);
-    } catch {
-      /* localStorage unavailable — recently-viewed just won't persist */
-    }
+    setRecentlyViewedIds((ids) => [id, ...ids.filter((x) => x !== id)].slice(0, 10));
   }
 
+  // Remove the list older versions of the site saved on the device.
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("almadina_recently_viewed");
-      if (raw) setRecentlyViewedIds(JSON.parse(raw));
+      localStorage.removeItem("almadina_recently_viewed");
     } catch {
       /* ignore */
     }
@@ -648,7 +641,7 @@ export default function Home() {
           </div>
         </div>
         <div className="hero-image-wrap">
-          <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1400&q=88" alt="Fresh vegetables at a market" className="hero-image" />
+          <img src="/images/hero-market.jpg" alt="Fresh vegetables at a market" className="hero-image" />
           <div className="hero-card">
             <span>{t("Heute auf dem Markt", "In the market today")}</span>
             <b>
@@ -848,7 +841,7 @@ export default function Home() {
             </a>
           </div>
           <div className="feature-photo">
-            <img src="https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=1200&q=88" alt="Fresh produce market display" />
+            <img src="/images/feature-produce.jpg" alt="Fresh produce market display" />
             <div>
               <b>{t("Sorgfältig ausgewählt.", "Carefully chosen.")}</b>
               <span>{t("Qualität, die man sieht.", "Quality you can see.")}</span>
@@ -859,7 +852,7 @@ export default function Home() {
 
       <section id="story" className="story reveal mx-auto grid max-w-7xl gap-12 px-5 py-20 lg:grid-cols-[.9fr_1.1fr] lg:px-8">
         <div className="story-photo">
-          <img src="https://images.unsplash.com/photo-1604719312566-8912e9227c6a?auto=format&fit=crop&w=1200&q=88" alt="Grocery store shelves" />
+          <img src="/images/story-shelves.jpg" alt="Grocery store shelves" />
         </div>
         <div className="story-copy">
           <span className="eyebrow">{t("Unsere kleine Ecke des Orients", "Our little corner of the Orient")}</span>
@@ -1598,8 +1591,12 @@ function CheckoutModal({
           </div>
         </div>
 
+        <p className="privacy-note">
+          {t("Ihre Angaben verwenden wir nur, um Ihre Bestellung auszuliefern bzw. bereitzustellen. Mehr in unserer ", "We only use your details to deliver or prepare your order. More in our ")}
+          <Link href="/datenschutz">{t("Datenschutzerklärung", "Privacy Policy")}</Link>.
+        </p>
         <button className="primary-btn full" disabled={submitting || cart.length === 0 || !settings.acceptingOrders}>
-          {submitting ? t("Wird gesendet…", "Placing order…") : t("Bestellung aufgeben — Bar bezahlen", "Place order — pay cash")} <Check size={17} />
+          {submitting ? t("Wird gesendet…", "Placing order…") : t("Zahlungspflichtig bestellen — Bar bezahlen", "Order and pay — cash on delivery")} <Check size={17} />
         </button>
       </form>
     </div>

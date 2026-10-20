@@ -314,3 +314,7 @@ footer>*{position:relative;z-index:1}
 .pd-specs{width:100%;border-collapse:collapse;font-size:13px}
 .pd-specs th,.pd-specs td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
 .pd-specs th{width:38%;background:#faf8f2;font-weight:600;color:#4b544e}
+
+/* Short privacy notice under sign-up and checkout forms (GDPR Art. 13) */
+.privacy-note{font-size:12px;line-height:1.5;color:#6d766f;margin:4px 0 10px}
+.privacy-note a{color:#a12e3d;text-decoration:underline;font-weight:600}

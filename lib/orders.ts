@@ -276,6 +276,35 @@ export async function listOrders(filters: OrderFilters = {}): Promise<FullOrder[
  * The delivery token is stripped too: whoever holds it can mark the order
  * delivered, so only staff (packing slip / driver link) may see it.
  */
+/** How long the delivery person's link keeps working after an order is finished. */
+const DRIVER_LINK_GRACE_MS = 48 * 60 * 60 * 1000;
+
+/**
+ * True when a delivery link should no longer show the order: it was delivered or
+ * cancelled more than 48 hours ago. Keeps customer details from staying reachable
+ * through old links forwarded on WhatsApp/SMS (GDPR data minimisation).
+ */
+export function isDriverLinkExpired(order: FullOrder): boolean {
+  if (order.status !== "DELIVERED" && order.status !== "CANCELLED") return false;
+  return Date.now() - new Date(order.updatedAt).getTime() > DRIVER_LINK_GRACE_MS;
+}
+
+/** What the delivery person sees: only what's needed to hand over the order (no email, no account id). */
+export function driverOrder(order: FullOrder) {
+  return {
+    orderNumber: order.orderNumber,
+    customerName: order.customerName,
+    customerPhone: order.customerPhone,
+    fulfillment: order.fulfillment,
+    address: order.address,
+    notes: order.notes,
+    total: order.total,
+    status: order.status,
+    slot: order.slot,
+    items: order.items.map((i) => ({ id: i.id, name: i.name, sizeLabel: i.sizeLabel, qty: i.qty })),
+  };
+}
+
 export function publicOrder(order: FullOrder): Omit<FullOrder, "internalNote" | "deliveryToken"> {
   const { internalNote: _note, deliveryToken: _token, ...rest } = order;
   return rest;

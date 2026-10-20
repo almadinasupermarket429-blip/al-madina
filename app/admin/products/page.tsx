@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { sizedImage } from "@/lib/images";
 import AdminShell from "../components/AdminShell";
 import { Minus, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
@@ -169,7 +170,7 @@ export default function AdminProductsPage() {
       <div className="grid gap-3">
         {shown.map((p) => (
           <div key={p.id} className="bg-white rounded-2xl border border-black/5 p-4 flex items-center gap-4">
-            <img src={p.image} alt={p.name} className="w-16 h-16 rounded-xl object-cover bg-black/5" />
+            <img src={sizedImage(p.image, 160)} alt={p.name} className="w-16 h-16 rounded-xl object-contain bg-white" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="font-medium">{p.name}</span>

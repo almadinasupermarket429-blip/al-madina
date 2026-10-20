@@ -9,7 +9,7 @@ import { STORE } from "@/lib/store-info";
 import { StarRating } from "@/app/components/StarRating";
 import { VariantSelector, type Variant } from "@/app/components/VariantSelector";
 import { ProductGallery, ProductDetails } from "@/app/components/ProductDetails";
-import { sizedImage } from "@/lib/images";
+import { absoluteImage, sizedImage } from "@/lib/images";
 
 type ProductRow = {
   id: string;
@@ -85,7 +85,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     openGraph: {
       title: `${product.name} | ${STORE.name}`,
       description,
-      images: product.image_url ? [{ url: sizedImage(product.image_url, 1200) }] : undefined,
+      images: product.image_url ? [{ url: absoluteImage(product.image_url, 1200) }] : undefined,
       type: "website",
     },
   };
@@ -106,7 +106,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     "@type": "Product",
     name: product.name,
     description: product.description ?? undefined,
-    image: product.image_url ? sizedImage(product.image_url, 1200) : undefined,
+    image: product.image_url ? absoluteImage(product.image_url, 1200) : undefined,
     ...(product.brand ? { brand: { "@type": "Brand", name: product.brand } } : {}),
     category: product.category_name ?? undefined,
     offers: {

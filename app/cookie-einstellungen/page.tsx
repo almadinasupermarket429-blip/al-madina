@@ -25,6 +25,22 @@ const COOKIES: CookieRow[] = [
     ],
     duration: ["90 Tage", "90 days"],
   },
+  {
+    name: "almadina_language",
+    purpose: [
+      "Browser-Speicher (kein Cookie): merkt sich die von Ihnen gewählte Sprache.",
+      "Browser storage (not a cookie): remembers the language you chose.",
+    ],
+    duration: ["bis Sie ihn löschen", "until you clear it"],
+  },
+  {
+    name: "almadina_cookie_notice_ack",
+    purpose: [
+      "Browser-Speicher (kein Cookie): merkt sich, dass Sie diesen Hinweis geschlossen haben.",
+      "Browser storage (not a cookie): remembers that you closed this notice.",
+    ],
+    duration: ["bis Sie ihn löschen", "until you clear it"],
+  },
 ];
 
 export default function CookieEinstellungenPage() {

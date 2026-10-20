@@ -11,6 +11,14 @@ type ReviewRow = {
   authorName: string;
 };
 
+/** "Ahmed Karimi" -> "Ahmed K." — reviews are public, so we don't publish full names. */
+function publicName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "Kunde";
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.`;
+}
+
 // Public: list reviews for a product, newest first, plus the average rating.
 export async function GET(req: NextRequest) {
   const productId = req.nextUrl.searchParams.get("productId");
@@ -32,7 +40,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     average: Math.round(average * 10) / 10,
     count,
-    reviews,
+    reviews: reviews.map((r) => ({ ...r, authorName: publicName(r.authorName) })),
   });
 }
 
