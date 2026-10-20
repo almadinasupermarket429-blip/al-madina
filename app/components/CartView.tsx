@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import { sizedImage } from "@/lib/images";
 import { useState, useTransition } from "react";
 import { Minus, Plus, ShoppingBag } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
@@ -44,7 +45,7 @@ export function CartView({ initialCart, cartMinimum }: { initialCart: Cart; cart
           <div className="cart-item" key={item.id}>
             {item.image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={item.image_url} alt={item.product_name} />
+              <img src={sizedImage(item.image_url, 200)} alt={item.product_name} />
             ) : (
               <div style={{ width: 75, height: 75, borderRadius: 12, background: "#eee" }} />
             )}

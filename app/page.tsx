@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useLanguage } from "@/lib/i18n";
+import { sizedImage } from "@/lib/images";
+import { ProductGallery, ProductDetails } from "@/app/components/ProductDetails";
 import {
   ArrowRight,
   Check,
@@ -63,11 +65,22 @@ function slotLabel(slot: { date: string; start: string; end: string }, language:
 }
 
 type ProductSize = { id: string; label: string; price: number; oldPrice: number | null; stock: number };
-type Product = {
+type ProductSpec = { label: string; labelEn?: string | null; value: string; valueEn?: string | null };
+
+// Shape returned by /api/products: German in the plain fields, English in *En (may be empty).
+type RawProduct = {
   id: string;
   name: string;
+  nameEn: string | null;
   category: string;
+  categoryEn: string | null;
   description: string | null;
+  descriptionEn: string | null;
+  brand: string | null;
+  highlights: string[] | null;
+  highlightsEn: string[] | null;
+  specs: ProductSpec[] | null;
+  gallery: string[] | null;
   image: string;
   badge: string | null;
   unitNote: string | null;
@@ -77,6 +90,58 @@ type Product = {
   ratingAverage: number;
   ratingCount: number;
 };
+
+// A product with its text already in the visitor's language.
+type Product = {
+  id: string;
+  name: string;
+  /** Stable category id for filtering (the German name), unchanged by the language toggle. */
+  categoryKey: string;
+  category: string;
+  description: string | null;
+  brand: string | null;
+  highlights: string[];
+  specs: { label: string; value: string }[];
+  images: string[];
+  /** Both languages, so search finds a product whichever language the visitor types in. */
+  searchText: string;
+  image: string;
+  badge: string | null;
+  unitNote: string | null;
+  tags: string[];
+  slug: string;
+  sizes: ProductSize[];
+  ratingAverage: number;
+  ratingCount: number;
+};
+
+function localizeProduct(p: RawProduct, language: "de" | "en"): Product {
+  const en = language === "en";
+  const highlights = (en && p.highlightsEn?.length ? p.highlightsEn : p.highlights) ?? [];
+  return {
+    id: p.id,
+    name: (en && p.nameEn) || p.name,
+    categoryKey: p.category ?? "",
+    category: (en && p.categoryEn) || p.category,
+    description: (en && p.descriptionEn) || p.description,
+    brand: p.brand,
+    highlights,
+    specs: (p.specs ?? []).map((s) => ({ label: (en && s.labelEn) || s.label, value: (en && s.valueEn) || s.value })),
+    images: [p.image, ...(p.gallery ?? [])].filter(Boolean),
+    searchText: [p.name, p.nameEn, p.brand, p.category, p.categoryEn, p.description, p.descriptionEn, ...(p.tags ?? [])]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase(),
+    image: p.image,
+    badge: p.badge,
+    unitNote: p.unitNote,
+    tags: p.tags,
+    slug: p.slug,
+    sizes: p.sizes,
+    ratingAverage: p.ratingAverage,
+    ratingCount: p.ratingCount,
+  };
+}
 
 type SortOption = "relevance" | "price-asc" | "price-desc" | "rating";
 type Account = { id: string; name: string; email: string; phone: string | null };
@@ -120,7 +185,7 @@ function mapServerCart(items: ServerCartItem[]): CartItem[] {
 }
 
 export default function Home() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [rawProducts, setProducts] = useState<RawProduct[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
@@ -134,6 +199,7 @@ export default function Home() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [toast, setToast] = useState("");
   const { language, setLanguage, t } = useLanguage();
+  const products = useMemo(() => rawProducts.map((p) => localizeProduct(p, language)), [rawProducts, language]);
   const [sort, setSort] = useState<SortOption>("relevance");
   const [account, setAccount] = useState<Account | null>(null);
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
@@ -239,19 +305,20 @@ export default function Home() {
   }, [products]);
 
   const categories = useMemo(() => {
-    const list = ["All", ...Array.from(new Set(products.map((p) => p.category).filter(Boolean)))];
+    const list = ["All", ...Array.from(new Set(products.map((p) => p.categoryKey).filter(Boolean)))];
     if (products.some((p) => p.sizes.some((s) => s.oldPrice && s.oldPrice > s.price))) list.splice(1, 0, "Offers");
     return list;
   }, [products]);
+  // categoryKey -> label in the current language, for the filter chips.
+  const categoryLabels = useMemo(() => new Map(products.map((p) => [p.categoryKey, p.category])), [products]);
   const allTags = useMemo(() => Array.from(new Set(products.flatMap((p) => p.tags ?? []))).sort(), [products]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const matches = products.filter((p) => {
       const matchesCategory =
-        category === "All" || (category === "Offers" ? p.sizes.some((s) => s.oldPrice && s.oldPrice > s.price) : p.category === category);
-      const haystack = `${p.name} ${p.category} ${p.description ?? ""} ${(p.tags ?? []).join(" ")}`.toLowerCase();
-      const matchesQuery = q === "" || haystack.includes(q);
+        category === "All" || (category === "Offers" ? p.sizes.some((s) => s.oldPrice && s.oldPrice > s.price) : p.categoryKey === category);
+      const matchesQuery = q === "" || p.searchText.includes(q);
       const matchesTag = !tagFilter || (p.tags ?? []).includes(tagFilter);
       return matchesCategory && matchesQuery && matchesTag;
     });
@@ -643,7 +710,7 @@ export default function Home() {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {categories.map((c) => (
               <button key={c} className={category === c ? "category active" : "category"} onClick={() => setCategory(c)}>
-                {c === "All" ? t("Alle", "All") : c === "Offers" ? t("🏷 Angebote", "🏷 Offers") : c}
+                {c === "All" ? t("Alle", "All") : c === "Offers" ? t("🏷 Angebote", "🏷 Offers") : categoryLabels.get(c) ?? c}
               </button>
             ))}
           </div>
@@ -976,7 +1043,7 @@ export default function Home() {
                 <div className="cart-items">
                   {cart.map((item) => (
                     <div className="cart-item" key={item.key}>
-                      <img src={item.image} alt="" onError={imageFallback} />
+                      <img src={sizedImage(item.image, 200)} alt="" onError={imageFallback} />
                       <div>
                         <b>{item.name}</b>
                         <span>
@@ -1111,7 +1178,7 @@ function ProductCard({
   return (
     <article className="product-card">
       <div className="product-image" onClick={onOpen} style={{ cursor: "pointer" }}>
-        <img src={product.image} alt={product.name} onError={imageFallback} />
+        <img src={sizedImage(product.image, 600)} alt={product.name} onError={imageFallback} loading="lazy" />
         {product.badge && <span className="product-badge">{product.badge}</span>}
         {!product.badge && size.oldPrice && size.oldPrice > size.price && (
           <span className="product-badge sale">−{Math.round((1 - size.price / size.oldPrice) * 100)}%</span>
@@ -1642,7 +1709,7 @@ function ProductDetailModal({
           <X />
         </button>
 
-        <img src={product.image} alt={product.name} onError={imageFallback} style={{ width: "100%", borderRadius: 14, marginBottom: 16, maxHeight: 260, objectFit: "cover" }} />
+        <ProductGallery images={product.images} alt={product.name} zoomHint={t("Zum Vergrößern klicken", "Click to enlarge")} />
 
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
           <div>
@@ -1669,7 +1736,12 @@ function ProductDetailModal({
           </span>
         </div>
 
-        {product.description && <p>{product.description}</p>}
+        <ProductDetails
+          description={product.description}
+          highlights={product.highlights}
+          specs={product.specs}
+          t={t}
+        />
         {product.tags?.length > 0 && (
           <div className="tag-row" style={{ margin: "8px 0" }}>
             {product.tags.map((tag) => (
@@ -1723,7 +1795,7 @@ function ProductDetailModal({
                   onClick={() => onOpenRelated(r.id)}
                   style={{ flex: "0 0 auto", width: 96, textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}
                 >
-                  <img src={r.image} alt={r.name} onError={imageFallback} style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 10, marginBottom: 4 }} />
+                  <img src={sizedImage(r.image, 200)} alt={r.name} onError={imageFallback} style={{ width: 96, height: 96, objectFit: "contain", borderRadius: 10, marginBottom: 4 }} />
                   <small style={{ display: "block", lineHeight: 1.2 }}>{r.name}</small>
                 </button>
               ))}

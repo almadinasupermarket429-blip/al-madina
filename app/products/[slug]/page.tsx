@@ -8,6 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { STORE } from "@/lib/store-info";
 import { StarRating } from "@/app/components/StarRating";
 import { VariantSelector, type Variant } from "@/app/components/VariantSelector";
+import { ProductGallery, ProductDetails } from "@/app/components/ProductDetails";
+import { sizedImage } from "@/lib/images";
 
 type ProductRow = {
   id: string;
@@ -17,6 +19,10 @@ type ProductRow = {
   image_url: string | null;
   unit_note: string | null;
   category_name: string | null;
+  brand: string | null;
+  highlights: string[];
+  specs: { label: string; value: string }[];
+  gallery: string[];
 };
 
 type VariantRow = {
@@ -34,7 +40,7 @@ type ReviewStatsRow = { average: string | null; count: string };
 const getProduct = cache(async function getProduct(slug: string): Promise<ProductRow | null> {
   const rows = await prisma.$queryRaw<ProductRow[]>`
     select p.id, p.name, p.slug, p.description, p.image_url, p.unit_note,
-           c.name as category_name
+           c.name as category_name, p.brand, p.highlights, p.specs, p.gallery
     from products p
     left join categories c on c.id = p.category_id
     where p.slug = ${slug} and p.is_active = true
@@ -79,7 +85,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     openGraph: {
       title: `${product.name} | ${STORE.name}`,
       description,
-      images: product.image_url ? [{ url: product.image_url }] : undefined,
+      images: product.image_url ? [{ url: sizedImage(product.image_url, 1200) }] : undefined,
       type: "website",
     },
   };
@@ -100,7 +106,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     "@type": "Product",
     name: product.name,
     description: product.description ?? undefined,
-    image: product.image_url ?? undefined,
+    image: product.image_url ? sizedImage(product.image_url, 1200) : undefined,
+    ...(product.brand ? { brand: { "@type": "Brand", name: product.brand } } : {}),
     category: product.category_name ?? undefined,
     offers: {
       "@type": "AggregateOffer",
@@ -129,11 +136,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         </Link>
 
         {product.image_url && (
-          <img
-            src={product.image_url}
-            alt={product.name}
-            style={{ width: "100%", borderRadius: 14, marginBottom: 16, maxHeight: 280, objectFit: "cover" }}
-          />
+          <ProductGallery images={[product.image_url, ...(product.gallery ?? [])]} alt={product.name} zoomHint="Zum Vergrößern klicken" />
         )}
 
         {product.category_name && <span className="eyebrow">{product.category_name}</span>}
@@ -149,7 +152,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         </div>
 
         {product.unit_note && <p style={{ color: "#6d766f", fontSize: 13, marginBottom: 6 }}>{product.unit_note}</p>}
-        {product.description && <p style={{ marginBottom: 4 }}>{product.description}</p>}
+        <ProductDetails
+          description={product.description}
+          highlights={product.highlights ?? []}
+          specs={(product.specs ?? []).map((s) => ({ label: s.label, value: s.value }))}
+          t={(de) => de}
+        />
 
         <VariantSelector variants={variants} />
       </div>

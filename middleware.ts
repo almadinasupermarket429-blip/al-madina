@@ -31,7 +31,7 @@ function contentSecurityPolicy(nonce: string) {
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https://images.unsplash.com",
+    "img-src 'self' data: https://images.unsplash.com https://res.cloudinary.com",
     "font-src 'self' data:",
     `connect-src 'self'${isDev ? " ws:" : ""}`,
     "frame-ancestors 'none'",

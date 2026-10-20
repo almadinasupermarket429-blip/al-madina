@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { sizedImage } from "@/lib/images";
 import Link from "next/link";
 import { ArrowLeft, LogOut, Package, User as UserIcon, Heart, MapPin, RefreshCw, Plus, Trash2, ShieldCheck, MailWarning, MailCheck, KeyRound, Pencil, XCircle } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
@@ -652,7 +653,7 @@ export default function AccountPage() {
                       <Link href={`/products/${p.slug}`} style={{ display: "block" }}>
                         {p.image ? (
                           <img
-                            src={p.image}
+                            src={sizedImage(p.image, 200)}
                             alt={p.name}
                             style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", borderRadius: 14 }}
                             className="border border-black/5"

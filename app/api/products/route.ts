@@ -17,6 +17,14 @@ type ProductRow = {
   category: string | null;
   description: string | null;
   image: string | null;
+  nameEn: string | null;
+  categoryEn: string | null;
+  descriptionEn: string | null;
+  brand: string | null;
+  highlights: string[];
+  highlightsEn: string[];
+  specs: unknown;
+  gallery: string[];
   badge: string | null;
   unitNote: string | null;
   tags: string[];
@@ -65,6 +73,8 @@ export async function GET() {
     )
     select
       p.id, p.name, c.name as category, p.description, p.image_url as image,
+      p.name_en as "nameEn", c.name_en as "categoryEn", p.description_en as "descriptionEn",
+      p.brand, p.highlights, p.highlights_en as "highlightsEn", p.specs, p.gallery,
       p.badge, p.unit_note as "unitNote", p.tags, p.is_active as active, p.sort_order as "sortOrder",
       p.slug, coalesce(c.sort_order, 9999) as "categorySortOrder",
       p.created_at as "createdAt", p.updated_at as "updatedAt",
