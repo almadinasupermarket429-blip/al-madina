@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { getAdminSession, isOwner } from "@/lib/auth";
+import { logAdminAction } from "@/lib/audit";
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,5 +19,6 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   }
 
   await prisma.$executeRaw`delete from reviews where id = ${id}::uuid`;
+  if (!isOwnerCustomer) await logAdminAction(adminSession, "review.delete", "review", id, "Bewertung entfernt");
   return NextResponse.json({ ok: true });
 }

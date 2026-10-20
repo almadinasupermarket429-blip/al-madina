@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession, isOwner } from "@/lib/auth";
 import { listCoupons, parseCouponInput } from "@/lib/coupons";
+import { logAdminAction } from "@/lib/audit";
 
 export async function GET() {
   const session = await getAdminSession();
@@ -25,5 +26,6 @@ export async function POST(req: NextRequest) {
     values (${parsed.code}, ${parsed.description}, ${parsed.discountType}, ${parsed.discountValue}, ${parsed.minSubtotal},
             ${parsed.maxUses}, ${parsed.oncePerCustomer}, ${parsed.startsAt}, ${parsed.expiresAt}, ${parsed.isActive})
   `;
+  await logAdminAction(session, "coupon.create", "coupon", null, `Gutschein angelegt: ${parsed.code}`);
   return NextResponse.json(await listCoupons(), { status: 201 });
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession, isOwner } from "@/lib/auth";
 import { listCoupons, parseCouponInput } from "@/lib/coupons";
+import { logAdminAction } from "@/lib/audit";
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
@@ -22,6 +23,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     where id = ${id}::uuid
   `;
   if (!updated) return NextResponse.json({ error: "Gutschein nicht gefunden." }, { status: 404 });
+  await logAdminAction(session, "coupon.update", "coupon", id, `Gutschein bearbeitet: ${parsed.code}`);
   return NextResponse.json(await listCoupons());
 }
 
@@ -30,6 +32,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!isOwner(session)) return NextResponse.json({ error: "Inhaberzugriff erforderlich." }, { status: 403 });
   const { id } = await params;
   // Past orders keep their own coupon_code snapshot, so deleting is safe.
-  await prisma.$executeRaw`delete from coupons where id = ${id}::uuid`;
+  const [gone] = await prisma.$queryRaw<{ code: string }[]>`delete from coupons where id = ${id}::uuid returning code`;
+  if (gone) await logAdminAction(session, "coupon.delete", "coupon", id, `Gutschein gelöscht: ${gone.code}`);
   return NextResponse.json(await listCoupons());
 }

@@ -50,6 +50,13 @@ type AdminSize = { id?: string; label: string; price: number; oldPrice?: number;
 type AdminProductView = {
   id: string;
   name: string;
+  nameEn: string | null;
+  descriptionEn: string | null;
+  brand: string | null;
+  highlights: string[];
+  highlightsEn: string[];
+  specs: ProductSpec[];
+  gallery: string[];
   category: string | null;
   description: string | null;
   image: string | null;
@@ -68,6 +75,8 @@ export async function getAdminProductView(id: string): Promise<AdminProductView 
   const rows = await prisma.$queryRaw<Omit<AdminProductView, "sizes">[]>`
     select
       p.id, p.name, c.name as category, p.description, p.image_url as image,
+      p.name_en as "nameEn", p.description_en as "descriptionEn", p.brand, p.highlights,
+      p.highlights_en as "highlightsEn", p.specs, p.gallery,
       p.badge, p.unit_note as "unitNote", p.tags, p.is_active as active, p.sort_order as "sortOrder",
       p.created_at as "createdAt", p.updated_at as "updatedAt"
     from products p
@@ -135,6 +144,50 @@ export async function replaceVariants(
       where id = any(${removed}::uuid[]) and not exists (select 1 from order_items oi where oi.variant_id = product_variants.id)
     `;
   }
+}
+
+export type ProductSpec = { label: string; labelEn?: string; value: string; valueEn?: string };
+
+/** The bilingual / detail fields of a product, cleaned up from an admin form submission. */
+export type ProductContent = {
+  nameEn: string | null;
+  descriptionEn: string | null;
+  brand: string | null;
+  highlights: string[];
+  highlightsEn: string[];
+  specs: ProductSpec[];
+  gallery: string[];
+};
+
+const text = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
+const lines = (v: unknown, maxItems: number, maxLen: number): string[] => {
+  const raw = Array.isArray(v) ? v : typeof v === "string" ? v.split(/\r?\n/) : [];
+  return raw.map((x) => String(x).trim().slice(0, maxLen)).filter(Boolean).slice(0, maxItems);
+};
+
+export function parseProductContent(body: Record<string, unknown>): ProductContent {
+  const specs = (Array.isArray(body.specs) ? body.specs : [])
+    .map((s) => {
+      const r = (s ?? {}) as Record<string, unknown>;
+      return {
+        label: text(r.label, 60) ?? "",
+        labelEn: text(r.labelEn, 60) ?? undefined,
+        value: text(r.value, 200) ?? "",
+        valueEn: text(r.valueEn, 200) ?? undefined,
+      };
+    })
+    .filter((s) => s.label && s.value)
+    .slice(0, 20);
+  const gallery = lines(body.gallery, 8, 500).filter((u) => /^https:\/\//.test(u));
+  return {
+    nameEn: text(body.nameEn, 200),
+    descriptionEn: text(body.descriptionEn, 4000),
+    brand: text(body.brand, 120),
+    highlights: lines(body.highlights, 10, 200),
+    highlightsEn: lines(body.highlightsEn, 10, 200),
+    specs,
+    gallery,
+  };
 }
 
 /** Normalises free-form tag input ("Halal, vegan ,Bio") into a clean, de-duplicated list. */

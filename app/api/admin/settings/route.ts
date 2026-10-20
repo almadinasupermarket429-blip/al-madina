@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, isOwner } from "@/lib/auth";
 import { getStoreSettings, updateStoreSettings } from "@/lib/settings";
+import { logAdminAction } from "@/lib/audit";
 
 export async function GET() {
   const session = await getAdminSession();
@@ -24,5 +25,6 @@ export async function PATCH(req: NextRequest) {
 
   const error = await updateStoreSettings(patch);
   if (error) return NextResponse.json({ error }, { status: 400 });
+  await logAdminAction(session, "settings.update", "settings", null, `Einstellungen geändert: ${Object.keys(patch).join(", ")}`, { changes: patch });
   return NextResponse.json(await getStoreSettings());
 }

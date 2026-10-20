@@ -6,6 +6,7 @@ import { ORDER_STATUSES } from "@/lib/order-utils";
 import { broadcastOrderEvent } from "@/lib/events";
 import { sendStatusUpdateEmail } from "@/lib/mailer";
 import { cancelOrder, getOrderById, setOrderStatus } from "@/lib/orders";
+import { logAdminAction } from "@/lib/audit";
 
 // Admin only: one order (packing slip, detail views).
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -35,6 +36,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (typeof body.internalNote === "string") {
     await prisma.$executeRaw`update orders set internal_note = ${body.internalNote.slice(0, 2000) || null} where id = ${id}::uuid`;
+    await logAdminAction(session, "order.note", "order", id, `Interne Notiz geändert: Bestellung #${existing.orderNumber}`);
     return NextResponse.json(await getOrderById(id));
   }
 
@@ -58,6 +60,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!order) return NextResponse.json({ error: "Bestellung nicht gefunden." }, { status: 404 });
 
   await broadcastOrderEvent({ type: "order_updated", orderId: order.id, status: order.status });
+  await logAdminAction(session, "order.status", "order", id, `Bestellung #${order.orderNumber}: ${existing.status} → ${order.status}`, {
+    before: existing.status,
+    after: order.status,
+    reason: body.reason ?? null,
+  });
 
   // See app/api/orders/route.ts for why this is wrapped in after() rather
   // than a bare fire-and-forget .catch() — same Vercel timing issue applies here.

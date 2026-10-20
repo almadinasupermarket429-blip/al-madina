@@ -12,6 +12,7 @@ import { rateLimit } from "./rate-limit";
  * - Expired or used email codes and password-reset links: removed.
  * - Orders: 10 years (German tax/commercial law, § 147 AO, § 257 HGB), then deleted.
  * - Deleted accounts: the anonymous placeholder goes once none of its orders remain.
+ * - Admin activity log: 2 years.
  */
 export async function runCleanupIfDue(): Promise<void> {
   const { allowed } = await rateLimit("maintenance:data-cleanup", 1, 6 * 60 * 60 * 1000);
@@ -29,6 +30,7 @@ export async function runCleanupIfDue(): Promise<void> {
       prisma.$executeRaw`delete from email_verifications where expires_at < now()`,
       prisma.$executeRaw`delete from password_resets where expires_at < now() or used_at is not null`,
       prisma.$executeRaw`delete from orders where created_at < now() - interval '10 years'`,
+      prisma.$executeRaw`delete from admin_audit_log where created_at < now() - interval '2 years'`,
       prisma.$executeRaw`
         delete from users u
         where u.deleted_at is not null

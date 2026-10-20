@@ -9,7 +9,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession, isOwner } from "@/lib/auth";
-import { getAdminProductView, parseTags, replaceVariants, resolveCategoryId, uniqueProductSlug } from "@/lib/catalog-admin";
+import { getAdminProductView, parseProductContent, parseTags, replaceVariants, resolveCategoryId, uniqueProductSlug } from "@/lib/catalog-admin";
+import { logAdminAction } from "@/lib/audit";
 
 type ProductRow = {
   id: string;
@@ -115,11 +116,14 @@ export async function POST(req: NextRequest) {
 
   const slug = await uniqueProductSlug(name);
   const categoryId = await resolveCategoryId(category);
+  const c = parseProductContent(body);
 
   const productId = await prisma.$transaction(async (tx) => {
     const created = await tx.$queryRaw<{ id: string }[]>`
-      insert into products (category_id, name, slug, description, image_url, badge, unit_note, is_active, tags)
-      values (${categoryId}::uuid, ${name.trim()}, ${slug}, ${description || null}, ${image}, ${badge || null}, ${unitNote || null}, ${active ?? true}, ${parseTags(tags)}::text[])
+      insert into products (category_id, name, slug, description, image_url, badge, unit_note, is_active, tags,
+                            name_en, description_en, brand, highlights, highlights_en, specs, gallery)
+      values (${categoryId}::uuid, ${name.trim()}, ${slug}, ${description || null}, ${image}, ${badge || null}, ${unitNote || null}, ${active ?? true}, ${parseTags(tags)}::text[],
+              ${c.nameEn}, ${c.descriptionEn}, ${c.brand}, ${c.highlights}::text[], ${c.highlightsEn}::text[], ${JSON.stringify(c.specs)}::jsonb, ${c.gallery}::text[])
       returning id
     `;
     const id = created[0].id;
@@ -128,5 +132,6 @@ export async function POST(req: NextRequest) {
   });
 
   const product = await getAdminProductView(productId);
+  await logAdminAction(session, "product.create", "product", productId, `Produkt angelegt: ${name.trim()}`);
   return NextResponse.json(product, { status: 201 });
 }

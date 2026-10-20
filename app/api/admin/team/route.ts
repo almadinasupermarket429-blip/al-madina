@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession, isOwner } from "@/lib/auth";
+import { logAdminAction } from "@/lib/audit";
 
 // admin_users is a role marker (user_id, role) on top of users — the actual
 // account (email, password, name) lives in users, shared with the customer
@@ -68,5 +69,6 @@ export async function POST(req: NextRequest) {
     join users u on u.id = a.user_id
     where a.user_id = ${userId}::uuid
   `;
+  await logAdminAction(session, "team.add", "team", userId, `Team-Zugang angelegt: ${created[0]?.email} (${role})`);
   return NextResponse.json(created[0], { status: 201 });
 }
