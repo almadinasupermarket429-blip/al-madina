@@ -96,7 +96,7 @@ test("cart drawer shows free-delivery progress", async ({ page }) => {
   const store = await (await page.request.get("/api/store")).json();
   test.skip(!(store.settings.deliveryEnabled && store.settings.freeDeliveryThreshold > 0), "free delivery disabled in settings");
 
-  await page.locator(".product-card", { hasText: "Coffee" }).locator(".add-btn").click();
+  await page.locator(".product-card", { hasText: "Durra Indischer Basmati-Reis Sella XXL" }).first().locator(".add-btn").click();
   await expect(page.locator(".cart-btn i")).toHaveText("1");
   await page.locator(".cart-btn").click();
   await expect(page.locator(".free-delivery .progress")).toBeVisible();

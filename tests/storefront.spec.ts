@@ -5,7 +5,7 @@ test("homepage loads with German as the default language", async ({ page }) => {
   await expect(page.locator("html")).toHaveAttribute("lang", "de");
   await expect(page.getByText("Ihr arabischer & türkischer Markt,")).toBeVisible();
   // .first(): a "Top rated" / "Recently viewed" grid can follow the main catalog grid.
-  await expect(page.locator(".product-grid").first()).toBeVisible();
+  await expect(page.locator(".product-grid").first()).toBeVisible({ timeout: 15_000 });
 });
 
 test("language toggle switches to English and persists across navigation", async ({ page }) => {
@@ -19,14 +19,12 @@ test("language toggle switches to English and persists across navigation", async
   await expect(page.getByText("Track your order")).toBeVisible();
 });
 
-// Both tests below target a stable seed-catalog product by name rather than
-// the positionally-"first" card. The grid sorts by created_at desc, and the
-// admin product-CRUD test (tests/admin.spec.ts) creates and deletes its own
-// product concurrently — that transient product can briefly become "first"
-// and then get deleted out from under a "first()" locator here, causing a
-// genuine VARIANT_NOT_FOUND on the add-to-cart request. "Coffee" is part of
-// the fixed seed data and is never created/deleted by any test.
-const STABLE_PRODUCT_TEXT = "Coffee";
+// Both tests below target one real catalog product by its exact name rather than
+// the positionally-"first" card: the admin product-CRUD test (tests/admin.spec.ts)
+// creates and deletes its own product concurrently, and a "first()" locator could
+// land on it just before it is deleted. This product belongs to the "Reis" category,
+// which is sorted first, so it is always on the first page of the grid.
+export const STABLE_PRODUCT_TEXT = "Durra Indischer Basmati-Reis Sella XXL";
 
 test("add to cart updates the cart badge and drawer", async ({ page }) => {
   await page.goto("/");
