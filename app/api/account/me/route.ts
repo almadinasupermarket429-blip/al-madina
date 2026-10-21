@@ -6,6 +6,7 @@ import { getCustomerSession, signCustomerToken, CUSTOMER_COOKIE_NAME, CUSTOMER_C
 import { isPlausiblePhoneNumber } from "@/lib/phone";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { anonymizeAccount, deletionBlocker } from "@/lib/account-data";
+import { googleLoginEnabled } from "@/lib/google-auth";
 
 type UserRow = {
   id: string;
@@ -28,8 +29,9 @@ async function loadUser(userId: string): Promise<UserRow | null> {
 
 export async function GET() {
   const session = await getCustomerSession();
-  if (!session) return NextResponse.json({ user: null });
-  return NextResponse.json({ user: await loadUser(session.userId) });
+  const googleLogin = googleLoginEnabled();
+  if (!session) return NextResponse.json({ user: null, googleLogin });
+  return NextResponse.json({ user: await loadUser(session.userId), googleLogin });
 }
 
 // Update profile (name, phone) and/or change password (requires the current one).

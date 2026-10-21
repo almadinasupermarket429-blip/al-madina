@@ -319,6 +319,8 @@ footer>*{position:relative;z-index:1}
 /* Short privacy notice under sign-up and checkout forms (GDPR Art. 13) */
 .privacy-note{font-size:12px;line-height:1.5;color:#6d766f;margin:4px 0 10px}
 .privacy-note a{color:#a12e3d;text-decoration:underline;font-weight:600}
+.google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px 16px;border:1px solid rgba(0,0,0,.15);border-radius:999px;background:#fff;color:#1f1f1f;font-weight:600;font-size:14px;text-decoration:none;transition:background .15s,border-color .15s}
+.google-btn:hover{background:#f7f7f7;border-color:rgba(0,0,0,.25)}
 
 /* "Show more" under the product grid (renders the catalog in pages of 24) */
 .show-more{display:flex;justify-content:center;margin-top:28px}

@@ -1,12 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Lock, ShoppingBag } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { GoogleLogo } from "@/app/components/GoogleLogo";
 
 export default function AdminLoginPage() {
   const { t } = useLanguage();
+  const [googleLogin, setGoogleLogin] = useState(false);
+  useEffect(() => {
+    fetch("/api/account/me")
+      .then((r) => r.json())
+      .then((d) => setGoogleLogin(Boolean(d.googleLogin)))
+      .catch(() => {});
+  }, []);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -83,6 +91,12 @@ export default function AdminLoginPage() {
         >
           <Lock size={15} /> {loading ? t("Anmeldung läuft…", "Signing in…") : t("Anmelden", "Sign in")}
         </button>
+
+        {googleLogin && (
+          <a href="/api/account/google?next=/admin" className="google-btn" style={{ marginTop: 12, borderRadius: 8, padding: "9px 16px" }}>
+            <GoogleLogo /> {t("Mit Google anmelden", "Sign in with Google")}
+          </a>
+        )}
 
         <Link href="/" className="mt-5 flex items-center justify-center gap-2 text-xs text-black/40 hover:text-black/70">
           <ShoppingBag size={13} /> {t("Zurück zum Shop", "Back to storefront")}

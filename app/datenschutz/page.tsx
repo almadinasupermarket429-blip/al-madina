@@ -75,11 +75,17 @@ export default function DatenschutzPage() {
           </p>
         </Section>
 
-        <Section title={t("5. E-Mail-Bestätigung", "5. Email verification")}>
+        <Section title={t("5. E-Mail-Bestätigung und Anmeldung mit Google", "5. Email verification and Google sign-in")}>
           <p>
             {t(
               "Bei der Registrierung senden wir einen einmaligen Bestätigungscode an Ihre E-Mail-Adresse, um zu verhindern, dass Bestellungen mit falschen oder fremden Kontaktdaten aufgegeben werden. Wenn Sie „Passwort vergessen“ nutzen, speichern wir für 60 Minuten nur einen gehashten Einmal-Link, der nach Gebrauch ungültig wird. Rechtsgrundlage: Art. 6 Abs. 1 lit. b und lit. f DSGVO.",
               "When you register, we send a one-time verification code to your email address to prevent orders being placed with false or someone else's contact details. If you use “forgot password”, we store only a hashed one-time link for 60 minutes, which becomes invalid once used. Legal basis: Art. 6(1)(b) and (f) GDPR."
+            )}
+          </p>
+          <p style={{ marginTop: 10 }}>
+            {t(
+              "Anmeldung mit Google (freiwillig): Wenn Sie „Weiter mit Google“ wählen, werden Sie zu Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland, weitergeleitet. Erst nach diesem Klick werden Daten an Google übertragen; unsere Seiten laden vorher nichts von Google. Nach Ihrer Zustimmung bei Google erhalten wir nur Ihren Namen und Ihre von Google bestätigte E-Mail-Adresse und legen damit Ihr Konto an bzw. melden Sie an. Google verarbeitet dabei Daten in eigener Verantwortung, auch in den USA (EU-US Data Privacy Framework); siehe policies.google.com/privacy. Rechtsgrundlage: Art. 6 Abs. 1 lit. a und lit. b DSGVO. Sie können sich jederzeit stattdessen mit E-Mail und Passwort anmelden.",
+              "Sign in with Google (optional): if you choose “Continue with Google”, you are taken to Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Ireland. Data only goes to Google after that click; our pages load nothing from Google beforehand. Once you agree at Google, we receive only your name and the email address Google has verified, and use them to create your account or sign you in. Google processes data under its own responsibility, including in the USA (EU-US Data Privacy Framework); see policies.google.com/privacy. Legal basis: Art. 6(1)(a) and (b) GDPR. You can always sign in with email and password instead."
             )}
           </p>
         </Section>

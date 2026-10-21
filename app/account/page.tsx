@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { sizedImage } from "@/lib/images";
 import Link from "next/link";
 import { DeleteAccount } from "@/app/components/DeleteAccount";
+import { GoogleLogo } from "@/app/components/GoogleLogo";
 import { ArrowLeft, LogOut, Package, User as UserIcon, Heart, MapPin, RefreshCw, Plus, Trash2, ShieldCheck, MailWarning, MailCheck, KeyRound, Pencil, XCircle } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
@@ -45,6 +46,8 @@ export default function AccountPage() {
   const [addressError, setAddressError] = useState("");
   const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
   const [forgotMessage, setForgotMessage] = useState("");
+  const [googleLogin, setGoogleLogin] = useState(false);
+  const [googleError, setGoogleError] = useState("");
 
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileName, setProfileName] = useState("");
@@ -74,6 +77,7 @@ export default function AccountPage() {
       .then(async (res) => {
         if (!res.ok) throw new Error("Not logged in");
         const data = await res.json();
+        setGoogleLogin(Boolean(data.googleLogin));
         setAccount(data.user || null);
       })
       .catch(() => setAccount(null));
@@ -81,7 +85,12 @@ export default function AccountPage() {
 
   useEffect(() => {
     loadAccount();
-    if (new URLSearchParams(window.location.search).get("forgot") === "1") setMode("forgot");
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("forgot") === "1") setMode("forgot");
+    const google = params.get("google");
+    if (google === "cancelled") setGoogleError(t("Die Anmeldung mit Google wurde abgebrochen.", "Google sign-in was cancelled."));
+    else if (google) setGoogleError(t("Die Anmeldung mit Google hat nicht geklappt. Bitte versuchen Sie es erneut.", "Google sign-in didn't work. Please try again."));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- read the URL once on load
   }, []);
 
   async function submitForgot(e: React.FormEvent) {
@@ -375,6 +384,24 @@ export default function AccountPage() {
                 </button>
               </form>
             ) : (
+            <>
+            {googleLogin && (
+              <div style={{ display: "grid", gap: 14, marginBottom: 14 }}>
+                <a href="/api/account/google" className="google-btn">
+                  <GoogleLogo /> {t("Weiter mit Google", "Continue with Google")}
+                </a>
+                <p className="privacy-note" style={{ margin: 0 }}>
+                  {t("Sie werden zu Google weitergeleitet. Wir erhalten nur Ihren Namen und Ihre E-Mail-Adresse. Details in unserer ", "You'll be taken to Google. We only receive your name and email address. Details in our ")}
+                  <Link href="/datenschutz">{t("Datenschutzerklärung", "Privacy Policy")}</Link>.
+                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, ...muted }}>
+                  <span style={{ flex: 1, height: 1, background: "rgba(0,0,0,.1)" }} />
+                  {t("oder mit E-Mail", "or with email")}
+                  <span style={{ flex: 1, height: 1, background: "rgba(0,0,0,.1)" }} />
+                </div>
+              </div>
+            )}
+            {googleError && <div className="checkout-error" style={{ marginBottom: 14 }}>{googleError}</div>}
             <form onSubmit={submit} className="checkout-fields">
               {mode === "register" && (
                 <input required placeholder={t("Vollständiger Name", "Full name")} value={name} onChange={(e) => setName(e.target.value)} />
@@ -415,6 +442,7 @@ export default function AccountPage() {
                 </button>
               )}
             </form>
+            </>
             )}
           </div>
         )}
