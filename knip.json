@@ -6,8 +6,5 @@
   ],
   "ignoreDependencies": [
     "eslint-config-next"
-  ],
-  "ignoreBinaries": [
-    "knip"
   ]
 }
