@@ -25,7 +25,7 @@ export default function DatenschutzPage() {
 
         <span className="eyebrow block mb-1">{t("Rechtliches", "Legal")}</span>
         <h1 style={{ fontSize: 32, marginBottom: 6 }}>{t("Datenschutzerklärung", "Privacy Policy")}</h1>
-        <p style={{ fontSize: 12, color: "rgba(24,32,27,.5)", marginBottom: 24 }}>
+        <p style={{ fontSize: 12, color: "rgba(24,32,27,.7)", marginBottom: 24 }}>
           {t(
             "Diese Erklärung beschreibt tatsächlich, welche Daten diese Website verarbeitet. Die mit [PLATZHALTER] markierten Angaben müssen vor Veröffentlichung ergänzt und juristisch geprüft werden.",
             "This policy accurately describes what data this website actually processes. Fields marked [PLACEHOLDER] must be filled in and legally reviewed before going live."
@@ -99,7 +99,7 @@ export default function DatenschutzPage() {
               "Wir setzen ausschließlich technisch notwendige Cookies ein (Login-Sitzung, Warenkorb) — keine Analyse- oder Marketing-Cookies. Zusätzlich speichert Ihr Browser lokal nur Ihre gewählte Sprache und dass Sie den Cookie-Hinweis geschlossen haben. Rechtsgrundlage ist § 25 Abs. 2 Nr. 2 TDDDG (unbedingt erforderlich für den von Ihnen gewünschten Dienst). Details finden Sie in unseren ",
               "We only use strictly necessary cookies (login session, shopping cart) — no analytics or marketing cookies. In addition, your browser stores only your chosen language and that you closed the cookie notice. Legal basis: § 25(2) no. 2 TDDDG (strictly necessary for the service you requested). See our "
             )}
-            <Link href="/cookie-einstellungen" style={{ color: "var(--green)", fontWeight: 700, textDecoration: "underline" }}>
+            <Link href="/cookie-einstellungen" style={{ color: "var(--green-text)", fontWeight: 700, textDecoration: "underline" }}>
               {t("Cookie-Einstellungen", "cookie settings")}
             </Link>{" "}
             {t("für Details.", "for details.")}
@@ -190,7 +190,7 @@ export default function DatenschutzPage() {
           </p>
         </Section>
 
-        <p style={{ fontSize: 12, color: "rgba(24,32,27,.5)" }}>
+        <p style={{ fontSize: 12, color: "rgba(24,32,27,.7)" }}>
           {t(
             "Dieser Text wurde als Ausgangspunkt erstellt und ersetzt keine Rechtsberatung.",
             "This text was drafted as a starting point and does not replace legal advice."

@@ -87,7 +87,7 @@ export default function ImpressumPage() {
           </p>
         </section>
 
-        <p style={{ fontSize: 12, color: "rgba(24,32,27,.5)" }}>
+        <p style={{ fontSize: 12, color: "rgba(24,32,27,.7)" }}>
           {t(
             "Dieser Text wurde als Ausgangspunkt erstellt und ersetzt keine Rechtsberatung.",
             "This text was drafted as a starting point and does not replace legal advice."

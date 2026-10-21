@@ -109,9 +109,10 @@ export function Catalog(props: Props) {
             </button>
           ))}
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "rgba(24,32,27,.65)" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "rgba(24,32,27,.7)" }}>
           <ArrowUpDown size={14} />
           <select
+            aria-label={t("Sortieren", "Sort")}
             value={sort}
             onChange={(e) => setSort(e.target.value as SortOption)}
             style={{ border: "1px solid rgba(0,0,0,.12)", borderRadius: 8, padding: "6px 8px", background: "transparent" }}

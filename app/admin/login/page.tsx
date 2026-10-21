@@ -47,12 +47,13 @@ export default function AdminLoginPage() {
           <img src="/logo.png" alt="Al-Madina" className="w-12 h-14 object-contain" />
           <div>
             <div className="font-serif text-lg font-medium">Al-Madina Admin</div>
-            <div className="text-xs text-black/50">{t("Store-Verwaltungsportal", "Store management portal")}</div>
+            <div className="text-xs text-black/60">{t("Store-Verwaltungsportal", "Store management portal")}</div>
           </div>
         </div>
 
-        <label className="block text-xs font-semibold text-black/60 mb-1">{t("Benutzername", "Username")}</label>
+        <label htmlFor="admin-username" className="block text-xs font-semibold text-black/60 mb-1">{t("Benutzername", "Username")}</label>
         <input
+          id="admin-username"
           name="username"
           autoComplete="username"
           value={username}
@@ -62,8 +63,9 @@ export default function AdminLoginPage() {
           required
         />
 
-        <label className="block text-xs font-semibold text-black/60 mb-1">{t("Passwort", "Password")}</label>
+        <label htmlFor="admin-password" className="block text-xs font-semibold text-black/60 mb-1">{t("Passwort", "Password")}</label>
         <input
+          id="admin-password"
           type="password"
           name="password"
           autoComplete="current-password"

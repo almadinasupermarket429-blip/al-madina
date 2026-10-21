@@ -13,7 +13,7 @@ export default function GlobalError({ reset }: { error: Error & { digest?: strin
         </div>
         <span className="eyebrow block mb-1">{t("Fehler", "Error")}</span>
         <h1 style={{ fontSize: 26, margin: "8px 0 8px" }}>{t("Etwas ist schiefgelaufen", "Something went wrong")}</h1>
-        <p style={{ color: "rgba(24,32,27,.6)", fontSize: 14, marginBottom: 24 }}>
+        <p style={{ color: "rgba(24,32,27,.7)", fontSize: 14, marginBottom: 24 }}>
           {t("Bitte versuchen Sie es erneut — falls das Problem weiterhin besteht, laden Sie die Seite neu.", "Please try again — if the problem keeps happening, reload the page.")}
         </p>
         <button onClick={reset} className="primary-btn full" style={{ justifyContent: "center" }}>

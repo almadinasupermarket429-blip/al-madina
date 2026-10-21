@@ -85,19 +85,19 @@ export default function CookieEinstellungenPage() {
                 <code style={{ fontSize: 12, fontWeight: 700, background: "rgba(0,0,0,.04)", padding: "2px 8px", borderRadius: 6 }}>
                   {c.name}
                 </code>
-                <span style={{ fontSize: 11, color: "rgba(24,32,27,.5)" }}>{t(c.duration[0], c.duration[1])}</span>
+                <span style={{ fontSize: 11, color: "rgba(24,32,27,.7)" }}>{t(c.duration[0], c.duration[1])}</span>
               </div>
               <p style={{ fontSize: 13, margin: 0, color: "#454f49" }}>{t(c.purpose[0], c.purpose[1])}</p>
             </div>
           ))}
         </div>
 
-        <p style={{ fontSize: 13, color: "rgba(24,32,27,.6)", lineHeight: 1.7 }}>
+        <p style={{ fontSize: 13, color: "rgba(24,32,27,.7)", lineHeight: 1.7 }}>
           {t(
             "Da diese Cookies für den Betrieb des Shops (Anmeldung, Warenkorb) erforderlich sind, können sie nicht deaktiviert werden, ohne diese Funktionen unbrauchbar zu machen. Weitere Informationen finden Sie in unserer ",
             "Because these cookies are required for the shop to function (login, cart), they can't be disabled without breaking those features. See our "
           )}
-          <Link href="/datenschutz" style={{ color: "var(--green)", fontWeight: 700, textDecoration: "underline" }}>
+          <Link href="/datenschutz" style={{ color: "var(--green-text)", fontWeight: 700, textDecoration: "underline" }}>
             {t("Datenschutzerklärung", "Privacy Policy")}
           </Link>
           .

@@ -146,7 +146,7 @@ export async function replaceVariants(
   }
 }
 
-export type ProductSpec = { label: string; labelEn?: string; value: string; valueEn?: string };
+type ProductSpec = { label: string; labelEn?: string; value: string; valueEn?: string };
 
 /** The bilingual / detail fields of a product, cleaned up from an admin form submission. */
 export type ProductContent = {

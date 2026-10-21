@@ -79,7 +79,7 @@ export function ProductDetailModal({ product, account, liked, onLike, onClose, o
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "6px 0 14px" }}>
           <StarRating value={summary.average} size={16} />
-          <span style={{ fontSize: 14, color: "rgba(24,32,27,.65)" }}>
+          <span style={{ fontSize: 14, color: "rgba(24,32,27,.7)" }}>
             {summary.count > 0
               ? `${summary.average.toFixed(1)} · ${summary.count} ${t(summary.count === 1 ? "Bewertung" : "Bewertungen", summary.count === 1 ? "review" : "reviews")}`
               : t("Noch keine Bewertungen", "No reviews yet")}

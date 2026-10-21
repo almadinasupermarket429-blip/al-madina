@@ -144,7 +144,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0 14px" }}>
           <StarRating value={reviewStats.average} size={16} />
-          <span style={{ fontSize: 14, color: "rgba(24,32,27,.65)" }}>
+          <span style={{ fontSize: 14, color: "rgba(24,32,27,.7)" }}>
             {reviewStats.count > 0
               ? `${reviewStats.average.toFixed(1)} · ${reviewStats.count} ${reviewStats.count === 1 ? "Bewertung" : "Bewertungen"}`
               : "Noch keine Bewertungen"}

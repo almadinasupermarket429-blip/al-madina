@@ -55,9 +55,9 @@ function errorResponse(err: unknown) {
 }
 
 export async function GET(req: NextRequest) {
-  const { identity, newGuestToken } = await resolveIdentity(req);
-  const res = NextResponse.json(await getCart(identity));
-  return withGuestCookie(res, newGuestToken);
+  // A first-time visitor gets an empty cart and no cookie; the cookie comes with the first item.
+  const { identity } = await resolveIdentity(req);
+  return NextResponse.json(await getCart(identity));
 }
 
 export async function POST(req: NextRequest) {

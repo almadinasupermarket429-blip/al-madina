@@ -29,8 +29,8 @@ const STATUS_LABEL: Record<string, [string, string]> = {
   CANCELLED: ["Storniert", "Cancelled"],
 };
 
-const muted = { color: "rgba(24,32,27,.6)" };
-const mutedLight = { color: "rgba(24,32,27,.45)" };
+const muted = { color: "rgba(24,32,27,.7)" };
+const mutedLight = { color: "rgba(24,32,27,.7)" };
 
 export default function AccountPage() {
   const { t } = useLanguage();
@@ -345,7 +345,7 @@ export default function AccountPage() {
                   style={{ letterSpacing: 4, fontSize: 16 }}
                 />
                 {verifyError && <div className="checkout-error">{verifyError}</div>}
-                {resendMessage && <small style={{ color: "var(--green)" }}>{resendMessage}</small>}
+                {resendMessage && <small style={{ color: "var(--green-text)" }}>{resendMessage}</small>}
                 <button className="primary-btn full" disabled={verifying || verifyCode.length !== 6}>
                   {verifying ? t("Wird geprüft…", "Checking…") : t("Konto aktivieren", "Activate account")}
                 </button>
@@ -366,7 +366,7 @@ export default function AccountPage() {
                 </p>
                 <input required type="email" autoComplete="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
                 {error && <div className="checkout-error">{error}</div>}
-                {forgotMessage && <small style={{ color: "var(--green)" }}>{forgotMessage}</small>}
+                {forgotMessage && <small style={{ color: "var(--green-text)" }}>{forgotMessage}</small>}
                 <button className="primary-btn full" disabled={submitting}>
                   {submitting ? t("Bitte warten…", "Please wait…") : t("Link senden", "Send link")}
                 </button>
@@ -482,7 +482,7 @@ export default function AccountPage() {
                   <span>
                     <b>{t("Telefon", "Phone")}:</b> {account.phone || <span style={mutedLight}>{t("nicht angegeben", "not set")}</span>}
                   </span>
-                  {profileMessage && <small style={{ color: "var(--green)" }}>{profileMessage}</small>}
+                  {profileMessage && <small style={{ color: "var(--green-text)" }}>{profileMessage}</small>}
                 </div>
               ) : (
                 <form onSubmit={saveProfile} className="checkout-fields" style={{ gridTemplateColumns: "1fr 1fr", marginBottom: 0 }}>
@@ -530,7 +530,7 @@ export default function AccountPage() {
 
             {/* Email verification */}
             {account.emailVerified ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--green)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--green-text)" }}>
                 <MailCheck size={16} /> {t("E-Mail bestätigt", "Email verified")}
               </div>
             ) : (
@@ -578,7 +578,7 @@ export default function AccountPage() {
                   </button>
                 </form>
                 {verifyError && <div className="checkout-error">{verifyError}</div>}
-                {resendMessage && <small style={{ color: "var(--green)" }}>{resendMessage}</small>}
+                {resendMessage && <small style={{ color: "var(--green-text)" }}>{resendMessage}</small>}
               </div>
             )}
 
@@ -606,7 +606,7 @@ export default function AccountPage() {
                             fontSize: 12,
                             fontWeight: 700,
                             background: "rgba(161,46,61,.08)",
-                            color: "var(--green)",
+                            color: "var(--green-text)",
                             padding: "5px 12px",
                             borderRadius: 999,
                           }}

@@ -4,8 +4,13 @@
 
 const needsQuotes = /[";,\r\n]/;
 
+// Text starting with one of these is run as a formula by Excel/Sheets (CSV injection), e.g. a customer
+// named =HYPERLINK(...). Such text is written with a leading apostrophe, which Excel shows as plain text.
+const formulaStart = /^[=+\-@\t\r]/;
+
 function cell(value: unknown): string {
-  const s = value == null ? "" : String(value);
+  let s = value == null ? "" : String(value);
+  if (typeof value === "string" && formulaStart.test(s)) s = `'${s}`;
   return needsQuotes.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
@@ -48,7 +53,10 @@ export function parseCsv(input: string): string[][] {
     row.push(field);
     rows.push(row);
   }
-  return rows.filter((r) => r.some((c) => c.trim() !== ""));
+  // Undo the apostrophe toCsv adds in front of formula-like text, so an exported file imports unchanged.
+  return rows
+    .filter((r) => r.some((c) => c.trim() !== ""))
+    .map((r) => r.map((c) => (c.startsWith("'") && formulaStart.test(c.slice(1)) ? c.slice(1) : c)));
 }
 
 /** Accepts "2,49", "2.49", "€ 2,49" → 2.49; returns null for empty/invalid. */

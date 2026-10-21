@@ -19,6 +19,22 @@ describe("toCsv", () => {
   });
 });
 
+describe("formula protection (CSV injection)", () => {
+  it("writes formula-like text with a leading apostrophe so Excel doesn't run it", () => {
+    const out = toCsv([['=HYPERLINK("http://evil","x")', "+49 170 123", "@SUM(A1)", "-1+2"]]);
+    expect(out.slice(1)).toBe(`"'=HYPERLINK(""http://evil"",""x"")";'+49 170 123;'@SUM(A1);'-1+2\r\n`);
+  });
+
+  it("leaves numbers and normal text alone", () => {
+    expect(toCsv([[-5, 2.49, "Durra"]]).slice(1)).toBe("-5;2.49;Durra\r\n");
+  });
+
+  it("imports an exported file unchanged", () => {
+    const rows = [["name", "telefon"], ["=1+1", "+49 170 123"]];
+    expect(parseCsv(toCsv(rows))).toEqual(rows);
+  });
+});
+
 describe("parseCsv", () => {
   it("round-trips what toCsv writes", () => {
     const rows = [

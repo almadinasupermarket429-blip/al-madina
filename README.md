@@ -40,6 +40,10 @@ npm run db:seed          # optional: demo catalog, only if the catalog is empty
 npm run dev              # http://localhost:3000  ·  admin: /admin
 ```
 
-Tests (Playwright): `npm run test:e2e` — set `E2E_PORT=3100` if another app already uses port 3000.
+Checks: `npm run typecheck`, `npm run lint`, `npm run knip` and `npm run test:unit` (no database needed) run on GitHub
+for every push. Tests (Playwright): `npm run test:e2e` — set `E2E_PORT=3100` if another app already uses port 3000.
+The e2e tests write to the database in `.env` (they create and delete products), so point it at a test database first.
+
+How it fits together, who may do what, and the security and data rules: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 See **[SETUP.md](SETUP.md)** for configuration, email, admin accounts and deployment.

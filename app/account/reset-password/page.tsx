@@ -68,7 +68,7 @@ function ResetPasswordForm() {
       )}
       {done && (
         <>
-          <p style={{ display: "flex", gap: 8, alignItems: "center", color: "var(--green)" }}>
+          <p style={{ display: "flex", gap: 8, alignItems: "center", color: "var(--green-text)" }}>
             <Check size={18} /> {t("Ihr Passwort wurde geändert.", "Your password has been changed.")}
           </p>
           <Link href="/account" className="primary-btn full" style={{ marginTop: 16, justifyContent: "center" }}>

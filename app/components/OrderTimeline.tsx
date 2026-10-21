@@ -102,11 +102,11 @@ export default function OrderTimeline({ order }: { order: TrackableOrder }) {
               >
                 <Icon size={16} />
               </div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: done ? "#18201b" : "rgba(24,32,27,.4)" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: done ? "#18201b" : "rgba(24,32,27,.7)" }}>
                 {label ? t(label[0], label[1]) : step}
               </div>
               {time && (
-                <small style={{ color: "rgba(24,32,27,.5)" }}>
+                <small style={{ color: "rgba(24,32,27,.7)" }}>
                   {new Date(time).toLocaleDateString()} {new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </small>
               )}
@@ -123,7 +123,7 @@ export default function OrderTimeline({ order }: { order: TrackableOrder }) {
         ))}
       </ul>
       {order.discount ? (
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "var(--green)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "var(--green-text)" }}>
           <span>
             {t("Rabatt", "Discount")} {order.couponCode ? `(${order.couponCode})` : ""}
           </span>

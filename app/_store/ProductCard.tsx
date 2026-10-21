@@ -59,13 +59,13 @@ export const ProductCard = memo(function ProductCard({ product, liked, onLike, o
         {product.ratingCount > 0 ? (
           <button onClick={open} style={{ ...linkButton, display: "flex", alignItems: "center", gap: 6 }}>
             <StarRating value={product.ratingAverage} />
-            <small style={{ color: "rgba(24,32,27,.6)" }}>
+            <small style={{ color: "rgba(24,32,27,.7)" }}>
               {product.ratingAverage.toFixed(1)} ({product.ratingCount})
             </small>
           </button>
         ) : (
           <button onClick={open} style={linkButton}>
-            <small style={{ color: "rgba(24,32,27,.45)" }}>{t("Noch keine Bewertungen", "No reviews yet")}</small>
+            <small style={{ color: "rgba(24,32,27,.7)" }}>{t("Noch keine Bewertungen", "No reviews yet")}</small>
           </button>
         )}
 

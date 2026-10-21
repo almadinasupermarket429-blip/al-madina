@@ -116,7 +116,7 @@ export function Reviews({ productId, account, reviews, loading, onSubmitted, t }
 
       {loading && <div className="empty">{t("Bewertungen werden geladen…", "Loading reviews…")}</div>}
       {!loading && reviews.length === 0 && (
-        <p style={{ color: "rgba(24,32,27,.5)" }}>{t("Seien Sie der Erste, der dieses Produkt bewertet.", "Be the first to review this product.")}</p>
+        <p style={{ color: "rgba(24,32,27,.7)" }}>{t("Seien Sie der Erste, der dieses Produkt bewertet.", "Be the first to review this product.")}</p>
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {reviews.map((r) => (
@@ -126,7 +126,7 @@ export function Reviews({ productId, account, reviews, loading, onSubmitted, t }
               <b style={{ fontSize: 14 }}>{r.title || r.authorName}</b>
             </div>
             {r.comment && <p style={{ fontSize: 14, marginTop: 4 }}>{r.comment}</p>}
-            <small style={{ color: "rgba(24,32,27,.5)" }}>
+            <small style={{ color: "rgba(24,32,27,.7)" }}>
               {r.authorName} · {new Date(r.createdAt).toLocaleDateString()}
             </small>
           </div>

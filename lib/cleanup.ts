@@ -11,6 +11,7 @@ import { rateLimit } from "./rate-limit";
  * Retention rules (keep in sync with the privacy policy, section "Speicherdauer"):
  * - Sign-ups never confirmed by email: 7 days.
  * - Guest shopping carts: 90 days after last change (same as the cart cookie).
+ * - Empty guest carts: 1 day.
  * - Expired or used email codes and password-reset links: removed.
  * - Contact details on orders (email, phone, notes; name and address on receipts up to
  *   €250): 90 days after the order is delivered or cancelled.
@@ -31,6 +32,10 @@ export async function runCleanupIfDue(): Promise<void> {
           and not exists (select 1 from admin_users a where a.user_id = u.id)
       `,
       prisma.$executeRaw`delete from carts where guest_token is not null and updated_at < now() - interval '90 days'`,
+      prisma.$executeRaw`
+        delete from carts c where c.guest_token is not null and c.updated_at < now() - interval '1 day'
+          and not exists (select 1 from cart_items i where i.cart_id = c.id)
+      `,
       prisma.$executeRaw`delete from email_verifications where expires_at < now()`,
       prisma.$executeRaw`delete from password_resets where expires_at < now() or used_at is not null`,
       redactFinishedOrders(Prisma.sql`updated_at < now() - interval '90 days'`),

@@ -10,7 +10,7 @@ import { prisma } from "./prisma";
 
 export type CartIdentity = { userId: string } | { guestToken: string };
 
-export type CartItem = {
+type CartItem = {
   id: string;
   variant_id: string;
   quantity: number;
@@ -78,9 +78,24 @@ async function getCartByCartId(cartId: string): Promise<Cart> {
   return { cartId, items, subtotal };
 }
 
+/** The visitor's cart id, or null. Never creates one. */
+async function findCartId(identity: CartIdentity): Promise<string | null> {
+  const rows =
+    "userId" in identity
+      ? await prisma.$queryRaw<{ id: string }[]>`select id from carts where user_id = ${identity.userId}::uuid limit 1`
+      : await prisma.$queryRaw<{ id: string }[]>`select id from carts where guest_token = ${identity.guestToken} limit 1`;
+  return rows[0]?.id ?? null;
+}
+
+const EMPTY_CART: Cart = { cartId: "", items: [], subtotal: 0 };
+
+/**
+ * Only adding creates a cart row. Reading, changing or clearing a cart that doesn't exist yet
+ * answers with an empty cart, so visitors and bots that only look leave nothing in the database.
+ */
 export async function getCart(identity: CartIdentity): Promise<Cart> {
-  const cartId = await getOrCreateCartId(identity);
-  return getCartByCartId(cartId);
+  const cartId = await findCartId(identity);
+  return cartId ? getCartByCartId(cartId) : EMPTY_CART;
 }
 
 export async function addToCart(
@@ -119,7 +134,8 @@ export async function updateCartItemQuantity(
   itemId: string,
   quantity: number
 ): Promise<Cart> {
-  const cartId = await getOrCreateCartId(identity);
+  const cartId = await findCartId(identity);
+  if (!cartId) throw new Error("ITEM_NOT_FOUND");
 
   if (quantity <= 0) {
     await prisma.$executeRaw`delete from cart_items where id = ${itemId}::uuid and cart_id = ${cartId}::uuid`;
@@ -141,13 +157,15 @@ export async function updateCartItemQuantity(
 }
 
 export async function removeCartItem(identity: CartIdentity, itemId: string): Promise<Cart> {
-  const cartId = await getOrCreateCartId(identity);
+  const cartId = await findCartId(identity);
+  if (!cartId) return EMPTY_CART;
   await prisma.$executeRaw`delete from cart_items where id = ${itemId}::uuid and cart_id = ${cartId}::uuid`;
   return getCartByCartId(cartId);
 }
 
 export async function clearCart(identity: CartIdentity): Promise<void> {
-  const cartId = await getOrCreateCartId(identity);
+  const cartId = await findCartId(identity);
+  if (!cartId) return;
   await prisma.$executeRaw`delete from cart_items where cart_id = ${cartId}::uuid`;
 }
 

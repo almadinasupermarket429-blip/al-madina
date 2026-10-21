@@ -4,7 +4,7 @@ import type { Product, SortOption } from "./types";
 export const ALL = "All";
 export const OFFERS = "Offers";
 
-export function isOnSale(p: Product): boolean {
+function isOnSale(p: Product): boolean {
   return p.sizes.some((s) => s.oldPrice != null && s.oldPrice > s.price);
 }
 

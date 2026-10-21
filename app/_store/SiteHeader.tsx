@@ -55,8 +55,8 @@ export function SiteHeader({ settings, account, cartCount, query, onQueryChange,
 
       <header className="sticky top-0 z-40 border-b border-black/5 bg-[#f8f7f3]/95 backdrop-blur-xl">
         <div className="nav-row">
-          <a href="#top" className="header-logo group nav-left" aria-label="Al-Madina home">
-            <img src="/logo.png" alt="Al-Madina Markt logo" className="logo-image" />
+          <a href="#top" className="header-logo group nav-left" title={t("Zur Startseite", "Home")}>
+            <img src="/logo.png" alt="" className="logo-image" />
             <span className="header-logo-text">
               <b>al-madina</b>
               <small>market · seit 1998</small>
@@ -89,7 +89,7 @@ export function SiteHeader({ settings, account, cartCount, query, onQueryChange,
                   <ShieldCheck size={16} /> Admin
                 </a>
               )}
-              <button onClick={() => setLanguage(otherLanguage)} className="language-btn" aria-label={t("Sprache wechseln", "Change language")}>
+              <button onClick={() => setLanguage(otherLanguage)} className="language-btn" title={t("Sprache wechseln", "Change language")} lang={language === "de" ? "en" : "de"}>
                 {language === "de" ? "English" : "Deutsch"}
               </button>
               <a className="icon-btn hidden sm:flex" href={PHONE_LINK} aria-label={t("Al-Madina anrufen", "Call Al-Madina")}>
@@ -102,7 +102,7 @@ export function SiteHeader({ settings, account, cartCount, query, onQueryChange,
                 <User size={19} />
               </a>
             </div>
-            <button className="cart-btn" onClick={onOpenCart} aria-label="Open basket">
+            <button className="cart-btn" onClick={onOpenCart} aria-label={`${t("Warenkorb", "Basket")} (${cartCount})`}>
               <ShoppingBag size={19} />
               <span>{t("Warenkorb", "Basket")}</span>
               <i>{cartCount}</i>

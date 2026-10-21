@@ -1,0 +1,22 @@
+# Types, lint, unused code and unit tests on every push and pull request. No database or secrets needed.
+name: Checks
+on:
+  push:
+  pull_request:
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    env:
+      # Only so modules that read it at import time load; never a real secret.
+      JWT_SECRET: ci-only-not-a-real-secret-0123456789abcdef
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run knip
+      - run: npm run test:unit

@@ -6,7 +6,7 @@ import { prisma } from "./prisma";
  * Orders above this total keep the customer's name and address, because a full invoice
  * must show them (§ 14 UStG). Smaller receipts don't need them (§ 33 UStDV).
  */
-export const FULL_INVOICE_THRESHOLD_EUR = 250;
+const FULL_INVOICE_THRESHOLD_EUR = 250;
 
 /**
  * Removes contact details from finished (delivered or cancelled) orders matching `where`.
