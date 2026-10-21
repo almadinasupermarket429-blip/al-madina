@@ -81,20 +81,6 @@ export default function ImpressumPage() {
           <h2 style={{ fontSize: 16, marginBottom: 10 }}>{t("Streitschlichtung", "Dispute resolution")}</h2>
           <p style={{ lineHeight: 1.8 }}>
             {t(
-              "Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:",
-              "The European Commission provides a platform for online dispute resolution (ODR):"
-            )}{" "}
-            <a
-              href="https://ec.europa.eu/consumers/odr/"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: "var(--green)", fontWeight: 700, textDecoration: "underline" }}
-            >
-              https://ec.europa.eu/consumers/odr/
-            </a>
-            <br />
-            <br />
-            {t(
               "Wir sind nicht verpflichtet und nicht bereit, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen. [PLATZHALTER — bitte bestätigen oder anpassen]",
               "We are not obliged and not willing to participate in dispute resolution proceedings before a consumer arbitration board. [PLACEHOLDER — please confirm or amend]"
             )}

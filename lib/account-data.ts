@@ -1,5 +1,32 @@
 import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
+
+/**
+ * Orders above this total keep the customer's name and address, because a full invoice
+ * must show them (§ 14 UStG). Smaller receipts don't need them (§ 33 UStDV).
+ */
+export const FULL_INVOICE_THRESHOLD_EUR = 250;
+
+/**
+ * Removes contact details from finished (delivered or cancelled) orders matching `where`.
+ * The order itself (number, date, items, totals) stays for the tax retention period.
+ * The delivery link is replaced so it can never show the order again.
+ */
+export function redactFinishedOrders(where: Prisma.Sql) {
+  return prisma.$executeRaw`
+    update orders set
+      customer_email = '',
+      customer_phone = '',
+      notes = null,
+      internal_note = null,
+      delivery_address_id = null,
+      delivery_token = 'redacted-' || id::text,
+      customer_name = case when total > ${FULL_INVOICE_THRESHOLD_EUR} then customer_name else 'Gelöscht' end,
+      address = case when total > ${FULL_INVOICE_THRESHOLD_EUR} then address else null end
+    where status in ('DELIVERED', 'CANCELLED') and customer_email <> '' and ${where}
+  `;
+}
 
 /** Why an account can't be deleted right now, or null if it can. */
 export async function deletionBlocker(userId: string): Promise<"ADMIN" | "OPEN_ORDERS" | null> {
@@ -14,8 +41,9 @@ export async function deletionBlocker(userId: string): Promise<"ADMIN" | "OPEN_O
 /**
  * GDPR Art. 17: erases the personal data on an account (name, email, phone, password,
  * addresses, wishlist, cart, reviews, pending codes). Past orders are kept, because
- * German tax/commercial law requires business records for 6–10 years (§ 147 AO,
- * § 257 HGB); they stay linked to an anonymous placeholder that can no longer sign in.
+ * German tax law requires business records for 8 years (§ 147 AO, § 257 HGB), but their
+ * contact details are removed right away. They stay linked to an anonymous placeholder
+ * that can no longer sign in.
  */
 export async function anonymizeAccount(userId: string): Promise<void> {
   const unusablePassword = await bcrypt.hash(crypto.randomUUID() + crypto.randomUUID(), 10);
@@ -26,6 +54,7 @@ export async function anonymizeAccount(userId: string): Promise<void> {
     prisma.$executeRaw`delete from carts where user_id = ${userId}::uuid`,
     prisma.$executeRaw`delete from email_verifications where user_id = ${userId}::uuid`,
     prisma.$executeRaw`delete from password_resets where user_id = ${userId}::uuid`,
+    redactFinishedOrders(Prisma.sql`user_id = ${userId}::uuid`),
     prisma.$executeRaw`
       update users set
         email = ${`deleted-${userId}@deleted.invalid`},

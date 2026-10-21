@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const data = await exportAccountData(id).catch(() => null);
   if (!data) return NextResponse.json({ error: "Kunde nicht gefunden." }, { status: 404 });
-  await logAdminAction(session, "customer.export", "customer", id, `Datenauskunft erstellt für ${String(data.account.email)}`);
+  await logAdminAction(session, "customer.export", "customer", id, `Datenauskunft erstellt, Konto ${id.slice(0, 8)}`);
   return new NextResponse(JSON.stringify(data, null, 2), {
     headers: {
       "Content-Type": "application/json; charset=utf-8",

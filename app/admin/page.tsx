@@ -345,12 +345,18 @@ function OrderCard({
       <div className="grid md:grid-cols-[1fr_1.2fr] gap-5">
         <div className="text-sm space-y-1.5">
           <div className="font-semibold">{order.customerName}</div>
-          <a href={`tel:${order.customerPhone.replace(/\s/g, "")}`} className="flex items-center gap-1.5 text-black/60 hover:text-[#a12e3d]">
-            <Phone size={13} /> {order.customerPhone}
-          </a>
-          <div className="flex items-start gap-1.5 text-black/60">
-            <Mail size={13} className="mt-0.5 shrink-0" /> <span className="break-all">{order.customerEmail}</span>
-          </div>
+          {order.customerEmail ? (
+            <>
+              <a href={`tel:${order.customerPhone.replace(/\s/g, "")}`} className="flex items-center gap-1.5 text-black/60 hover:text-[#a12e3d]">
+                <Phone size={13} /> {order.customerPhone}
+              </a>
+              <div className="flex items-start gap-1.5 text-black/60">
+                <Mail size={13} className="mt-0.5 shrink-0" /> <span className="break-all">{order.customerEmail}</span>
+              </div>
+            </>
+          ) : (
+            <div className="text-black/40 italic">{t("Kontaktdaten entfernt (Datenschutz)", "Contact details removed (privacy)")}</div>
+          )}
           {order.fulfillment === "DELIVERY" && order.address && (
             <a
               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.address)}`}

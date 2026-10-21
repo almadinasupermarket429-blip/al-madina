@@ -69,8 +69,8 @@ export default function DatenschutzPage() {
           </p>
           <p>
             {t(
-              "Bestelldaten unterliegen gesetzlichen Aufbewahrungsfristen für Geschäftsunterlagen (i. d. R. 6–10 Jahre nach §§ 147 AO, 257 HGB). Wie lange wir welche Daten speichern, steht in Abschnitt 9.",
-              "Order data is subject to statutory retention periods for business records (generally 6–10 years under German tax/commercial law). Section 9 explains how long we keep which data."
+              "Bestellungen müssen wir als Geschäftsunterlagen 8 Jahre aufbewahren (§§ 147 AO, 257 HGB). Ihre Kontaktdaten entfernen wir daraus aber schon 90 Tage nach Abschluss der Bestellung. Wie lange wir welche Daten speichern, steht in Abschnitt 9.",
+              "We must keep orders as business records for 8 years (German tax/commercial law). We remove your contact details from them 90 days after the order is completed, though. Section 9 explains how long we keep which data."
             )}
           </p>
         </Section>
@@ -116,8 +116,8 @@ export default function DatenschutzPage() {
           <ul style={{ paddingLeft: 20, listStyle: "disc", display: "grid", gap: 6 }}>
             <li>
               {t(
-                "Vercel Inc., USA — Hosting und Betrieb der Website (verarbeitet u. a. IP-Adressen beim Seitenaufruf).",
-                "Vercel Inc., USA — website hosting and operation (processes e.g. IP addresses when pages are loaded)."
+                "Vercel Inc., USA — Hosting und Betrieb der Website (verarbeitet u. a. IP-Adressen beim Seitenaufruf). Serverstandort: Frankfurt am Main, Deutschland (EU).",
+                "Vercel Inc., USA — website hosting and operation (processes e.g. IP addresses when pages are loaded). Server location: Frankfurt am Main, Germany (EU)."
               )}
             </li>
             <li>
@@ -159,7 +159,9 @@ export default function DatenschutzPage() {
             <li>{t("Nicht per E-Mail bestätigte Registrierungen: 7 Tage.", "Sign-ups never confirmed by email: 7 days.")}</li>
             <li>{t("Warenkorb ohne Konto: 90 Tage nach der letzten Änderung.", "Shopping cart without an account: 90 days after the last change.")}</li>
             <li>{t("Bestätigungscodes und Links zum Zurücksetzen des Passworts: bis sie benutzt werden oder ablaufen (höchstens 60 Minuten).", "Verification codes and password-reset links: until used or expired (at most 60 minutes).")}</li>
-            <li>{t("Bestellungen: 10 Jahre (gesetzliche Aufbewahrungspflicht), danach automatische Löschung. Wenn Sie Ihr Konto löschen, bleiben die Bestellungen bis dahin ohne Verbindung zu einem Konto gespeichert.", "Orders: 10 years (statutory retention), then deleted automatically. If you delete your account, orders are kept until then without a link to any account.")}</li>
+            <li>{t("Kontaktdaten in Bestellungen (E-Mail, Telefon, Hinweise): 90 Tage nach Zustellung, Abholung oder Stornierung. Name und Adresse ebenfalls, außer bei Bestellungen über 250 €, für die eine vollständige Rechnung aufbewahrt werden muss. Wenn Sie Ihr Konto löschen, entfernen wir diese Daten sofort.", "Contact details in orders (email, phone, notes): 90 days after delivery, pickup or cancellation. Name and address too, except for orders over €250, which need a full invoice on file. If you delete your account, we remove them immediately.")}</li>
+            <li>{t("Bestellungen selbst (Bestellnummer, Datum, Artikel, Beträge): 8 Jahre (gesetzliche Aufbewahrungspflicht), danach automatische Löschung.", "The orders themselves (order number, date, items, amounts): 8 years (statutory retention), then deleted automatically.")}</li>
+            <li>{t("Protokoll der Änderungen im Verwaltungsbereich: 2 Jahre.", "Log of changes made in the admin area: 2 years.")}</li>
             <li>{t("Server-Logdateien: gemäß den Einstellungen unseres Hosting-Anbieters, in der Regel wenige Tage.", "Server log files: according to our hosting provider's settings, usually a few days.")}</li>
           </ul>
         </Section>

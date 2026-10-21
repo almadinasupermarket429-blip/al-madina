@@ -15,9 +15,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Bestellnummer und E-Mail sind erforderlich." }, { status: 400 });
   }
 
-  const order = await getOrderByNumber(orderNumber.trim().toUpperCase());
+  const order = await getOrderByNumber(String(orderNumber).trim().toUpperCase());
+  const givenEmail = String(email).trim().toLowerCase();
 
-  if (!order || order.customerEmail.toLowerCase() !== email.trim().toLowerCase()) {
+  // An empty email never matches, so orders whose contact details were removed can't be looked up.
+  if (!order || !givenEmail || !order.customerEmail || order.customerEmail.toLowerCase() !== givenEmail) {
     return NextResponse.json({ error: "Keine Bestellung mit dieser Bestellnummer und E-Mail gefunden." }, { status: 404 });
   }
 

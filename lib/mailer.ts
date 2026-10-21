@@ -227,6 +227,7 @@ export async function sendStoreNotificationEmail(order: OrderWithItems) {
 
 /** Email sent to the customer when their order status changes. */
 export async function sendStatusUpdateEmail(order: OrderWithItems) {
+  if (!order.customerEmail) return { sent: false, reason: "Contact details removed" };
   const transport = getTransport();
   const statusText: Record<string, string> = {
     PACKED: "Ihre Bestellung wurde gepackt",
