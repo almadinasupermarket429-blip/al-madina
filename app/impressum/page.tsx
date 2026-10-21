@@ -81,8 +81,8 @@ export default function ImpressumPage() {
           <h2 style={{ fontSize: 16, marginBottom: 10 }}>{t("Streitschlichtung", "Dispute resolution")}</h2>
           <p style={{ lineHeight: 1.8 }}>
             {t(
-              "Wir sind nicht verpflichtet und nicht bereit, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen. [PLATZHALTER — bitte bestätigen oder anpassen]",
-              "We are not obliged and not willing to participate in dispute resolution proceedings before a consumer arbitration board. [PLACEHOLDER — please confirm or amend]"
+              "Wir sind nicht verpflichtet und nicht bereit, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.",
+              "We are not obliged and not willing to participate in dispute resolution proceedings before a consumer arbitration board."
             )}
           </p>
         </section>

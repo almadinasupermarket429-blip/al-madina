@@ -134,8 +134,8 @@ export default function DatenschutzPage() {
             </li>
             <li>
               {t(
-                "[PLATZHALTER — E-Mail-Anbieter, z. B. Google Ireland Ltd. (Google Workspace)] — Versand von Bestätigungs-, Status- und Bestellbenachrichtigungs-E-Mails.",
-                "[PLACEHOLDER — email provider, e.g. Google Ireland Ltd. (Google Workspace)] — sending confirmation, status and order notification emails."
+                "Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland (Gmail) — Versand von Bestätigungs-, Status- und Bestellbenachrichtigungs-E-Mails.",
+                "Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Ireland (Gmail) — sending confirmation, status and order notification emails."
               )}
             </li>
           </ul>

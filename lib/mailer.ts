@@ -190,7 +190,11 @@ export async function sendCustomerConfirmationEmail(order: OrderWithItems) {
   return { sent: true };
 }
 
-/** Email sent to the store owner when a new order comes in. */
+/**
+ * Email sent to the store owner when a new order comes in. It deliberately leaves out the
+ * customer's name, contact details, address and notes, so no personal data ends up in the
+ * store's mailbox. The full order is in the admin portal.
+ */
 export async function sendStoreNotificationEmail(order: OrderWithItems) {
   const transport = getTransport();
   const storeEmail = process.env.STORE_NOTIFICATION_EMAIL;
@@ -199,10 +203,9 @@ export async function sendStoreNotificationEmail(order: OrderWithItems) {
   const html = baseWrapper(
     `Neue Bestellung #${escapeHtml(order.orderNumber)}`,
     `
-    <p><b>${escapeHtml(order.customerName)}</b> · ${escapeHtml(order.customerPhone)} · ${escapeHtml(order.customerEmail)}</p>
-    ${fulfillmentLine(order)}
+    <p><b>${order.fulfillment === "PICKUP" ? "Abholung im Laden" : "Lieferung"}</b></p>
     ${slotLine(order)}
-    ${order.notes ? `<p><b>Hinweis:</b> ${escapeHtml(order.notes)}</p>` : ""}
+    <p style="color:#666">Kundendaten, Adresse und Hinweise finden Sie im Admin-Portal.</p>
     ${order.substitution ? `<p><b>Falls nicht verfügbar:</b> ${escapeHtml(SUBSTITUTION_TEXT[order.substitution] ?? order.substitution)}</p>` : ""}
     ${order.discount ? `<p><b>Gutschein:</b> ${escapeHtml(order.couponCode ?? "")} (−${money(order.discount)})</p>` : ""}
     ${itemsTable(order.items)}
