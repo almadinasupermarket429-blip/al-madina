@@ -18,7 +18,7 @@ export function safeNextPath(next: string | null | undefined): string {
   return next;
 }
 
-export function redirectUri(origin: string): string {
+function redirectUri(origin: string): string {
   return `${origin}/api/account/google/callback`;
 }
 
