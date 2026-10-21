@@ -17,15 +17,16 @@ if (existsSync(".env")) {
   }
 }
 
-export async function createTestCustomer(request: APIRequestContext) {
+export async function createTestCustomer(request: APIRequestContext, fullName = "Playwright Customer") {
   const prisma = new PrismaClient();
   const email = `pw-customer-${randomBytes(4).toString("hex")}@example.com`;
   const password = `Pw-${randomBytes(8).toString("hex")}`;
   const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
     `insert into users (email, password_hash, full_name, email_verified_at)
-     values ($1, $2, 'Playwright Customer', now()) returning id`,
+     values ($1, $2, $3, now()) returning id`,
     email,
-    await bcrypt.hash(password, 10)
+    await bcrypt.hash(password, 10),
+    fullName
   );
   const userId = rows[0].id;
 
@@ -34,6 +35,7 @@ export async function createTestCustomer(request: APIRequestContext) {
 
   return {
     email,
+    password,
     async remove() {
       await prisma.$executeRawUnsafe(`delete from users where id = $1::uuid`, userId);
       await prisma.$disconnect();

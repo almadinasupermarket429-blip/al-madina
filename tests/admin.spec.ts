@@ -36,10 +36,10 @@ test.describe("admin", () => {
     await page.goto("/admin/products");
     await page.getByRole("button", { name: /Produkt hinzufügen/i }).click();
 
-    await page.getByPlaceholder("z. B. Bäckerei").fill("Playwright Test Category");
-    await page.locator(".input").first().fill(name);
-    await page.getByPlaceholder("https://…").fill("https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5");
-    await page.getByPlaceholder(/z\. B\. 500g/).fill("Test size");
+    await page.getByPlaceholder("z. B. Reis").fill("Playwright Test Category");
+    await page.getByRole("textbox", { name: "Name (Deutsch)" }).fill(name);
+    await page.getByPlaceholder("…oder Bild-URL einfügen").fill("/logo.png");
+    await page.getByPlaceholder("z. B. 500 g").fill("Test size");
     await page.getByPlaceholder("Preis €").fill("2.50");
 
     await page.getByRole("button", { name: /Produkt speichern/i }).click();
@@ -49,7 +49,7 @@ test.describe("admin", () => {
       // round trips (category lookup/create, slug check, product + variant
       // insert, then a read-back) — give this realistic headroom rather
       // than the tight 5s default.
-      await expect(page.getByText(name)).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText(name, { exact: true })).toBeVisible({ timeout: 10_000 });
 
       // Confirm it actually reaches the public storefront endpoint, not just the admin list.
       const res = await request.get("/api/products");
@@ -64,7 +64,8 @@ test.describe("admin", () => {
       if (await deleteBtn.count()) {
         page.on("dialog", (d) => d.accept());
         await deleteBtn.click();
-        await expect(page.getByText(name)).toBeHidden();
+        await expect(deleteBtn).toBeHidden();
+        await expect(page.getByRole("status")).toContainText("gelöscht");
       }
       // The UI removes the row optimistically, so make sure the product is really gone
       // server-side before removing the category its save auto-created.

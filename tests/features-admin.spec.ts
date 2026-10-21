@@ -27,6 +27,7 @@ test.describe("admin store features", () => {
       ["/admin/analytics", "Analyse"],
       ["/admin/team", "Team"],
       ["/admin/settings", "Einstellungen"],
+      ["/admin/activity", "Aktivitätsprotokoll"],
     ];
     // Owner links render once /api/admin/me answers — wait for the last one before checking the rest.
     await expect(page.locator('aside a[href="/admin/settings"]').first()).toBeAttached({ timeout: 15_000 });

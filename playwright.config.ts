@@ -19,6 +19,11 @@ const BASE_URL = `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: "./tests",
+  // Unit tests (Vitest) live in tests/unit — not Playwright's.
+  testIgnore: ["**/unit/**"],
+  // PW_OUTPUT_DIR lets the run keep traces/screenshots outside a synced folder (e.g. OneDrive),
+  // which otherwise deletes files while the test runner is still writing them.
+  outputDir: process.env.PW_OUTPUT_DIR || "test-results",
   fullyParallel: true,
   // Production serves each request via its own isolated serverless function;
   // locally everything shares one `next dev` process + a single remote DB
@@ -26,7 +31,7 @@ export default defineConfig({
   // doesn't reflect real behavior — cap it for stable local runs.
   workers: 2,
   retries: 0,
-  reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],
+  reporter: [["list"], ["html", { open: "never", outputFolder: process.env.PW_REPORT_DIR || "playwright-report" }]],
   use: {
     baseURL: BASE_URL,
     screenshot: "only-on-failure",

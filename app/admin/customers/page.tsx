@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import AdminShell from "../components/AdminShell";
-import { MailCheck, MailWarning, Search } from "lucide-react";
+import { Download, MailCheck, MailWarning, Search, Trash2 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
 type Customer = {
@@ -22,6 +22,27 @@ export default function CustomersPage() {
   const { t, language } = useLanguage();
   const [customers, setCustomers] = useState<Customer[] | null>(null);
   const [q, setQ] = useState("");
+  const [reload, setReload] = useState(0);
+  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // GDPR erasure on request (e.g. the customer asked by phone). Orders are kept for the legal retention period.
+  async function eraseCustomer(c: Customer) {
+    const ok = confirm(
+      t(
+        `Alle persönlichen Daten von ${c.name} (${c.email}) löschen?
+
+Name, E-Mail, Telefon, Adressen, Wunschliste und Bewertungen werden entfernt. Bestellungen bleiben aus steuerlichen Gründen ohne Personenbezug erhalten. Dies kann nicht rückgängig gemacht werden.`,
+        `Delete all personal data of ${c.name} (${c.email})?
+
+Name, email, phone, addresses, wishlist and reviews are removed. Orders are kept for tax reasons, no longer linked to the person. This cannot be undone.`
+      )
+    );
+    if (!ok) return;
+    const res = await fetch(`/api/admin/customers/${c.id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    setNotice(res.ok ? { ok: true, text: t("Kundendaten gelöscht.", "Customer data deleted.") } : { ok: false, text: data.error || t("Löschen fehlgeschlagen.", "Couldn't delete.") });
+    if (res.ok) setReload((n) => n + 1);
+  }
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -30,7 +51,7 @@ export default function CustomersPage() {
         .then((data) => setCustomers(Array.isArray(data) ? data : []));
     }, 250);
     return () => clearTimeout(timer);
-  }, [q]);
+  }, [q, reload]);
 
   const locale = language === "de" ? "de-DE" : "en-GB";
   const total = customers?.reduce((s, c) => s + c.totalSpent, 0) ?? 0;
@@ -67,8 +88,14 @@ export default function CustomersPage() {
         />
       </div>
 
+      {notice && (
+        <div className={`rounded-xl text-sm px-4 py-3 mb-4 ${notice.ok ? "bg-green-50 text-green-800" : "bg-red-50 text-red-700"}`} role="status">
+          {notice.text}
+        </div>
+      )}
+
       <div className="admin-card overflow-x-auto !p-2">
-        <table className="admin-table min-w-[720px]">
+        <table className="admin-table min-w-[820px]">
           <thead>
             <tr>
               <th>{t("Kunde", "Customer")}</th>
@@ -77,6 +104,7 @@ export default function CustomersPage() {
               <th className="text-right">{t("Umsatz", "Spent")}</th>
               <th>{t("Letzte Bestellung", "Last order")}</th>
               <th>{t("Kunde seit", "Joined")}</th>
+              <th className="text-right">{t("DSGVO", "GDPR")}</th>
             </tr>
           </thead>
           <tbody>
@@ -99,6 +127,24 @@ export default function CustomersPage() {
                 <td className="text-right">€{c.totalSpent.toFixed(2)}</td>
                 <td>{c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString(locale) : <span className="text-black/30">–</span>}</td>
                 <td>{new Date(c.createdAt).toLocaleDateString(locale)}</td>
+                <td className="text-right whitespace-nowrap">
+                  <a
+                    href={`/api/admin/customers/${c.id}`}
+                    className="btn-outline !px-2.5 !py-1.5 mr-1"
+                    title={t("Datenauskunft herunterladen (Art. 15)", "Download data export (Art. 15)")}
+                    aria-label={t(`Daten von ${c.name} exportieren`, `Export data of ${c.name}`)}
+                  >
+                    <Download size={13} />
+                  </a>
+                  <button
+                    onClick={() => eraseCustomer(c)}
+                    className="btn-danger !px-2.5 !py-1.5"
+                    title={t("Persönliche Daten löschen (Art. 17)", "Erase personal data (Art. 17)")}
+                    aria-label={t(`Daten von ${c.name} löschen`, `Erase data of ${c.name}`)}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

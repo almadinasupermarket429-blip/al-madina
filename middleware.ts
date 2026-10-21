@@ -14,6 +14,7 @@ const OWNER_ONLY_PREFIXES = [
   "/admin/customers",
   "/admin/reviews",
   "/admin/categories",
+  "/admin/activity",
 ];
 
 const isDev = process.env.NODE_ENV !== "production";

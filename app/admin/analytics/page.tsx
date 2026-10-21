@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import AdminShell from "../components/AdminShell";
+import { OrderExport } from "./OrderExport";
 import { AlertTriangle, TrendingUp, TrendingDown, Package, Receipt, Users, XCircle, Ticket, Store, Truck } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
@@ -93,6 +94,8 @@ export default function AnalyticsPage() {
         <h1 className="text-3xl font-serif">{t("Analyse", "Analytics")}</h1>
         {rangeTabs}
       </div>
+
+      <OrderExport t={t} />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <Kpi icon={Receipt} label={t("Umsatz", "Revenue")} value={money(data.totalRevenue)} delta={change(data.totalRevenue, data.previous.revenue)} t={t} />

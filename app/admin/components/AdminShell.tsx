@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { ClipboardList, LogOut, Package, ShoppingBag, Volume2, VolumeX, BarChart3, Menu, X, Settings, Ticket, CalendarClock, Users, MessageSquare, Tags, UserCog } from "lucide-react";
+import { ClipboardList, LogOut, Package, ShoppingBag, Volume2, VolumeX, BarChart3, Menu, X, Settings, Ticket, CalendarClock, Users, MessageSquare, Tags, UserCog, History } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
 type AdminMe = { username: string; role: "OWNER" | "STAFF"; adminId: string | null };
@@ -96,6 +96,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           { href: "/admin/customers", label: t("Kunden", "Customers"), icon: Users },
           { href: "/admin/reviews", label: t("Bewertungen", "Reviews"), icon: MessageSquare },
           { href: "/admin/analytics", label: t("Analyse", "Analytics"), icon: BarChart3 },
+          { href: "/admin/activity", label: t("Aktivität", "Activity log"), icon: History },
           { href: "/admin/team", label: t("Team", "Team"), icon: UserCog },
           { href: "/admin/settings", label: t("Einstellungen", "Settings"), icon: Settings },
         ]
