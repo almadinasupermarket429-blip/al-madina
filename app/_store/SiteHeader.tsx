@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Menu, Phone, Search, ShoppingBag, Truck, User, X } from "lucide-react";
+import { Menu, Phone, Search, ShieldCheck, ShoppingBag, Truck, User, X } from "lucide-react";
 import type { StoreSettings } from "@/lib/settings-shared";
 import type { Account, Language, Translate } from "./types";
 import { PHONE, PHONE_LINK } from "./ui";
@@ -84,6 +84,11 @@ export function SiteHeader({ settings, account, cartCount, query, onQueryChange,
 
           <div className="nav-right">
             <div className="nav-extra">
+              {account?.role && (
+                <a className="language-btn" href="/admin" style={{ display: "inline-flex", alignItems: "center", gap: 6 }} title={t("Zum Admin-Portal", "Open admin portal")}>
+                  <ShieldCheck size={16} /> Admin
+                </a>
+              )}
               <button onClick={() => setLanguage(otherLanguage)} className="language-btn" aria-label={t("Sprache wechseln", "Change language")}>
                 {language === "de" ? "English" : "Deutsch"}
               </button>
@@ -141,6 +146,11 @@ export function SiteHeader({ settings, account, cartCount, query, onQueryChange,
             <a href="/account" onClick={closeNav}>
               <User size={17} /> {account ? account.name : t("Anmelden", "Sign in")}
             </a>
+            {account?.role && (
+              <a href="/admin" onClick={closeNav}>
+                <ShieldCheck size={17} /> {t("Admin-Portal", "Admin portal")}
+              </a>
+            )}
             <a href={PHONE_LINK} onClick={closeNav}>
               <Phone size={17} /> {PHONE}
             </a>

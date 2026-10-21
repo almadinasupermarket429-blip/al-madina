@@ -83,7 +83,7 @@ export function localizeProduct(p: RawProduct, language: Language): Product {
 }
 
 export type SortOption = "relevance" | "price-asc" | "price-desc" | "rating";
-export type Account = { id: string; name: string; email: string; phone: string | null };
+export type Account = { id: string; name: string; email: string; phone: string | null; role?: "OWNER" | "STAFF" | null };
 export type Slot = { id: string; date: string; start: string; end: string; remaining: number };
 
 export type CartItem = {
