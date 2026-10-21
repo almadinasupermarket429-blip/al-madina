@@ -54,7 +54,7 @@ export default function AccountOrderDetailPage() {
                 <h1 style={{ fontSize: 26 }}>#{order.orderNumber}</h1>
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {order.status === "PLACED" && (
+                {(order.status === "PLACED" || order.status === "PACKED") && (
                   <button className="outline-btn" onClick={cancel} style={{ color: "#b3261e" }}>
                     <XCircle size={16} /> {t("Stornieren", "Cancel")}
                   </button>
@@ -67,6 +67,15 @@ export default function AccountOrderDetailPage() {
             {cancelError && <div className="checkout-error" style={{ marginBottom: 16 }}>{cancelError}</div>}
 
             <OrderTimeline order={order} />
+
+            {(order.status === "OUT_FOR_DELIVERY" || order.status === "DELIVERED") && (
+              <p style={{ marginTop: 20, fontSize: 13, color: "rgba(24,32,27,.6)" }}>
+                {t("Sie möchten vom Kauf zurücktreten? ", "Want to withdraw from this purchase? ")}
+                <Link href={`/widerruf?order=${encodeURIComponent(order.orderNumber)}`} style={{ color: "#a12e3d", fontWeight: 700, textDecoration: "underline" }}>
+                  {t("Vertrag widerrufen", "Withdraw from contract")}
+                </Link>
+              </p>
+            )}
           </div>
         )}
       </div>

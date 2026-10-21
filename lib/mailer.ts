@@ -389,3 +389,63 @@ export async function sendAccountExistsEmail(email: string, name: string, loginU
   });
   return { sent: true };
 }
+
+export type WithdrawalOutcome = "cancelled" | "recorded";
+
+/**
+ * Confirms receipt of a withdrawal (Widerruf) to the customer. The law requires this
+ * confirmation on a durable medium without delay, so it is sent for every withdrawal.
+ */
+export async function sendWithdrawalConfirmationEmail(order: OrderWithItems, outcome: WithdrawalOutcome, receivedAt: Date) {
+  if (!order.customerEmail) return { sent: false, reason: "Contact details removed" };
+  const transport = getTransport();
+  const when = receivedAt.toLocaleString("de-DE", { timeZone: "Europe/Berlin", dateStyle: "long", timeStyle: "short" });
+  const next =
+    outcome === "cancelled"
+      ? `<p>Ihre Bestellung hatte unseren Laden noch nicht verlassen und ist jetzt <b>storniert</b>. Sie müssen nichts weiter tun und nichts bezahlen.</p>`
+      : `<p>Ihre Bestellung wurde bereits ausgeliefert. Wir melden uns bei Ihnen, um die Rückgabe und die Erstattung zu besprechen. Bitte beachten Sie: Für schnell verderbliche Lebensmittel und nach der Lieferung geöffnete versiegelte Waren besteht kein Widerrufsrecht.</p>`;
+
+  const html = baseWrapper(
+    `Ihr Widerruf zu Bestellung #${escapeHtml(order.orderNumber)}`,
+    `
+    <p>Hallo ${escapeHtml(order.customerName)},</p>
+    <p>wir bestätigen den Eingang Ihres Widerrufs für die Bestellung <b>#${escapeHtml(order.orderNumber)}</b> am <b>${escapeHtml(when)} Uhr</b>.</p>
+    ${next}
+    <p>Fragen? Rufen Sie uns an: ${escapeHtml(STORE.phoneDisplay)}.</p>
+    `
+  );
+
+  if (!transport) {
+    console.warn("[mailer] SMTP not configured — skipping withdrawal confirmation for order", order.orderNumber);
+    return { sent: false, reason: "SMTP not configured" };
+  }
+  await transport.sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: order.customerEmail,
+    subject: `Eingangsbestätigung Ihres Widerrufs — Bestellung #${order.orderNumber}`,
+    html,
+  });
+  return { sent: true };
+}
+
+/** Tells the store a withdrawal came in. No customer details: those are in the admin portal. */
+export async function sendStoreWithdrawalNotice(orderNumber: string, outcome: WithdrawalOutcome) {
+  const transport = getTransport();
+  const storeEmail = process.env.STORE_NOTIFICATION_EMAIL;
+  if (!transport || !storeEmail) return { sent: false, reason: "SMTP or store email not configured" };
+  const adminUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ""}/admin`;
+  const what =
+    outcome === "cancelled"
+      ? "Die Bestellung war noch nicht unterwegs und wurde automatisch storniert. Bitte nicht ausliefern."
+      : "Die Bestellung war bereits unterwegs oder ausgeliefert. Bitte Kunden kontaktieren (Rückgabe/Erstattung). Hinweis steht an der Bestellung im Admin-Portal.";
+  await transport.sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: storeEmail,
+    subject: `↩️ Widerruf zu Bestellung #${orderNumber}`,
+    html: baseWrapper(
+      `Widerruf zu Bestellung #${escapeHtml(orderNumber)}`,
+      `<p>${what}</p><p><a href="${adminUrl}" style="display:inline-block;margin-top:12px;background:#a12e3d;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Admin-Portal öffnen</a></p>`
+    ),
+  });
+  return { sent: true };
+}

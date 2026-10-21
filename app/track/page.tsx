@@ -75,6 +75,16 @@ export default function TrackOrderPage() {
           <div>
             <h2 style={{ fontSize: 22, marginBottom: 16 }}>#{order.orderNumber}</h2>
             <OrderTimeline order={order} />
+            {order.status !== "CANCELLED" && (
+              <p style={{ marginTop: 20, fontSize: 13, color: "rgba(24,32,27,.6)" }}>
+                {order.status === "PLACED" || order.status === "PACKED"
+                  ? t("Noch nicht unterwegs? Sie können die Bestellung jetzt noch stornieren: ", "Not on its way yet? You can still cancel the order: ")
+                  : t("Sie möchten vom Kauf zurücktreten? ", "Want to withdraw from this purchase? ")}
+                <a href={`/widerruf?order=${encodeURIComponent(order.orderNumber)}`} style={{ color: "#a12e3d", fontWeight: 700, textDecoration: "underline" }}>
+                  {t("Vertrag widerrufen", "Withdraw from contract")}
+                </a>
+              </p>
+            )}
             <button className="text-btn mt-6 font-medium text-[#a12e3d]" onClick={() => setOrder(null)}>
               {t("Andere Bestellung verfolgen", "Track another order")}
             </button>

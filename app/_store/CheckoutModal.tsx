@@ -365,7 +365,10 @@ export function CheckoutModal({ cart, subtotal, account, settings, slots, onClos
 
         <p className="privacy-note">
           {t("Ihre Angaben verwenden wir nur, um Ihre Bestellung auszuliefern bzw. bereitzustellen. Mehr in unserer ", "We only use your details to deliver or prepare your order. More in our ")}
-          <Link href="/datenschutz">{t("Datenschutzerklärung", "Privacy Policy")}</Link>.
+          <Link href="/datenschutz">{t("Datenschutzerklärung", "Privacy Policy")}</Link>.{" "}
+          {t("Hinweise zu Ihrem ", "Information on your ")}
+          <Link href="/widerruf">{t("Widerrufsrecht", "right of withdrawal")}</Link>
+          {t(" (gilt nicht für schnell verderbliche Lebensmittel).", " (does not apply to perishable food).")}
         </p>
         <button className="primary-btn full" disabled={submitting || cart.length === 0 || !settings.acceptingOrders}>
           {submitting ? t("Wird gesendet…", "Placing order…") : t("Zahlungspflichtig bestellen — Bar bezahlen", "Order and pay — cash on delivery")} <Check size={17} />

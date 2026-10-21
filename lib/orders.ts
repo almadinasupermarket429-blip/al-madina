@@ -309,3 +309,14 @@ export function publicOrder(order: FullOrder): Omit<FullOrder, "internalNote" | 
   const { internalNote: _note, deliveryToken: _token, ...rest } = order;
   return rest;
 }
+
+/** Adds a line to the staff-only note on an order (keeps whatever was there). */
+export async function appendInternalNote(id: string, line: string): Promise<void> {
+  await prisma.$executeRaw`
+    update orders set internal_note = case
+      when internal_note is null or internal_note = '' then ${line}
+      else internal_note || E'\n' || ${line}
+    end
+    where id = ${id}::uuid
+  `;
+}

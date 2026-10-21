@@ -20,8 +20,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   return NextResponse.json(publicOrder(order));
 }
 
-// The customer cancels their own order — only while it's still "PLACED"
-// (once the store has packed it, they need to call instead).
+// The customer cancels their own order — any time before it leaves the store
+// (PLACED or PACKED). Once it's out for delivery, they use the withdrawal form instead.
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getCustomerSession();
   if (!session) return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
@@ -31,9 +31,9 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (!order || order.userId !== session.userId) {
     return NextResponse.json({ error: "Bestellung nicht gefunden." }, { status: 404 });
   }
-  if (order.status !== "PLACED" || !(await cancelOrder(id, "Vom Kunden storniert"))) {
+  if (!["PLACED", "PACKED"].includes(order.status) || !(await cancelOrder(id, "Vom Kunden storniert"))) {
     return NextResponse.json(
-      { error: "Diese Bestellung wird bereits bearbeitet und kann nicht mehr online storniert werden. Bitte rufen Sie uns an." },
+      { error: "Diese Bestellung ist bereits unterwegs und kann nicht mehr storniert werden. Sie können aber den Vertrag widerrufen (Link unten auf der Seite)." },
       { status: 409 }
     );
   }

@@ -54,6 +54,8 @@ export function SiteFooter({ t }: { t: Translate }) {
               <b>{t("Rechtliches", "Legal")}</b>
               <Link href="/impressum">Impressum</Link>
               <Link href="/datenschutz">{t("Datenschutz", "Privacy Policy")}</Link>
+              <Link href="/widerruf">{t("Widerrufsbelehrung", "Right of withdrawal")}</Link>
+              <Link href="/widerruf#widerrufen">{t("Vertrag widerrufen", "Withdraw from contract")}</Link>
               <Link href="/cookie-einstellungen">{t("Cookie-Einstellungen", "Cookie Settings")}</Link>
             </div>
           </div>
