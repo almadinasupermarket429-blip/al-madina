@@ -102,7 +102,7 @@ export function SiteHeader({ settings, account, cartCount, query, onQueryChange,
                 <User size={19} />
               </a>
             </div>
-            <button className="cart-btn" onClick={onOpenCart} aria-label={`${t("Warenkorb", "Basket")} (${cartCount})`}>
+            <button className="cart-btn" onClick={onOpenCart}>
               <ShoppingBag size={19} />
               <span>{t("Warenkorb", "Basket")}</span>
               <i>{cartCount}</i>
