@@ -16,7 +16,7 @@ export function useStoreData(language: Language) {
   const [openState, setOpenState] = useState<ReturnType<typeof storeOpenState> | null>(null);
 
   useEffect(() => {
-    fetch("/api/products")
+    fetch("/api/products?view=shop")
       .then((res) => {
         if (!res.ok) throw new Error(`Products request failed: ${res.status}`);
         return res.json();

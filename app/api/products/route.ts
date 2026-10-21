@@ -46,9 +46,11 @@ type ProductRow = {
   ratingCount: string | number;
 };
 
-// Public: list products (storefront). Admins get inactive products too.
-export async function GET() {
-  const session = await getAdminSession();
+// Public: list products. The admin products page also gets hidden products; the
+// storefront asks for ?view=shop so an admin browsing the shop sees what customers see.
+export async function GET(req: NextRequest) {
+  const shopView = req.nextUrl.searchParams.get("view") === "shop";
+  const session = shopView ? null : await getAdminSession();
   // Shoppers don't see hidden products, or products in a hidden category.
   const whereClause = session ? Prisma.empty : Prisma.sql`where p.is_active = true and coalesce(c.is_active, true)`;
 
