@@ -20,6 +20,7 @@ Fill in `.env`:
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | Bootstrap **Owner** login for `/admin`. Use it once to create real named accounts on the Team page, and change it before going live — it always works as a fallback. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Outgoing email (see section 4). |
 | `STORE_NOTIFICATION_EMAIL` | The shop's inbox — new-order and low-stock alerts go here. |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Product photo storage. The cloud name also drives the `/img` proxy, so rebuild after changing it. |
 | `NEXT_PUBLIC_SITE_URL` | Public URL once deployed (e.g. `https://al-madina-markt.de`). Used in email links, the sitemap and structured data. |
 
 ## 2. Database
@@ -192,3 +193,5 @@ Runs on any Node.js host (VPS, Railway, Render) or Vercel. Notes:
   in `next.config.ts`. API writes from another website are refused (Origin check).
 - Set `NEXT_PUBLIC_SITE_URL` so emails, `sitemap.xml` and `robots.txt` point at
   the real domain.
+
+Moving the shop to another owner's accounts (repo, database, photos, email): see [docs/HANDOVER.md](docs/HANDOVER.md).

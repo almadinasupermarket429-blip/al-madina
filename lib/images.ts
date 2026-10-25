@@ -1,4 +1,8 @@
-const CLOUDINARY_PREFIX = "https://res.cloudinary.com/a2x0mlwu/image/upload/";
+// Set from CLOUDINARY_CLOUD_NAME in next.config.ts. Read per call (not at import) so it also works in tests.
+function cloudinaryPrefix(): string | null {
+  const cloud = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  return cloud ? `https://res.cloudinary.com/${cloud}/image/upload/` : null;
+}
 
 /**
  * Turns a stored Cloudinary URL into a resized image served through our own domain
@@ -7,9 +11,10 @@ const CLOUDINARY_PREFIX = "https://res.cloudinary.com/a2x0mlwu/image/upload/";
  */
 export function sizedImage(url: string | null | undefined, width: number): string {
   if (!url) return "";
-  if (!url.startsWith(CLOUDINARY_PREFIX)) return url;
+  const prefix = cloudinaryPrefix();
+  if (!prefix || !url.startsWith(prefix)) return url;
   // Drop any transformation already in the stored URL ("f_auto,q_auto/") and set our own.
-  const rest = url.slice(CLOUDINARY_PREFIX.length).replace(/^(?:[a-z]_[^/]*\/)+/, "");
+  const rest = url.slice(prefix.length).replace(/^(?:[a-z]_[^/]*\/)+/, "");
   return `/img/f_auto,q_auto,c_limit,w_${width}/${rest}`;
 }
 

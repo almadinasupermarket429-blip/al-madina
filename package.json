@@ -10,6 +10,8 @@
     "postinstall": "prisma generate",
     "db:migrate": "node scripts/migrate.mjs",
     "db:seed": "node scripts/seed.mjs",
+    "db:transfer": "node scripts/db-transfer.mjs",
+    "db:rewrite-images": "node scripts/rewrite-image-urls.mjs",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "knip": "knip",
