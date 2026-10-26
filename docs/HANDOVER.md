@@ -44,9 +44,16 @@ Neon projects can also be transferred between accounts from the Neon console, wh
 
 The database stores full Cloudinary URLs, so the photos and the stored URLs must move together.
 
-1. Re-upload the photos to the owner's Cloudinary account, keeping the same folder and file names
-   (`almadina/products/…`). Cloudinary's Admin API or a bulk-upload tool can do this; the version part of the URL
-   (`v1792521535`) is not needed to match because Cloudinary serves any version number of an existing file.
+1. Copy the photos with the script (same folder and file names; Cloudinary fetches each one from the old account's public URL,
+   then the script checks that the URL the database will hold after the rewrite resolves on the new account):
+   ```powershell
+   $env:OLD_CLOUDINARY_CLOUD_NAME = "<old cloud name>"; $env:NEW_CLOUDINARY_CLOUD_NAME = "<new cloud name>"
+   $env:NEW_CLOUDINARY_API_KEY = "…"; $env:NEW_CLOUDINARY_API_SECRET = "…"
+   npm run images:copy                  # preview
+   npm run images:copy -- --apply       # copy and verify
+   ```
+   It reads the database from `DATABASE_URL` (in `.env` or the environment). Cloudinary serves any version number of an
+   existing file, so the stored `v…` part does not need to match.
 2. Set `CLOUDINARY_CLOUD_NAME` (and key/secret) to the new account and redeploy (it is read at build time).
 3. Rewrite the stored URLs:
    ```bash
