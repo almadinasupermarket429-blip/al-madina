@@ -6,7 +6,7 @@ import { join } from "path";
 import { PrismaClient } from "@prisma/client";
 
 if (existsSync(".env")) {
-  for (const line of readFileSync(".env", "utf8").split("\n")) {
+  for (const line of readFileSync(".env", "utf8").split(/\r?\n/)) {
     const match = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/);
     if (match && !(match[1] in process.env)) {
       process.env[match[1]] = match[2].trim().replace(/^["']|["']$/g, "");
