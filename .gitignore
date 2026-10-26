@@ -24,3 +24,6 @@ dist
 .vercel
 .env*
 .vscode/mcp.json
+
+# Database dumps contain customer data
+*.dump
