@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { ImagePlus, Loader2, Plus, Trash2, X } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import { sizedImage } from "@/lib/images";
+import { ALLERGENS, MISSING_LABELS, NUTRIENTS, SIZE_UNITS, formatUnitPrice, missingFoodInfo, parseSizeLabel, type Nutrition } from "@/lib/food-info";
 import { EMPTY_PRODUCT, type EditableProduct, type Size, type Spec } from "./types";
 
 type Props = {
@@ -16,10 +17,13 @@ type Props = {
 
 const linesToList = (v: string) => v.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
 
-function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+function Field({ label, children, hint, required }: { label: string; children: React.ReactNode; hint?: string; required?: boolean }) {
   return (
     <div>
-      <label className="text-xs font-semibold text-black/60 mb-1 block">{label}</label>
+      <label className="text-xs font-semibold text-black/60 mb-1 block">
+        {label}
+        {required && <span className="text-red-700"> *</span>}
+      </label>
       {children}
       {hint && <p className="text-[11px] text-black/40 mt-1">{hint}</p>}
     </div>
@@ -49,12 +53,34 @@ export function ProductEditor({ initial, categories, error, onClose, onSave }: P
   const [highlightsDe, setHighlightsDe] = useState((initial.highlights ?? []).join("\n"));
   const [highlightsEn, setHighlightsEn] = useState((initial.highlightsEn ?? []).join("\n"));
   const [galleryText, setGalleryText] = useState((initial.gallery ?? []).join("\n"));
+  // Nutrition values are typed as text (German decimal comma allowed) and turned into numbers on save.
+  const [nutritionText, setNutritionText] = useState<Record<string, string>>(() =>
+    Object.fromEntries(NUTRIENTS.map((n) => [n.key, initial.nutrition?.[n.key] != null ? String(initial.nutrition[n.key]).replace(".", ",") : ""]))
+  );
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const set = <K extends keyof EditableProduct>(key: K, value: EditableProduct[K]) => setForm((f) => ({ ...f, [key]: value }));
   const setSize = (i: number, patch: Partial<Size>) => setForm((f) => ({ ...f, sizes: f.sizes.map((s, j) => (j === i ? { ...s, ...patch } : s)) }));
+  // Typing "500 g" as the size label fills in the net quantity, unless one is already set.
+  const setSizeLabel = (i: number, label: string) => {
+    const parsed = parseSizeLabel(label);
+    const cur = form.sizes[i];
+    const empty = cur.sizeValue === "" || cur.sizeValue == null;
+    setSize(i, parsed && empty ? { label, sizeValue: parsed.value, sizeUnit: parsed.unit } : { label });
+  };
+  const toggleAllergen = (key: string) =>
+    setForm((f) => ({ ...f, allergens: f.allergens.includes(key) ? f.allergens.filter((a) => a !== key) : [...f.allergens, key] }));
+  const nutritionValues = (): Nutrition | null => {
+    const out: Nutrition = {};
+    for (const n of NUTRIENTS) {
+      const raw = nutritionText[n.key]?.trim().replace(",", ".");
+      if (raw) out[n.key] = Number(raw);
+    }
+    return Object.keys(out).length ? out : null;
+  };
+  const missing = missingFoodInfo({ ...form, nutrition: nutritionValues() });
   const setSpec = (i: number, patch: Partial<Spec>) => setForm((f) => ({ ...f, specs: (f.specs ?? []).map((s, j) => (j === i ? { ...s, ...patch } : s)) }));
 
   async function upload(file: File) {
@@ -81,6 +107,7 @@ export function ProductEditor({ initial, categories, error, onClose, onSave }: P
       highlightsEn: linesToList(highlightsEn),
       gallery: linesToList(galleryText),
       specs: (form.specs ?? []).filter((s) => s.label.trim() && s.value.trim()),
+      nutrition: nutritionValues(),
     });
   }
 
@@ -203,10 +230,103 @@ export function ProductEditor({ initial, categories, error, onClose, onSave }: P
             </button>
           </Section>
 
+
+          <Section title={t("Pflichtangaben Lebensmittel (Online-Verkauf)", "Required food information (online sales)")}>
+            <p className="text-[11px] text-black/50 -mt-1">
+              {t(
+                "Gesetzlich vorgeschrieben (LMIV): Kunden müssen diese Angaben vor dem Kauf sehen. Einfach von der Packungsrückseite abschreiben. Pflichtfelder sind mit * markiert.",
+                "Required by law (EU food information rules): customers must see this before buying. Copy it from the back of the pack. Required fields are marked *."
+              )}
+            </p>
+            {missing.length > 0 ? (
+              <div className="rounded-lg bg-red-50 text-red-700 text-xs px-3 py-2">
+                {t("Noch offen: ", "Still missing: ")}
+                {missing.map((m) => t(MISSING_LABELS[m].de, MISSING_LABELS[m].en)).join(", ")}
+              </div>
+            ) : (
+              <div className="rounded-lg bg-green-50 text-green-800 text-xs px-3 py-2">{t("Alle Pflichtangaben sind ausgefüllt.", "All required information is filled in.")}</div>
+            )}
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              <Field
+                label={t("Zutaten (Deutsch)", "Ingredients (German)")}
+                required={!form.ingredientsNotRequired}
+                hint={t("Allergene GROSS schreiben, z. B. WEIZENmehl, SESAM, Salz.", "Write allergens in CAPITALS, e.g. WEIZENmehl, SESAM, Salz.")}
+              >
+                <textarea value={form.ingredients ?? ""} onChange={(e) => set("ingredients", e.target.value)} className="input" rows={3} disabled={form.ingredientsNotRequired} />
+              </Field>
+              <Field label={t("Zutaten (Englisch, optional)", "Ingredients (English, optional)")}>
+                <textarea value={form.ingredientsEn ?? ""} onChange={(e) => set("ingredientsEn", e.target.value)} className="input" rows={3} disabled={form.ingredientsNotRequired} />
+              </Field>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.ingredientsNotRequired} onChange={(e) => set("ingredientsNotRequired", e.target.checked)} />
+              {t("Keine Zutatenliste nötig (Produkt besteht aus einer einzigen Zutat, z. B. Reis, Linsen, frisches Obst)", "No ingredient list needed (single-ingredient product, e.g. rice, lentils, fresh fruit)")}
+            </label>
+
+            <Field label={t("Allergene", "Allergens")} required hint={t("Alle zutreffenden ankreuzen, dann bestätigen, auch wenn keins enthalten ist.", "Tick all that apply, then confirm, even if none are present.")}>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1">
+                {ALLERGENS.map((a) => (
+                  <label key={a.key} className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={form.allergens.includes(a.key)} onChange={() => toggleAllergen(a.key)} />
+                    {t(a.de, a.en)}
+                  </label>
+                ))}
+              </div>
+            </Field>
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input type="checkbox" checked={form.allergensConfirmed} onChange={(e) => set("allergensConfirmed", e.target.checked)} />
+              {form.allergens.length === 0
+                ? t("Geprüft: enthält keine der 14 Hauptallergene", "Checked: contains none of the 14 main allergens")
+                : t("Geprüft: Allergen-Angaben sind vollständig", "Checked: allergen information is complete")}
+            </label>
+            <Field label={t("Spuren (optional)", "Traces (optional)")}>
+              <input value={form.traces ?? ""} onChange={(e) => set("traces", e.target.value)} placeholder={t("z. B. Kann Spuren von Erdnüssen enthalten.", "e.g. May contain traces of peanuts.")} className="input" />
+            </Field>
+
+            <Field label={t("Nährwerte je 100 g / 100 ml", "Nutrition per 100 g / 100 ml")} required={!form.nutritionNotRequired}>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {NUTRIENTS.map((n) => (
+                  <label key={n.key} className="text-[11px] text-black/50">
+                    {t(n.de, n.en)} ({n.unit})
+                    <input
+                      inputMode="decimal"
+                      value={nutritionText[n.key] ?? ""}
+                      onChange={(e) => setNutritionText((cur) => ({ ...cur, [n.key]: e.target.value }))}
+                      className="input mt-0.5"
+                      disabled={form.nutritionNotRequired}
+                      aria-label={t(n.de, n.en)}
+                    />
+                  </label>
+                ))}
+              </div>
+            </Field>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.nutritionNotRequired} onChange={(e) => set("nutritionNotRequired", e.target.checked)} />
+              {t("Keine Nährwerttabelle nötig (z. B. Gewürze, Kräuter, Tee, Kaffee, Salz, Einzelzutat)", "No nutrition table needed (e.g. spices, herbs, tea, coffee, salt, single ingredient)")}
+            </label>
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              <Field label={t("Hersteller / Importeur mit Anschrift", "Manufacturer / importer with address")} required>
+                <textarea value={form.manufacturer ?? ""} onChange={(e) => set("manufacturer", e.target.value)} className="input" rows={2} placeholder={t("Name, Straße, PLZ Ort, Land", "Name, street, postcode city, country")} />
+              </Field>
+              <Field label={t("Herkunftsland (falls vorgeschrieben)", "Country of origin (where required)")} hint={t("Pflicht z. B. bei frischem Fleisch, Honig, Obst und Gemüse.", "Required e.g. for fresh meat, honey, fruit and vegetables.")}>
+                <input value={form.origin ?? ""} onChange={(e) => set("origin", e.target.value)} className="input" />
+              </Field>
+              <Field label={t("Aufbewahrung (Deutsch)", "Storage (German)")} hint={t("Falls auf der Packung angegeben, z. B. Kühl lagern bei max. 7 °C.", "If shown on the pack, e.g. Keep refrigerated at max. 7 °C.")}>
+                <input value={form.storage ?? ""} onChange={(e) => set("storage", e.target.value)} className="input" />
+              </Field>
+              <Field label={t("Aufbewahrung (Englisch, optional)", "Storage (English, optional)")}>
+                <input value={form.storageEn ?? ""} onChange={(e) => set("storageEn", e.target.value)} className="input" />
+              </Field>
+            </div>
+          </Section>
+
           <Section title={t("Größen, Preise & Bestand", "Sizes, prices & stock")}>
             {form.sizes.map((s, i) => (
-              <div key={i} className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 items-center">
-                <input value={s.label} onChange={(e) => setSize(i, { label: e.target.value })} placeholder={t("z. B. 500 g", "e.g. 500 g")} className="input" aria-label={t("Größe", "Size")} />
+              <div key={i} className="grid gap-2 pb-3 border-b border-black/5 last:border-0 last:pb-0">
+              <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 items-center">
+                <input value={s.label} onChange={(e) => setSizeLabel(i, e.target.value)} placeholder={t("z. B. 500 g", "e.g. 500 g")} className="input" aria-label={t("Größe", "Size")} />
                 <input type="number" step="0.01" min="0" value={s.price} onChange={(e) => setSize(i, { price: e.target.value })} placeholder={t("Preis €", "Price €")} className="input" aria-label={t("Preis", "Price")} />
                 <input type="number" step="0.01" min="0" value={s.oldPrice ?? ""} onChange={(e) => setSize(i, { oldPrice: e.target.value })} placeholder={t("Vorher €", "Was €")} className="input" aria-label={t("Vorher-Preis", "Previous price")} />
                 <input type="number" step="1" min="0" value={s.stock ?? ""} onChange={(e) => setSize(i, { stock: e.target.value })} placeholder={t("Bestand", "Stock")} className="input" aria-label={t("Bestand", "Stock")} />
@@ -219,7 +339,46 @@ export function ProductEditor({ initial, categories, error, onClose, onSave }: P
                   <Trash2 size={14} />
                 </button>
               </div>
+              <div className="grid grid-cols-[1fr_1fr_1fr_2fr] gap-2 items-center">
+                <input
+                  inputMode="decimal"
+                  value={s.sizeValue ?? ""}
+                  onChange={(e) => setSize(i, { sizeValue: e.target.value })}
+                  placeholder={t("Nettomenge *", "Net quantity *")}
+                  className="input"
+                  aria-label={t("Nettomenge", "Net quantity")}
+                />
+                <select value={s.sizeUnit ?? ""} onChange={(e) => setSize(i, { sizeUnit: e.target.value || null })} className="input" aria-label={t("Einheit", "Unit")}>
+                  <option value="">{t("Einheit *", "Unit *")}</option>
+                  {SIZE_UNITS.map((u) => (
+                    <option key={u} value={u}>
+                      {u === "pcs" ? t("Stück", "pieces") : u}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  inputMode="decimal"
+                  value={s.deposit != null && Number(s.deposit) !== 0 ? s.deposit : ""}
+                  onChange={(e) => setSize(i, { deposit: e.target.value })}
+                  placeholder={t("Pfand €", "Deposit €")}
+                  className="input"
+                  aria-label={t("Pfand", "Deposit")}
+                />
+                <span className="text-xs text-black/50">
+                  {(() => {
+                    const unit = formatUnitPrice(Number(String(s.price).replace(",", ".")), String(s.sizeValue ?? "").replace(",", "."), s.sizeUnit);
+                    return unit ? t(`Grundpreis: ${unit}`, `Unit price: ${unit}`) : "";
+                  })()}
+                </span>
+              </div>
+              </div>
             ))}
+            <p className="text-[11px] text-black/40">
+              {t(
+                "Nettomenge laut Packung (z. B. 500 g, 1,5 l), daraus wird der Grundpreis pro kg / l berechnet. Pfand nur bei Flaschen und Dosen (Einweg meist 0,25 €).",
+                "Net quantity from the pack (e.g. 500 g, 1.5 l), used to calculate the price per kg / l. Deposit only for bottles and cans (single-use usually 0.25 €)."
+              )}
+            </p>
             <button type="button" onClick={() => set("sizes", [...form.sizes, { label: "", price: "" }])} className="btn-outline w-fit">
               <Plus size={13} /> {t("Weitere Größe hinzufügen", "Add another size")}
             </button>

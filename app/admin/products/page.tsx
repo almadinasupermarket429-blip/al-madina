@@ -6,11 +6,12 @@ import AdminShell from "../components/AdminShell";
 import { useLanguage } from "@/lib/i18n";
 import { sizedImage } from "@/lib/images";
 import { LOW_STOCK_THRESHOLD } from "@/lib/order-utils";
+import { MISSING_LABELS, missingFoodInfo } from "@/lib/food-info";
 import { ImportDialog } from "./ImportDialog";
 import { ProductEditor } from "./ProductEditor";
 import { EMPTY_PRODUCT, type AdminProduct, type EditableProduct } from "./types";
 
-type Filter = "all" | "low" | "out" | "hidden" | "sale";
+type Filter = "all" | "low" | "out" | "hidden" | "sale" | "foodinfo";
 type Notice = { ok: boolean; text: string } | null;
 
 export default function AdminProductsPage() {
@@ -48,6 +49,7 @@ export default function AdminProductsPage() {
       if (filter === "out") return stocks.some((n) => n === 0);
       if (filter === "hidden") return !p.active;
       if (filter === "sale") return p.sizes.some((s) => s.oldPrice);
+      if (filter === "foodinfo") return missingFoodInfo(p).length > 0;
       return true;
     });
   }, [products, search, filter, category]);
@@ -57,6 +59,7 @@ export default function AdminProductsPage() {
       low: products.filter((p) => p.sizes.some((s) => Number(s.stock ?? 0) <= LOW_STOCK_THRESHOLD)).length,
       out: products.filter((p) => p.sizes.some((s) => Number(s.stock ?? 0) === 0)).length,
       hidden: products.filter((p) => !p.active).length,
+      foodinfo: products.filter((p) => missingFoodInfo(p).length > 0).length,
     }),
     [products]
   );
@@ -134,6 +137,9 @@ export default function AdminProductsPage() {
           oldPrice: s.oldPrice ? Number(s.oldPrice) : undefined,
           // "" (never touched) falls back to the server default; an explicit 0 must stay 0 ("out of stock").
           stock: s.stock === "" || s.stock == null ? undefined : Number(s.stock),
+          sizeValue: s.sizeValue,
+          sizeUnit: s.sizeUnit,
+          deposit: s.deposit,
         })),
     };
     setSaveError("");
@@ -222,6 +228,7 @@ export default function AdminProductsPage() {
         {filterChip("out", t("Ausverkauft", "Out of stock"), counts.out)}
         {filterChip("sale", t("Im Angebot", "On sale"))}
         {filterChip("hidden", t("Versteckt", "Hidden"), counts.hidden)}
+        {filterChip("foodinfo", t("Pflichtangaben fehlen", "Required info missing"), counts.foodinfo)}
       </div>
 
       {selected.size > 0 && (
@@ -268,6 +275,17 @@ export default function AdminProductsPage() {
                 {!p.active && <span className="text-[10px] font-bold bg-black/10 text-black/50 px-2 py-0.5 rounded-full">{t("VERSTECKT", "HIDDEN")}</span>}
                 {p.badge && <span className="text-[10px] font-bold bg-[#e3b23c]/30 text-[#7a5a10] px-2 py-0.5 rounded-full">{p.badge}</span>}
                 {!p.nameEn && <span className="text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{t("EN fehlt", "EN missing")}</span>}
+                {(() => {
+                  const missing = missingFoodInfo(p);
+                  return missing.length > 0 ? (
+                    <span
+                      className="text-[10px] font-bold bg-red-50 text-red-700 px-2 py-0.5 rounded-full"
+                      title={t("Fehlt: ", "Missing: ") + missing.map((m) => t(MISSING_LABELS[m].de, MISSING_LABELS[m].en)).join(", ")}
+                    >
+                      {t("PFLICHTANGABEN FEHLEN", "REQUIRED INFO MISSING")} ({missing.length})
+                    </span>
+                  ) : null;
+                })()}
               </div>
               <div className="text-xs text-black/40 mt-0.5">
                 {p.category}

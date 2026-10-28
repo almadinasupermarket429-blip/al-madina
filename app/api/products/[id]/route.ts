@@ -42,6 +42,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         name_en = ${c.nameEn}, description_en = ${c.descriptionEn}, brand = ${c.brand},
         highlights = ${c.highlights}::text[], highlights_en = ${c.highlightsEn}::text[],
         specs = ${JSON.stringify(c.specs)}::jsonb, gallery = ${c.gallery}::text[],
+        ingredients = ${c.ingredients}, ingredients_en = ${c.ingredientsEn}, ingredients_not_required = ${c.ingredientsNotRequired},
+        allergens = ${c.allergens}::text[], allergens_confirmed = ${c.allergensConfirmed}, traces = ${c.traces},
+        nutrition = ${c.nutrition ? JSON.stringify(c.nutrition) : null}::jsonb, nutrition_not_required = ${c.nutritionNotRequired},
+        storage = ${c.storage}, storage_en = ${c.storageEn}, manufacturer = ${c.manufacturer}, origin = ${c.origin},
         updated_at = now()
       where id = ${id}::uuid
     `;

@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession, isOwner } from "@/lib/auth";
-import { getAdminProductView, parseProductContent, parseTags, replaceVariants, resolveCategoryId, uniqueProductSlug } from "@/lib/catalog-admin";
+import { FOOD_INFO_COLUMNS, getAdminProductView, parseProductContent, parseTags, replaceVariants, resolveCategoryId, uniqueProductSlug } from "@/lib/catalog-admin";
 import { logAdminAction } from "@/lib/audit";
 
 type ProductRow = {
@@ -62,7 +62,8 @@ export async function GET(req: NextRequest) {
           json_build_object(
             'id', id, 'productId', product_id, 'label', size_label,
             'price', price, 'oldPrice', compare_at_price,
-            'stock', stock_quantity, 'sortOrder', sort_order
+            'stock', stock_quantity, 'sortOrder', sort_order,
+            'sizeValue', size_value, 'sizeUnit', size_unit, 'deposit', deposit
           ) order by sort_order asc
         ) as sizes
       from product_variants
@@ -80,7 +81,7 @@ export async function GET(req: NextRequest) {
       p.brand, p.highlights, p.highlights_en as "highlightsEn", p.specs, p.gallery,
       p.badge, p.unit_note as "unitNote", p.tags, p.is_active as active, p.sort_order as "sortOrder",
       p.slug, coalesce(c.sort_order, 9999) as "categorySortOrder",
-      p.created_at as "createdAt", p.updated_at as "updatedAt",
+      p.created_at as "createdAt", p.updated_at as "updatedAt", ${FOOD_INFO_COLUMNS},
       coalesce(va.sizes, '[]'::json) as sizes,
       coalesce(ra.rating_average, 0) as "ratingAverage",
       coalesce(ra.rating_count, 0) as "ratingCount"
@@ -123,9 +124,13 @@ export async function POST(req: NextRequest) {
   const productId = await prisma.$transaction(async (tx) => {
     const created = await tx.$queryRaw<{ id: string }[]>`
       insert into products (category_id, name, slug, description, image_url, badge, unit_note, is_active, tags,
-                            name_en, description_en, brand, highlights, highlights_en, specs, gallery)
+                            name_en, description_en, brand, highlights, highlights_en, specs, gallery,
+                            ingredients, ingredients_en, ingredients_not_required, allergens, allergens_confirmed, traces,
+                            nutrition, nutrition_not_required, storage, storage_en, manufacturer, origin)
       values (${categoryId}::uuid, ${name.trim()}, ${slug}, ${description || null}, ${image}, ${badge || null}, ${unitNote || null}, ${active ?? true}, ${parseTags(tags)}::text[],
-              ${c.nameEn}, ${c.descriptionEn}, ${c.brand}, ${c.highlights}::text[], ${c.highlightsEn}::text[], ${JSON.stringify(c.specs)}::jsonb, ${c.gallery}::text[])
+              ${c.nameEn}, ${c.descriptionEn}, ${c.brand}, ${c.highlights}::text[], ${c.highlightsEn}::text[], ${JSON.stringify(c.specs)}::jsonb, ${c.gallery}::text[],
+              ${c.ingredients}, ${c.ingredientsEn}, ${c.ingredientsNotRequired}, ${c.allergens}::text[], ${c.allergensConfirmed}, ${c.traces},
+              ${c.nutrition ? JSON.stringify(c.nutrition) : null}::jsonb, ${c.nutritionNotRequired}, ${c.storage}, ${c.storageEn}, ${c.manufacturer}, ${c.origin})
       returning id
     `;
     const id = created[0].id;

@@ -11,6 +11,9 @@ type Change = {
   oldPrice?: [number | null, number | null];
   stock?: [number, number];
   active?: [boolean, boolean];
+  netQuantity?: [string, string];
+  deposit?: [number, number];
+  food?: string[];
 };
 type Result = { preview: boolean; rows: number; changes: Change[]; errors: string[] };
 
@@ -56,10 +59,16 @@ export function ImportDialog({ onClose, onApplied }: { onClose: () => void; onAp
         <button onClick={onClose} aria-label={t("Schließen", "Close")} className="absolute right-4 top-4 w-8 h-8 rounded-full bg-black/5 flex items-center justify-center">
           <X size={16} />
         </button>
-        <h2 className="font-serif text-2xl mb-2">{t("Preise & Bestand importieren", "Import prices & stock")}</h2>
+        <h2 className="font-serif text-2xl mb-2">{t("Produkte importieren", "Import products")}</h2>
         <ol className="text-sm text-black/60 list-decimal pl-5 mb-4 grid gap-1">
           <li>{t("„Exportieren“ klicken und die Datei in Excel öffnen.", "Click “Export” and open the file in Excel.")}</li>
           <li>{t("Preis, Vorher-Preis, Bestand oder Sichtbar (ja/nein) ändern. Spalte „variant_id“ nicht ändern.", "Change price, previous price, stock or visible (ja/nein). Don't change the “variant_id” column.")}</li>
+          <li>
+            {t(
+              "Pflichtangaben eintragen: Nettomenge + Einheit (g, kg, ml, l, stueck), Pfand, Zutaten, Allergene (z. B. „milch, sesam“), allergene_geprueft (ja/nein), Nährwerte je 100 g, Hersteller. Bei mehreren Größen zählt die erste Zeile des Produkts.",
+              "Fill in the required info: net quantity + unit (g, kg, ml, l, stueck), deposit, ingredients, allergens (e.g. “milch, sesam”), allergene_geprueft (ja/nein), nutrition per 100 g, manufacturer. For products with several sizes, the first row of the product counts."
+            )}
+          </li>
           <li>{t("Als CSV speichern und hier hochladen. Sie sehen zuerst eine Vorschau.", "Save as CSV and upload it here. You'll see a preview first.")}</li>
         </ol>
 
@@ -105,6 +114,9 @@ export function ImportDialog({ onClose, onApplied }: { onClose: () => void; onAp
                             c.oldPrice && `${t("Vorher", "Was")} ${eur(c.oldPrice[0])} → ${eur(c.oldPrice[1])}`,
                             c.stock && `${t("Bestand", "Stock")} ${c.stock[0]} → ${c.stock[1]}`,
                             c.active && (c.active[1] ? t("wird sichtbar", "becomes visible") : t("wird ausgeblendet", "becomes hidden")),
+                            c.netQuantity && `${t("Nettomenge", "Net quantity")} ${c.netQuantity[0]} → ${c.netQuantity[1]}`,
+                            c.deposit && `${t("Pfand", "Deposit")} ${eur(c.deposit[0])} → ${eur(c.deposit[1])}`,
+                            c.food && `${t("Pflichtangaben", "Food info")}: ${c.food.join(", ")}`,
                           ]
                             .filter(Boolean)
                             .join(" · ")}
