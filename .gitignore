@@ -23,6 +23,8 @@ dist
 
 .vercel
 .env*
+# The template has placeholders only and belongs in the repo.
+!.env.example
 .vscode/mcp.json
 
 # Database dumps contain customer data

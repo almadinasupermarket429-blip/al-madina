@@ -7,7 +7,7 @@ import { prisma } from "./prisma";
 import { addDays, berlinDateTime, isPublicHoliday, weekdayOf } from "./store-info";
 
 /** Slots starting sooner than this are no longer offered, so there is time to pack the order. */
-export const SLOT_LEAD_MINUTES = 60;
+const SLOT_LEAD_MINUTES = 60;
 
 type Slot = {
   id: string;

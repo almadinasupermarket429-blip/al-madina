@@ -23,7 +23,8 @@ test.describe("admin tools", () => {
     expect(res.ok()).toBeTruthy();
     expect(res.headers()["content-type"]).toContain("text/csv");
     const rows = parseCsv(await res.text());
-    expect(rows[0]).toEqual(["variant_id", "produkt", "groesse", "kategorie", "preis", "vorher_preis", "bestand", "sichtbar"]);
+    // The first nine columns drive price and stock edits; food-information columns follow them.
+    expect(rows[0].slice(0, 9)).toEqual(["variant_id", "produkt", "groesse", "kategorie", "preis", "vorher_preis", "bestand", "bestand_beim_export", "sichtbar"]);
     expect(rows.length).toBeGreaterThan(100);
 
     const [header, first] = rows;

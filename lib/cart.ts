@@ -34,7 +34,7 @@ export type Cart = {
 /** Most of one size per basket (orders merge and cap lines the same way). */
 export const MAX_QTY_PER_ITEM = 50;
 /** Most different items per basket (an order takes at most 100 lines). */
-export const MAX_CART_LINES = 100;
+const MAX_CART_LINES = 100;
 
 /** Error codes the cart API answers with; the shop translates them (app/_store/useCart.ts). */
 export type CartErrorCode = "VARIANT_NOT_FOUND" | "ITEM_NOT_FOUND" | "OUT_OF_STOCK" | "ITEM_LIMIT" | "CART_FULL";

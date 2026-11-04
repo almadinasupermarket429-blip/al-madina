@@ -97,7 +97,7 @@ export function weekdayOf(date: string): number {
 const holidayCache = new Map<number, Holiday[]>();
 
 /** Public holidays on which the shop is closed, for one year. */
-export function publicHolidays(year: number): Holiday[] {
+function publicHolidays(year: number): Holiday[] {
   const cached = holidayCache.get(year);
   if (cached) return cached;
   const easter = easterSunday(year);
@@ -120,7 +120,7 @@ export function publicHolidays(year: number): Holiday[] {
 }
 
 /** The public holiday on a YYYY-MM-DD date, or null. */
-export function publicHoliday(date: string): Holiday | null {
+function publicHoliday(date: string): Holiday | null {
   return publicHolidays(Number(date.slice(0, 4))).find((h) => h.date === date) ?? null;
 }
 

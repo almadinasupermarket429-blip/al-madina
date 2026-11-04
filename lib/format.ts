@@ -1,12 +1,4 @@
 // lib/format.ts
-export function formatCurrency(
-  amount: number,
-  currency: string = "EUR",
-  locale: string = "de-DE"
-): string {
-  return new Intl.NumberFormat(locale, { style: "currency", currency }).format(amount);
-}
-
 /**
  * Date (and optionally time) in the shop's language and timezone. Without an explicit locale the
  * browser's own language wins, so a German page on an English phone would show "11/4/2026 03:50 PM".
