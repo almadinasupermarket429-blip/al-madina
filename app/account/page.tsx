@@ -7,6 +7,7 @@ import { DeleteAccount } from "@/app/components/DeleteAccount";
 import { GoogleLogo } from "@/app/components/GoogleLogo";
 import { ArrowLeft, LogOut, Package, User as UserIcon, Heart, MapPin, RefreshCw, Plus, Trash2, ShieldCheck, MailWarning, MailCheck, KeyRound, Pencil, XCircle } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { formatDate } from "@/lib/format";
 
 type Account = { id: string; name: string; email: string; phone: string | null; role: "OWNER" | "STAFF" | null; emailVerified: boolean };
 type OrderItem = { id: string; name: string; sizeLabel: string | null; price: number; qty: number };
@@ -34,7 +35,7 @@ const muted = { color: "rgba(24,32,27,.7)" };
 const mutedLight = { color: "rgba(24,32,27,.7)" };
 
 export default function AccountPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [account, setAccount] = useState<Account | null | undefined>(undefined);
   const [orders, setOrders] = useState<Order[]>([]);
   const [wishlist, setWishlist] = useState<WishlistProduct[]>([]);
@@ -414,6 +415,7 @@ export default function AccountPage() {
                 required
                 type="password"
                 autoComplete={mode === "register" ? "new-password" : "current-password"}
+                aria-label={t("Passwort", "Password")}
                 placeholder={mode === "register" ? t("Passwort (mind. 8 Zeichen)", "Password (min. 8 characters)") : t("Passwort", "Password")}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -643,7 +645,7 @@ export default function AccountPage() {
                         </span>
                       </div>
                       <small style={muted}>
-                        {new Date(o.createdAt).toLocaleDateString()} · {o.fulfillment === "DELIVERY" ? t("Lieferung", "Delivery") : t("Abholung", "Pickup")}
+                        {formatDate(o.createdAt, language)} · {o.fulfillment === "DELIVERY" ? t("Lieferung", "Delivery") : t("Abholung", "Pickup")}
                       </small>
                       <ul style={{ fontSize: 13, marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
                         {o.items.map((it) => (

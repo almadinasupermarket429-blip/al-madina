@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import AdminShell from "../components/AdminShell";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { formatDate } from "@/lib/format";
 
 type Coupon = {
   id: string;
@@ -54,7 +55,7 @@ function toLocalInput(iso: string | null) {
 }
 
 export default function CouponsPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [coupons, setCoupons] = useState<Coupon[] | null>(null);
   const [editing, setEditing] = useState<Form | null>(null);
   const [error, setError] = useState("");
@@ -166,7 +167,7 @@ export default function CouponsPage() {
                   {c.oncePerCustomer && <span>{t("1× pro Kunde", "once per customer")}</span>}
                   {c.expiresAt && (
                     <span>
-                      {t("bis", "until")} {new Date(c.expiresAt).toLocaleDateString()}
+                      {t("bis", "until")} {formatDate(c.expiresAt, language)}
                     </span>
                   )}
                 </div>

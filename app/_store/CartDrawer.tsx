@@ -31,8 +31,7 @@ export function CartDrawer({ items, count, subtotal, settings, onChangeQty, onCh
           <div>
             <span className="eyebrow">{t("Ihr Warenkorb", "Your basket")}</span>
             <h3>
-              {count} {t("Artikel", "item")}
-              {count === 1 ? "" : "s"}
+              {count} {t("Artikel", count === 1 ? "item" : "items")}
             </h3>
           </div>
           <button onClick={onClose} className="icon-btn" aria-label={t("Schließen", "Close")}>

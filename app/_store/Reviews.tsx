@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Check, Star } from "lucide-react";
 import { StarRating } from "@/app/components/StarRating";
 import type { Account, ReviewData, Translate } from "./types";
+import { useLanguage } from "@/lib/i18n";
+import { formatDate } from "@/lib/format";
 
 type Summary = { average: number; count: number };
 
@@ -40,6 +42,7 @@ type Props = {
 };
 
 export function Reviews({ productId, account, reviews, loading, onSubmitted, t }: Props) {
+  const { language } = useLanguage();
   const [rating, setRating] = useState(5);
   const [title, setTitle] = useState("");
   const [comment, setComment] = useState("");
@@ -127,7 +130,7 @@ export function Reviews({ productId, account, reviews, loading, onSubmitted, t }
             </div>
             {r.comment && <p style={{ fontSize: 14, marginTop: 4 }}>{r.comment}</p>}
             <small style={{ color: "rgba(24,32,27,.7)" }}>
-              {r.authorName} · {new Date(r.createdAt).toLocaleDateString()}
+              {r.authorName} · {formatDate(r.createdAt, language)}
             </small>
           </div>
         ))}

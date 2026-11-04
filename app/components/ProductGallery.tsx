@@ -2,18 +2,19 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
-import { sizedImage } from "@/lib/images";
+import { PLACEHOLDER_IMAGE, sizedImage } from "@/lib/images";
 
 /**
  * Amazon-style product photo: hover to zoom in on desktop, tap/click to open full screen.
  * Shows thumbnails when a product has more than one photo.
  */
-export function ProductGallery({ images, alt, zoomHint }: { images: string[]; alt: string; zoomHint: string }) {
+export function ProductGallery({ images: given, alt, zoomHint }: { images: string[]; alt: string; zoomHint: string }) {
   const [index, setIndex] = useState(0);
   const [zoom, setZoom] = useState<{ x: number; y: number } | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
+  // No photo yet: show the placeholder so the layout (and the wishlist heart on it) stays put.
+  const images = given.length ? given : [PLACEHOLDER_IMAGE];
   const current = images[index] ?? images[0];
-  if (!current) return null;
 
   return (
     <div className="pg">

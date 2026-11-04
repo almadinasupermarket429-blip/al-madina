@@ -3,6 +3,7 @@
 import { Check, Package, Truck, ClipboardList, XCircle } from "lucide-react";
 import { ORDER_STATUSES } from "@/lib/order-utils";
 import { useLanguage } from "@/lib/i18n";
+import { formatDate } from "@/lib/format";
 
 type StatusEvent = { status: string; createdAt: string };
 export type TrackableOrder = {
@@ -36,7 +37,7 @@ const STEP_LABEL: Record<string, [string, string]> = {
 };
 
 export default function OrderTimeline({ order }: { order: TrackableOrder }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   // Pickup orders skip "out for delivery" — it doesn't apply.
   const steps: string[] = order.fulfillment === "PICKUP" ? ORDER_STATUSES.filter((s) => s !== "OUT_FOR_DELIVERY") : [...ORDER_STATUSES];
   const cancelled = order.status === "CANCELLED";
@@ -60,7 +61,7 @@ export default function OrderTimeline({ order }: { order: TrackableOrder }) {
       {order.slot && (
         <p style={{ fontSize: 14, marginBottom: 16 }}>
           <b>{t("Zeitfenster", "Time slot")}:</b>{" "}
-          {new Date(`${order.slot.date}T12:00:00Z`).toLocaleDateString(undefined, { weekday: "short", day: "2-digit", month: "2-digit", timeZone: "UTC" })},{" "}
+          {new Date(`${order.slot.date}T12:00:00Z`).toLocaleDateString(language === "en" ? "en-GB" : "de-DE", { weekday: "short", day: "2-digit", month: "2-digit", timeZone: "UTC" })},{" "}
           {order.slot.start}–{order.slot.end}
         </p>
       )}
@@ -69,7 +70,8 @@ export default function OrderTimeline({ order }: { order: TrackableOrder }) {
           const Icon = STEP_ICON[step] ?? Check;
           const done = i <= currentIdx;
           const time = timeFor(step);
-          const label = STEP_LABEL[step];
+          // A pickup order ends with "collected", not "delivered".
+          const label: [string, string] | undefined = step === "DELIVERED" && order.fulfillment === "PICKUP" ? ["Abgeholt", "Collected"] : STEP_LABEL[step];
           return (
             <div key={step} style={{ flex: 1, textAlign: "center", position: "relative" }}>
               {i > 0 && (
@@ -107,7 +109,7 @@ export default function OrderTimeline({ order }: { order: TrackableOrder }) {
               </div>
               {time && (
                 <small style={{ color: "rgba(24,32,27,.7)" }}>
-                  {new Date(time).toLocaleDateString()} {new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  {formatDate(time, language, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                 </small>
               )}
             </div>
