@@ -63,6 +63,10 @@ test("public reviews show only first name and last initial", async ({ page }) =>
   try {
     const products: { id: string }[] = await (await page.request.get("/api/products")).json();
     const productId = products[0].id;
+    // Without having bought it, a review is refused.
+    const refused = await page.request.post("/api/reviews", { data: { productId, rating: 5, comment: "Playwright" } });
+    expect(refused.status()).toBe(403);
+    await customer.deliveredOrder(productId);
     const post = await page.request.post("/api/reviews", { data: { productId, rating: 5, comment: "Playwright" } });
     expect(post.ok()).toBeTruthy();
     const { reviews } = await (await page.request.get(`/api/reviews?productId=${productId}`)).json();

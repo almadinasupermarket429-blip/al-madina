@@ -60,11 +60,17 @@ export async function POST(req: NextRequest) {
   const { productId } = await req.json().catch(() => ({}));
   if (!productId || typeof productId !== "string" || !isUuid(productId)) return NextResponse.json({ error: "productId ist erforderlich." }, { status: 400 });
 
-  await prisma.$executeRaw`
+  const added = await prisma.$executeRaw`
     insert into wishlists (user_id, product_id)
-    values (${session.userId}::uuid, ${productId}::uuid)
+    select ${session.userId}::uuid, id from products where id = ${productId}::uuid and is_active = true
     on conflict do nothing
   `;
+  if (added === 0) {
+    const exists = await prisma.$queryRaw<{ n: bigint }[]>`
+      select count(*) as n from wishlists where user_id = ${session.userId}::uuid and product_id = ${productId}::uuid
+    `;
+    if (Number(exists[0]?.n ?? 0) === 0) return NextResponse.json({ error: "Produkt nicht gefunden." }, { status: 404 });
+  }
 
   return NextResponse.json({ ok: true });
 }

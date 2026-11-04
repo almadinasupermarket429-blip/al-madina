@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
-import { signAdminToken, envPasswordTag, ADMIN_COOKIE_NAME } from "@/lib/auth";
+import { signAdminToken, envPasswordTag, ADMIN_COOKIE_NAME, ADMIN_SESSION_DAYS } from "@/lib/auth";
 import { rateLimit, resetRateLimit, refundRateLimit, clientIp } from "@/lib/rate-limit";
 import { DUMMY_PASSWORD_HASH } from "@/lib/dummy-hash";
 
@@ -19,7 +19,7 @@ const ADMIN_COOKIE_OPTIONS = {
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax" as const,
   path: "/",
-  maxAge: 60 * 60 * 24 * 30,
+  maxAge: 60 * 60 * 24 * ADMIN_SESSION_DAYS,
 };
 
 interface AdminUserRow {

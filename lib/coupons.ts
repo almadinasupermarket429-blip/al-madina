@@ -128,7 +128,7 @@ export function parseCouponInput(body: CouponInput) {
   if ((startsAt && isNaN(startsAt.getTime())) || (expiresAt && isNaN(expiresAt.getTime()))) return "Ungültiges Datum.";
   return {
     code,
-    description: body.description?.trim().slice(0, 200) || null,
+    description: typeof body.description === "string" ? body.description.trim().slice(0, 200) || null : null,
     discountType,
     discountValue,
     minSubtotal,

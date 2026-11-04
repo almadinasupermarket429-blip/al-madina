@@ -230,6 +230,24 @@ export type ProductContent = {
   gallery: string[];
 } & FoodInfoView;
 
+/**
+ * Checks the basic product fields from the admin form. Returns a German error message, or null.
+ * The photo must be one of ours: a file on this site (e.g. /images/…, /img/…) or a Cloudinary upload.
+ */
+export function productFieldsError(body: Record<string, unknown>): string | null {
+  const str = (v: unknown, max: number, required = false) =>
+    v == null || v === "" ? !required : typeof v === "string" && v.length <= max && (!required || v.trim().length > 0);
+  if (!str(body.name, 160, true)) return "Bitte einen Namen mit höchstens 160 Zeichen angeben.";
+  if (!str(body.category, 80, true)) return "Bitte eine Kategorie angeben.";
+  if (!str(body.description, 4000)) return "Die Beschreibung ist zu lang (höchstens 4000 Zeichen).";
+  if (!str(body.badge, 40) || !str(body.unitNote, 60)) return "Hinweis oder Einheit ist zu lang.";
+  const image = body.image;
+  if (typeof image !== "string" || image.length > 500 || !/^(\/[^/]|https:\/\/res\.cloudinary\.com\/)/.test(image)) {
+    return "Bitte ein Produktfoto hochladen.";
+  }
+  return null;
+}
+
 const text = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
 const lines = (v: unknown, maxItems: number, maxLen: number): string[] => {
   const raw = Array.isArray(v) ? v : typeof v === "string" ? v.split(/\r?\n/) : [];

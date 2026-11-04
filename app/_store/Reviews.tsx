@@ -62,7 +62,11 @@ export function Reviews({ productId, account, reviews, loading, onSubmitted, t }
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || t("Bewertung konnte nicht gespeichert werden.", "Could not save your review."));
+        setError(
+          data.code === "NOT_PURCHASED"
+            ? t("Bewerten können Sie Artikel, die Sie bei uns gekauft und erhalten haben.", "You can review items you have bought from us and received.")
+            : data.error || t("Bewertung konnte nicht gespeichert werden.", "Could not save your review.")
+        );
       } else {
         setSubmitted(true);
         setTitle("");

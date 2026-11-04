@@ -25,6 +25,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Bestellnummer und E-Mail sind erforderlich." }, { status: 400 });
   }
 
+  if (!(await rateLimit(`order-withdraw-number:${orderNumber.slice(0, 40)}`, 10, 60 * 60_000)).allowed) {
+    return NextResponse.json({ error: "Zu viele Versuche für diese Bestellnummer. Bitte später erneut versuchen." }, { status: 429 });
+  }
   const order = await getOrderByNumber(orderNumber);
   // Same rule as order tracking: an empty email never matches.
   if (!order || !order.customerEmail || order.customerEmail.toLowerCase() !== email) {

@@ -8,6 +8,9 @@ import { signToken, verifyToken } from "./tokens";
 
 const COOKIE_NAME = "almadina_admin_session";
 
+/** Admin rights need a login within this many days (a shop login lasts longer, for shopping only). */
+export const ADMIN_SESSION_DAYS = 7;
+
 type AdminRole = "OWNER" | "STAFF";
 
 type AdminTokenPayload = {
@@ -29,7 +32,7 @@ export function envPasswordTag(): string {
 export function signAdminToken(payload: AdminTokenPayload & { pw?: string }): Promise<string> {
   // typ marks this as an admin token: customer tokens are signed with the same
   // secret and must never be accepted in the admin cookie.
-  return signToken({ ...payload, typ: "admin" }, "30d");
+  return signToken({ ...payload, typ: "admin" }, `${ADMIN_SESSION_DAYS}d`);
 }
 
 async function verifyAdminToken(token: string): Promise<(AdminTokenPayload & { iat?: number; pw?: string }) | null> {
@@ -85,6 +88,8 @@ export async function getAdminSession(): Promise<AdminTokenPayload | null> {
 
   const customerSession = await getCustomerSession();
   if (!customerSession) return null;
+  // A shop login stays valid for 60 days; admin access through it only for ADMIN_SESSION_DAYS after logging in.
+  if ((customerSession.iat ?? 0) < Date.now() / 1000 - ADMIN_SESSION_DAYS * 86_400) return null;
   const admin = await lookupAdmin(customerSession.userId);
   return admin ? { username: admin.email, role: admin.role, adminId: customerSession.userId } : null;
 }

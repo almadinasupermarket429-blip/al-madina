@@ -25,12 +25,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!(n >= 0 && n <= 100_000)) return NextResponse.json({ error: "Ungültiger Bestand." }, { status: 400 });
     await prisma.$executeRaw`update product_variants set stock_quantity = ${n} where id = ${id}::uuid`;
   } else if (body.adjust !== undefined) {
-    const n = Math.floor(Number(body.adjust));
+    const n = typeof body.adjust === "number" ? Math.floor(body.adjust) : NaN;
     if (!Number.isFinite(n) || Math.abs(n) > 100_000) return NextResponse.json({ error: "Ungültige Änderung." }, { status: 400 });
     await prisma.$executeRaw`update product_variants set stock_quantity = greatest(0, stock_quantity + ${n}) where id = ${id}::uuid`;
   }
   if (body.price !== undefined) {
-    const p = Number(body.price);
+    // Number(null) and Number("") are 0: only accept a number or a numeric string, never "nothing".
+    const p = typeof body.price === "number" ? body.price : typeof body.price === "string" && body.price.trim() ? Number(body.price.replace(",", ".")) : NaN;
     if (!(p >= 0 && p <= 10_000)) return NextResponse.json({ error: "Ungültiger Preis." }, { status: 400 });
     await prisma.$executeRaw`update product_variants set price = ${Math.round(p * 100) / 100} where id = ${id}::uuid`;
   }

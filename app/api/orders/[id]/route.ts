@@ -41,8 +41,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const { status } = body;
+  const reason = typeof body.reason === "string" && body.reason.trim() ? body.reason.trim().slice(0, 300) : null;
   if (status === "CANCELLED") {
-    const reason = typeof body.reason === "string" && body.reason.trim() ? body.reason.trim().slice(0, 300) : null;
     const ok = await cancelOrder(id, reason);
     if (!ok) {
       return NextResponse.json({ error: "Nur neue oder gepackte Bestellungen können storniert werden." }, { status: 409 });
@@ -71,7 +71,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   await logAdminAction(session, "order.status", "order", id, `Bestellung #${order.orderNumber}: ${existing.status} → ${order.status}`, {
     before: existing.status,
     after: order.status,
-    reason: body.reason ?? null,
+    reason,
   });
 
   // See app/api/orders/route.ts for why this is wrapped in after() rather

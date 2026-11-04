@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession, isOwner } from "@/lib/auth";
-import { FOOD_INFO_COLUMNS, getAdminProductView, parseProductContent, parseTags, replaceVariants, resolveCategoryId, uniqueProductSlug } from "@/lib/catalog-admin";
+import { FOOD_INFO_COLUMNS, getAdminProductView, productFieldsError, parseProductContent, parseTags, replaceVariants, resolveCategoryId, uniqueProductSlug } from "@/lib/catalog-admin";
 import { logAdminAction } from "@/lib/audit";
 
 type ProductRow = {
@@ -111,6 +111,8 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const { name, category, description, image, badge, unitNote, active, sizes, tags } = body;
+  const fieldsError = productFieldsError(body);
+  if (fieldsError) return NextResponse.json({ error: fieldsError }, { status: 400 });
 
   if (!name || !category || !image || !Array.isArray(sizes) || sizes.length === 0) {
     return NextResponse.json(

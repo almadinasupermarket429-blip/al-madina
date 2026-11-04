@@ -53,21 +53,19 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Bitte melden Sie sich an, um eine Bewertung abzugeben." }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const { productId, rating, title, comment } = body as {
-    productId?: string;
-    rating?: number;
-    title?: string;
-    comment?: string;
-  };
+  const { productId, rating, title, comment } = body as Record<string, unknown>;
 
   // Reviews change the public rating, so only confirmed accounts may post, in whole stars, at a sane length and pace.
   if (!(await isEmailVerified(session.userId))) {
     return NextResponse.json({ error: "Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse.", code: "EMAIL_NOT_VERIFIED" }, { status: 403 });
   }
-  if (!productId || !isUuid(productId) || !Number.isInteger(rating) || rating! < 1 || rating! > 5) {
+  if (typeof productId !== "string" || !isUuid(productId) || typeof rating !== "number" || !Number.isInteger(rating) || rating < 1 || rating > 5) {
     return NextResponse.json({ error: "productId und eine Bewertung von 1-5 sind erforderlich." }, { status: 400 });
   }
-  if (String(title ?? "").length > 120 || String(comment ?? "").length > 2000) {
+  if ((title != null && typeof title !== "string") || (comment != null && typeof comment !== "string")) {
+    return NextResponse.json({ error: "Ungültige Angaben." }, { status: 400 });
+  }
+  if ((title ?? "").length > 120 || (comment ?? "").length > 2000) {
     return NextResponse.json({ error: "Titel höchstens 120, Text höchstens 2000 Zeichen." }, { status: 400 });
   }
   if (!(await rateLimit(`review:${session.userId}`, 10, 60 * 60_000)).allowed) {
@@ -76,6 +74,18 @@ export async function POST(req: NextRequest) {
 
   const product = await prisma.$queryRaw<{ id: string }[]>`select id from products where id = ${productId}::uuid limit 1`;
   if (!product[0]) return NextResponse.json({ error: "Produkt nicht gefunden." }, { status: 404 });
+
+  // Only customers who actually received the product may rate it, so throwaway accounts can't move the rating.
+  const bought = await prisma.$queryRaw<{ n: bigint }[]>`
+    select count(*) as n from orders o join order_items i on i.order_id = o.id
+    where o.user_id = ${session.userId}::uuid and o.status = 'DELIVERED' and i.product_id = ${productId}::uuid
+  `;
+  if (Number(bought[0]?.n ?? 0) === 0) {
+    return NextResponse.json(
+      { error: "Bewerten können Sie Artikel, die Sie bei uns gekauft und erhalten haben.", code: "NOT_PURCHASED" },
+      { status: 403 }
+    );
+  }
 
   try {
     const saved = await prisma.$queryRaw<{ id: string; rating: number; title: string | null; comment: string | null }[]>`

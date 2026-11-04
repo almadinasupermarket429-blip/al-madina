@@ -36,7 +36,27 @@ export async function createTestCustomer(request: APIRequestContext, fullName = 
   return {
     email,
     password,
+    /** Gives this customer a delivered order containing the product (reviews need one). */
+    async deliveredOrder(productId: string) {
+      const order = await prisma.$queryRawUnsafe<{ id: string }[]>(
+        `insert into orders (order_number, customer_name, customer_email, customer_phone, fulfillment,
+                             subtotal, discount, delivery_fee, total, delivery_token, user_id, status, substitution)
+         values ($1, $2, $3, '01520 0000000', 'PICKUP', 1, 0, 0, 1, $4, $5::uuid, 'DELIVERED', 'CALL') returning id`,
+        `AM-PW-${randomBytes(4).toString("hex").toUpperCase()}`,
+        fullName,
+        email,
+        randomBytes(16).toString("hex"),
+        userId
+      );
+      await prisma.$executeRawUnsafe(
+        `insert into order_items (order_id, product_id, name, price, qty) values ($1::uuid, $2::uuid, 'Playwright', 1, 1)`,
+        order[0].id,
+        productId
+      );
+    },
     async remove() {
+      // A throwaway account: its test orders (placed through checkout or made by deliveredOrder) go with it.
+      await prisma.$executeRawUnsafe(`delete from orders where user_id = $1::uuid`, userId);
       await prisma.$executeRawUnsafe(`delete from users where id = $1::uuid`, userId);
       await prisma.$disconnect();
     },

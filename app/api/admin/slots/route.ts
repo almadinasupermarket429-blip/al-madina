@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession, isOwner } from "@/lib/auth";
 import { generateSlots, listSlots } from "@/lib/slots";
+import { isIsoDate } from "@/lib/store-info";
 
-const TIME = /^\d{2}:\d{2}$/;
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
+// Real clock times (00:00–23:59) and calendar dates only: "99:99" or "2026-13-45" would fail in Postgres.
+const TIME = { test: (v: unknown) => typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) };
+const DATE = { test: (v: unknown) => typeof v === "string" && isIsoDate(v) };
 
 // Any admin can see the slot board (staff use it to plan packing).
 export async function GET() {

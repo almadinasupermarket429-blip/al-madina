@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession, isOwner } from "@/lib/auth";
-import { getAdminProductView, parseProductContent, parseTags, replaceVariants, resolveCategoryId } from "@/lib/catalog-admin";
+import { getAdminProductView, parseProductContent, parseTags, replaceVariants, resolveCategoryId, productFieldsError } from "@/lib/catalog-admin";
 import { logAdminAction } from "@/lib/audit";
 import { slugify } from "@/lib/slug";
 import { isUuid } from "@/lib/orders";
@@ -17,6 +17,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!isUuid(id)) return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
   const body = await req.json().catch(() => ({}));
   const { name, category, description, image, badge, unitNote, active, sizes, tags } = body;
+  const fieldsError = productFieldsError(body);
+  if (fieldsError) return NextResponse.json({ error: fieldsError }, { status: 400 });
 
   if (!name || !category || !image) {
     return NextResponse.json({ error: "Name, Kategorie und Bild sind erforderlich." }, { status: 400 });

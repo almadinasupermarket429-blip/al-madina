@@ -49,11 +49,20 @@ export async function POST(req: NextRequest) {
   if ([label, line1, line2, city, postalCode].some((v) => v != null && (typeof v !== "string" || v.length > 200))) {
     return NextResponse.json({ error: "Eine der Angaben ist zu lang." }, { status: 400 });
   }
+  const coord = (v: unknown, limit: number) => v == null || (typeof v === "number" && Number.isFinite(v) && Math.abs(v) <= limit);
+  if (!coord(latitude, 90) || !coord(longitude, 180)) {
+    return NextResponse.json({ error: "Ungültige Koordinaten." }, { status: 400 });
+  }
   if (!label || !line1 || !city || !postalCode) {
     return NextResponse.json(
       { error: "Bezeichnung, Straße, Stadt und Postleitzahl sind erforderlich." },
       { status: 400 }
     );
+  }
+
+  const [count] = await prisma.$queryRaw<{ n: bigint }[]>`select count(*) as n from addresses where user_id = ${session.userId}::uuid`;
+  if (Number(count?.n ?? 0) >= 20) {
+    return NextResponse.json({ error: "Sie können höchstens 20 Adressen speichern." }, { status: 400 });
   }
 
   if (isDefault) {

@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   if (!isOwner(session)) return NextResponse.json({ error: "Inhaberzugriff erforderlich." }, { status: 403 });
 
   const { name, email, password, role } = await req.json().catch(() => ({}));
-  if (!name || !email || !password) {
+  if (typeof name !== "string" || typeof email !== "string" || typeof password !== "string" || !name.trim() || !email || !password) {
     return NextResponse.json({ error: "Name, E-Mail und Passwort sind erforderlich." }, { status: 400 });
   }
   if (!isValidEmail(email)) {
@@ -36,6 +36,9 @@ export async function POST(req: NextRequest) {
   }
   if (password.length < 8) {
     return NextResponse.json({ error: "Das Passwort muss mindestens 8 Zeichen lang sein." }, { status: 400 });
+  }
+  if (Buffer.byteLength(password, "utf8") > 72 || name.length > 120 || email.length > 254) {
+    return NextResponse.json({ error: "Name höchstens 120 Zeichen, Passwort höchstens 72 Zeichen." }, { status: 400 });
   }
   if (role !== "OWNER" && role !== "STAFF") {
     return NextResponse.json({ error: "Rolle muss OWNER oder STAFF sein." }, { status: 400 });

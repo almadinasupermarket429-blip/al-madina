@@ -15,7 +15,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Bestellnummer und E-Mail sind erforderlich." }, { status: 400 });
   }
 
-  const order = await getOrderByNumber(String(orderNumber).trim().toUpperCase());
+  const number = String(orderNumber).trim().toUpperCase().slice(0, 40);
+  // Per order number too, so many machines together can't keep guessing the email for one order.
+  if (!(await rateLimit(`order-track-number:${number}`, 10, 60 * 60_000)).allowed) {
+    return NextResponse.json({ error: "Zu viele Versuche für diese Bestellnummer. Bitte später erneut versuchen." }, { status: 429 });
+  }
+  const order = await getOrderByNumber(number);
   const givenEmail = String(email).trim().toLowerCase();
 
   // An empty email never matches, so orders whose contact details were removed can't be looked up.
