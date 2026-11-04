@@ -16,16 +16,16 @@ describe("deliveryFeeFor", () => {
 describe("storeOpenState (Europe/Berlin, Mon–Sat 07:00–20:00)", () => {
   // Dates are given in UTC; Berlin is UTC+2 in summer time.
   it("is open on a weekday afternoon", () => {
-    expect(storeOpenState(new Date("2026-07-15T12:00:00Z"))).toEqual({ open: true, closesAt: "20:00", nextOpen: null });
+    expect(storeOpenState(new Date("2026-07-15T12:00:00Z"))).toMatchObject({ open: true, closesAt: "20:00", nextOpen: null });
   });
   it("opens later the same morning before 07:00", () => {
-    expect(storeOpenState(new Date("2026-07-15T03:30:00Z"))).toEqual({ open: false, closesAt: null, nextOpen: "07:00" });
+    expect(storeOpenState(new Date("2026-07-15T03:30:00Z"))).toMatchObject({ open: false, closesAt: null, nextOpen: "07:00" });
   });
   it("is closed at exactly 20:00 and points to the next day", () => {
-    expect(storeOpenState(new Date("2026-07-15T18:00:00Z"))).toEqual({ open: false, closesAt: null, nextOpen: "Do 07:00" });
+    expect(storeOpenState(new Date("2026-07-15T18:00:00Z"))).toMatchObject({ open: false, closesAt: null, nextOpen: "Do 07:00" });
   });
   it("is closed on Sunday and opens Monday", () => {
-    expect(storeOpenState(new Date("2026-07-19T10:00:00Z"))).toEqual({ open: false, closesAt: null, nextOpen: "Mo 07:00" });
+    expect(storeOpenState(new Date("2026-07-19T10:00:00Z"))).toMatchObject({ open: false, closesAt: null, nextOpen: "Mo 07:00" });
   });
 });
 

@@ -4,6 +4,10 @@
 // orders booked into it, computed live rather than stored.
 
 import { prisma } from "./prisma";
+import { addDays, berlinDateTime, isPublicHoliday, weekdayOf } from "./store-info";
+
+/** Slots starting sooner than this are no longer offered, so there is time to pack the order. */
+export const SLOT_LEAD_MINUTES = 60;
 
 type Slot = {
   id: string;
@@ -34,15 +38,16 @@ export async function listSlots({ onlyBookable }: { onlyBookable: boolean }): Pr
   const slots = rows.map(shape);
   if (!onlyBookable) return slots;
 
-  const berlinNow = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Europe/Berlin",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date()); // "YYYY-MM-DD HH:MM"
-  return slots.filter((s) => s.isActive && s.booked < s.capacity && `${s.date} ${s.start}` > berlinNow);
+  return slots.filter((s) => isSlotOpenForBooking(s));
+}
+
+/**
+ * Storefront rule: active, not full, and starting at least SLOT_LEAD_MINUTES from now.
+ * Slot dates/times are Berlin wall-clock times, so "now + lead" is compared on the Berlin clock too.
+ */
+export function isSlotOpenForBooking(s: Pick<Slot, "date" | "start" | "capacity" | "booked" | "isActive">, now: Date = new Date()): boolean {
+  const cutoff = berlinDateTime(new Date(now.getTime() + SLOT_LEAD_MINUTES * 60_000));
+  return s.isActive && s.booked < s.capacity && `${s.date} ${s.start}` >= `${cutoff.date} ${cutoff.time}`;
 }
 
 export async function isSlotBookable(slotId: string): Promise<boolean> {
@@ -56,7 +61,8 @@ export async function hasBookableSlots(): Promise<boolean> {
 
 /**
  * Bulk-creates the same set of time windows for each day in a date range,
- * skipping weekdays in `skipWeekdays` (0 = Sunday) and any window that already exists.
+ * skipping weekdays in `skipWeekdays` (0 = Sunday), public holidays (shop closed)
+ * and any window that already exists.
  */
 export async function generateSlots(opts: {
   fromDate: string;
@@ -66,12 +72,7 @@ export async function generateSlots(opts: {
   skipWeekdays: number[];
 }): Promise<number> {
   let created = 0;
-  const start = new Date(`${opts.fromDate}T12:00:00Z`);
-  for (let i = 0; i < opts.days; i++) {
-    const d = new Date(start);
-    d.setUTCDate(start.getUTCDate() + i);
-    if (opts.skipWeekdays.includes(d.getUTCDay())) continue;
-    const date = d.toISOString().slice(0, 10);
+  for (const date of slotGenerationDates(opts.fromDate, opts.days, opts.skipWeekdays)) {
     for (const w of opts.windows) {
       created += await prisma.$executeRaw`
         insert into delivery_slots (slot_date, start_time, end_time, capacity)
@@ -81,4 +82,15 @@ export async function generateSlots(opts: {
     }
   }
   return created;
+}
+
+/** The dates generateSlots fills: `days` calendar days from `fromDate`, minus skipped weekdays and public holidays. */
+export function slotGenerationDates(fromDate: string, days: number, skipWeekdays: number[]): string[] {
+  const dates: string[] = [];
+  for (let i = 0; i < days; i++) {
+    const date = addDays(fromDate, i);
+    if (skipWeekdays.includes(weekdayOf(date)) || isPublicHoliday(date)) continue;
+    dates.push(date);
+  }
+  return dates;
 }
