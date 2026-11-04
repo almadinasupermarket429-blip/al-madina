@@ -348,7 +348,7 @@ export default function AccountPage() {
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   maxLength={6}
-                  placeholder={t("6-stelliger Code", "6-digit code")}
+                  aria-label={t("6-stelliger Code", "6-digit code")} placeholder={t("6-stelliger Code", "6-digit code")}
                   value={verifyCode}
                   onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ""))}
                   style={{ letterSpacing: 4, fontSize: 16 }}
@@ -373,7 +373,7 @@ export default function AccountPage() {
                     "Enter your email address and we'll send you a link to set a new password."
                   )}
                 </p>
-                <input required type="email" autoComplete="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <input required type="email" autoComplete="email" aria-label="E-Mail" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
                 {error && <div className="checkout-error">{error}</div>}
                 {forgotMessage && <small style={{ color: "var(--green-text)" }}>{forgotMessage}</small>}
                 <button className="primary-btn full" disabled={submitting}>
@@ -404,11 +404,11 @@ export default function AccountPage() {
             {googleError && <div className="checkout-error" style={{ marginBottom: 14 }}>{googleError}</div>}
             <form onSubmit={submit} className="checkout-fields">
               {mode === "register" && (
-                <input required placeholder={t("Vollständiger Name", "Full name")} value={name} onChange={(e) => setName(e.target.value)} />
+                <input required aria-label={t("Vollständiger Name", "Full name")} placeholder={t("Vollständiger Name", "Full name")} value={name} onChange={(e) => setName(e.target.value)} />
               )}
-              <input required type="email" autoComplete="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input required type="email" autoComplete="email" aria-label="E-Mail" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
               {mode === "register" && (
-                <input placeholder={t("Telefon (optional)", "Phone (optional)")} value={phone} onChange={(e) => setPhone(e.target.value)} />
+                <input aria-label={t("Telefon (optional)", "Phone (optional)")} placeholder={t("Telefon (optional)", "Phone (optional)")} value={phone} onChange={(e) => setPhone(e.target.value)} />
               )}
               <input
                 required
@@ -514,13 +514,13 @@ export default function AccountPage() {
                 </div>
               ) : (
                 <form onSubmit={saveProfile} className="checkout-fields" style={{ gridTemplateColumns: "1fr 1fr", marginBottom: 0 }}>
-                  <input required placeholder={t("Vollständiger Name", "Full name")} value={profileName} onChange={(e) => setProfileName(e.target.value)} />
-                  <input placeholder={t("Telefon", "Phone")} value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} />
+                  <input required aria-label={t("Vollständiger Name", "Full name")} placeholder={t("Vollständiger Name", "Full name")} value={profileName} onChange={(e) => setProfileName(e.target.value)} />
+                  <input aria-label={t("Telefon", "Phone")} placeholder={t("Telefon", "Phone")} value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} />
                   <small style={{ gridColumn: "1 / -1", ...muted }}>{t("Passwort ändern (optional)", "Change password (optional)")}</small>
                   <input
                     type="password"
                     autoComplete="current-password"
-                    placeholder={t("Aktuelles Passwort", "Current password")}
+                    aria-label={t("Aktuelles Passwort", "Current password")} placeholder={t("Aktuelles Passwort", "Current password")}
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                   />
@@ -528,7 +528,7 @@ export default function AccountPage() {
                     type="password"
                     autoComplete="new-password"
                     minLength={8}
-                    placeholder={t("Neues Passwort (mind. 8)", "New password (min. 8)")}
+                    aria-label={t("Neues Passwort (mind. 8)", "New password (min. 8)")} placeholder={t("Neues Passwort (mind. 8)", "New password (min. 8)")}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                   />
@@ -580,7 +580,7 @@ export default function AccountPage() {
                     required
                     inputMode="numeric"
                     maxLength={6}
-                    placeholder={t("6-stelliger Code", "6-digit code")}
+                    aria-label={t("6-stelliger Code", "6-digit code")} placeholder={t("6-stelliger Code", "6-digit code")}
                     value={verifyCode}
                     onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ""))}
                     style={{
@@ -757,19 +757,19 @@ export default function AccountPage() {
                 style={{ padding: 16, gridTemplateColumns: "1fr 1fr", maxWidth: 560 }}
               >
                 <input
-                  placeholder={t("Bezeichnung (z. B. Zuhause)", "Label (e.g. Home)")}
+                  aria-label={t("Bezeichnung (z. B. Zuhause)", "Label (e.g. Home)")} placeholder={t("Bezeichnung (z. B. Zuhause)", "Label (e.g. Home)")}
                   value={newLabel}
                   onChange={(e) => setNewLabel(e.target.value)}
                   style={{ gridColumn: "1 / -1" }}
                 />
                 <input
-                  placeholder={t("Straße und Hausnummer", "Street and house number")}
+                  aria-label={t("Straße und Hausnummer", "Street and house number")} placeholder={t("Straße und Hausnummer", "Street and house number")}
                   value={newLine1}
                   onChange={(e) => setNewLine1(e.target.value)}
                   style={{ gridColumn: "1 / -1" }}
                 />
-                <input placeholder={t("Postleitzahl", "Postal code")} value={newPostalCode} onChange={(e) => setNewPostalCode(e.target.value)} />
-                <input placeholder={t("Stadt", "City")} value={newCity} onChange={(e) => setNewCity(e.target.value)} />
+                <input aria-label={t("Postleitzahl", "Postal code")} placeholder={t("Postleitzahl", "Postal code")} value={newPostalCode} onChange={(e) => setNewPostalCode(e.target.value)} />
+                <input aria-label={t("Stadt", "City")} placeholder={t("Stadt", "City")} value={newCity} onChange={(e) => setNewCity(e.target.value)} />
                 {addressError && (
                   <div className="checkout-error" style={{ gridColumn: "1 / -1" }}>
                     {addressError}

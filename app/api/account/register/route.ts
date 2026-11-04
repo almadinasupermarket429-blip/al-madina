@@ -12,7 +12,7 @@ import { runCleanupIfDue } from "@/lib/cleanup";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
-import { isDisposableEmail } from "@/lib/disposable-email";
+import { isDisposableEmail, isValidEmail } from "@/lib/disposable-email";
 import { isPlausiblePhoneNumber } from "@/lib/phone";
 import { createEmailVerification } from "@/lib/email-verification";
 import { sendAccountExistsEmail, sendVerificationEmail } from "@/lib/mailer";
@@ -38,6 +38,9 @@ export async function POST(req: NextRequest) {
   }
   if (password.length < 8) {
     return NextResponse.json({ error: "Das Passwort muss mindestens 8 Zeichen lang sein." }, { status: 400 });
+  }
+  if (!isValidEmail(email)) {
+    return NextResponse.json({ error: "Bitte geben Sie eine gültige E-Mail-Adresse ein." }, { status: 400 });
   }
   if (isDisposableEmail(email)) {
     return NextResponse.json(

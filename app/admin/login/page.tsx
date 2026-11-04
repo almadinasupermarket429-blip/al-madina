@@ -54,7 +54,7 @@ export default function AdminLoginPage() {
         <div className="flex items-center gap-3 mb-6">
           <img src="/logo.png" alt="Al-Madina" className="w-12 h-14 object-contain" />
           <div>
-            <div className="font-serif text-lg font-medium">Al-Madina Admin</div>
+            <h1 className="font-serif text-lg font-medium">Al-Madina Admin</h1>
             <div className="text-xs text-black/60">{t("Store-Verwaltungsportal", "Store management portal")}</div>
           </div>
         </div>

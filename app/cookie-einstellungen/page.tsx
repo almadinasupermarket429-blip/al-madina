@@ -26,6 +26,14 @@ const COOKIES: CookieRow[] = [
     duration: ["90 Tage", "90 days"],
   },
   {
+    name: "almadina_google_state",
+    purpose: [
+      "Nur bei „Mit Google anmelden“: schützt den Anmeldevorgang vor Fälschung.",
+      "Only for “Sign in with Google”: protects the sign-in from forgery.",
+    ],
+    duration: ["10 Minuten", "10 minutes"],
+  },
+  {
     name: "almadina_language",
     purpose: [
       "Browser-Speicher (kein Cookie): merkt sich die von Ihnen gewählte Sprache.",

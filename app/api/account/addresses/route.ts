@@ -53,6 +53,9 @@ export async function POST(req: NextRequest) {
     .json()
     .catch(() => ({}));
 
+  if ([label, line1, line2, city, postalCode].some((v) => v != null && (typeof v !== "string" || v.length > 200))) {
+    return NextResponse.json({ error: "Eine der Angaben ist zu lang." }, { status: 400 });
+  }
   if (!label || !line1 || !city || !postalCode) {
     return NextResponse.json(
       { error: "Bezeichnung, Straße, Stadt und Postleitzahl sind erforderlich." },

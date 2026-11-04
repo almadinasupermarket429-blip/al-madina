@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCustomerSession } from "@/lib/customer-auth";
+import { isEmailVerified } from "@/lib/email-verification";
+import { isUuid } from "@/lib/orders";
+import { rateLimit } from "@/lib/rate-limit";
 
 type ReviewRow = {
   id: string;
@@ -22,7 +25,7 @@ function publicName(fullName: string): string {
 // Public: list reviews for a product, newest first, plus the average rating.
 export async function GET(req: NextRequest) {
   const productId = req.nextUrl.searchParams.get("productId");
-  if (!productId) {
+  if (!productId || !isUuid(productId)) {
     return NextResponse.json({ error: "productId ist erforderlich." }, { status: 400 });
   }
 
@@ -57,8 +60,18 @@ export async function POST(req: NextRequest) {
     comment?: string;
   };
 
-  if (!productId || !rating || rating < 1 || rating > 5) {
+  // Reviews change the public rating, so only confirmed accounts may post, in whole stars, at a sane length and pace.
+  if (!(await isEmailVerified(session.userId))) {
+    return NextResponse.json({ error: "Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse.", code: "EMAIL_NOT_VERIFIED" }, { status: 403 });
+  }
+  if (!productId || !isUuid(productId) || !Number.isInteger(rating) || rating! < 1 || rating! > 5) {
     return NextResponse.json({ error: "productId und eine Bewertung von 1-5 sind erforderlich." }, { status: 400 });
+  }
+  if (String(title ?? "").length > 120 || String(comment ?? "").length > 2000) {
+    return NextResponse.json({ error: "Titel höchstens 120, Text höchstens 2000 Zeichen." }, { status: 400 });
+  }
+  if (!(await rateLimit(`review:${session.userId}`, 10, 60 * 60_000)).allowed) {
+    return NextResponse.json({ error: "Zu viele Bewertungen in kurzer Zeit. Bitte später erneut versuchen." }, { status: 429 });
   }
 
   const product = await prisma.$queryRaw<{ id: string }[]>`select id from products where id = ${productId}::uuid limit 1`;

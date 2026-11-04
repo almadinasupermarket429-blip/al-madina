@@ -23,7 +23,9 @@ function statements(sql) {
   const out = [];
   let current = "";
   let inDollar = false;
-  for (const line of sql.split("\n")) {
+  // Split on CRLF too: with Windows line endings "." in the comment regex below stops at the "\r",
+  // a trailing "-- comment" is not removed, and two statements end up in one prepared query.
+  for (const line of sql.split(/\r?\n/)) {
     if (line.trim().startsWith("--") && !inDollar) continue;
     current += line + "\n";
     if ((line.match(/\$\$/g) || []).length % 2 === 1) inDollar = !inDollar;

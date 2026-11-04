@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
-import { signAdminToken, ADMIN_COOKIE_NAME } from "@/lib/auth";
+import { signAdminToken, envPasswordTag, ADMIN_COOKIE_NAME } from "@/lib/auth";
 import { rateLimit, isRateLimited, clientIp } from "@/lib/rate-limit";
 
 /** Constant-time string comparison so a wrong-length/wrong-content guess can't be timed. */
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
       a.role
     FROM users u
     JOIN admin_users a ON a.user_id = u.id
-    WHERE u.email = ${normalizedEmail} AND u.deleted_at IS NULL
+    WHERE u.email = ${normalizedEmail} AND u.deleted_at IS NULL AND u.email_verified_at IS NOT NULL
     LIMIT 1
   `;
   const account = rows[0];
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
     return failed();
   }
 
-  const token = await signAdminToken({ username, role: "OWNER", adminId: null });
+  const token = await signAdminToken({ username, role: "OWNER", adminId: null, pw: envPasswordTag() });
   const res = NextResponse.json({ ok: true });
   res.cookies.set(ADMIN_COOKIE_NAME, token, ADMIN_COOKIE_OPTIONS);
   return res;

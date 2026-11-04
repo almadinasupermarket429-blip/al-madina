@@ -167,11 +167,11 @@ export default function WiderrufPage() {
                   "Enter the order number and the email address used for the order. If the order hasn't left the shop yet, it is cancelled straight away."
                 )}
               </p>
-              <input required placeholder={t("Ihr Name", "Your name")} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
-              <input required placeholder={t("Bestellnummer (z. B. AM-20261021-A1B2C3)", "Order number (e.g. AM-20261021-A1B2C3)")} value={orderNumber} onChange={(e) => setOrderNumber(e.target.value)} />
-              <input required type="email" autoComplete="email" placeholder={t("E-Mail-Adresse der Bestellung", "Email address used for the order")} value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input required aria-label={t("Ihr Name", "Your name")} placeholder={t("Ihr Name", "Your name")} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
+              <input required aria-label={t("Bestellnummer (z. B. AM-20261021-A1B2C3)", "Order number (e.g. AM-20261021-A1B2C3)")} placeholder={t("Bestellnummer (z. B. AM-20261021-A1B2C3)", "Order number (e.g. AM-20261021-A1B2C3)")} value={orderNumber} onChange={(e) => setOrderNumber(e.target.value)} />
+              <input required type="email" autoComplete="email" aria-label={t("E-Mail-Adresse der Bestellung", "Email address used for the order")} placeholder={t("E-Mail-Adresse der Bestellung", "Email address used for the order")} value={email} onChange={(e) => setEmail(e.target.value)} />
               <textarea
-                placeholder={t("Welche Artikel? (optional, sonst gilt der Widerruf für die ganze Bestellung)", "Which items? (optional; otherwise the whole order)")}
+                aria-label={t("Welche Artikel? (optional, sonst gilt der Widerruf für die ganze Bestellung)", "Which items? (optional; otherwise the whole order)")} placeholder={t("Welche Artikel? (optional, sonst gilt der Widerruf für die ganze Bestellung)", "Which items? (optional; otherwise the whole order)")}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 rows={3}

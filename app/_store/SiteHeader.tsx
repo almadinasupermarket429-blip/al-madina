@@ -21,7 +21,7 @@ type Props = {
 
 const SECTION_LINKS: [string, string, string][] = [
   ["#shop", "Shop", "Shop"],
-  ["#fresh", "Täglich frisch", "Fresh daily"],
+  ["#fresh", "Kosmetik", "Cosmetics"],
   ["#story", "Unsere Geschichte", "Our story"],
   ["#visit", "Besuchen Sie uns", "Visit us"],
 ];
@@ -76,7 +76,7 @@ export function SiteHeader({ settings, account, cartCount, query, onQueryChange,
               <input
                 value={query}
                 onChange={(e) => onQueryChange(e.target.value)}
-                placeholder={t("Produkte suchen…", "Search products…")}
+                aria-label={t("Produkte suchen…", "Search products…")} placeholder={t("Produkte suchen…", "Search products…")}
                 className="ml-2 w-full bg-transparent text-sm outline-none"
               />
             </div>

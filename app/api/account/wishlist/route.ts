@@ -1,5 +1,6 @@
 // app/api/account/wishlist/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { isUuid } from "@/lib/orders";
 import { prisma } from "@/lib/prisma";
 import { getCustomerSession } from "@/lib/customer-auth";
 
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Bitte melden Sie sich an, um Artikel zu speichern." }, { status: 401 });
 
   const { productId } = await req.json().catch(() => ({}));
-  if (!productId) return NextResponse.json({ error: "productId ist erforderlich." }, { status: 400 });
+  if (!productId || typeof productId !== "string" || !isUuid(productId)) return NextResponse.json({ error: "productId ist erforderlich." }, { status: 400 });
 
   await prisma.$executeRaw`
     insert into wishlists (user_id, product_id)

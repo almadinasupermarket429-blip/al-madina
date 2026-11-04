@@ -324,3 +324,7 @@ footer>*{position:relative;z-index:1}
 
 /* "Show more" under the product grid (renders the catalog in pages of 24) */
 .show-more{display:flex;justify-content:center;margin-top:28px}
+
+/* Tap targets: at least 24px high (WCAG 2.2 target size). */
+.nav-links a{display:inline-flex;align-items:center;min-height:32px}
+.hero-card a{min-height:28px}

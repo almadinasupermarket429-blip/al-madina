@@ -51,7 +51,7 @@ export default function TrackOrderPage() {
           <form onSubmit={submit} className="checkout-fields">
             <input
               required
-              placeholder={t("Bestellnummer (z. B. AM-20260905-4F2K)", "Order number (e.g. AM-20260905-4F2K)")}
+              aria-label={t("Bestellnummer (z. B. AM-20260905-4F2K)", "Order number (e.g. AM-20260905-4F2K)")} placeholder={t("Bestellnummer (z. B. AM-20260905-4F2K)", "Order number (e.g. AM-20260905-4F2K)")}
               value={orderNumber}
               onChange={(e) => setOrderNumber(e.target.value)}
               className="w-full mb-3 rounded-lg border border-black/10 px-3 py-2 outline-none focus:border-[#a12e3d]"
@@ -59,7 +59,7 @@ export default function TrackOrderPage() {
             <input
               required
               type="email"
-              placeholder={t("E-Mail von der Bestellung", "Email used at checkout")}
+              aria-label={t("E-Mail von der Bestellung", "Email used at checkout")} placeholder={t("E-Mail von der Bestellung", "Email used at checkout")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full mb-4 rounded-lg border border-black/10 px-3 py-2 outline-none focus:border-[#a12e3d]"

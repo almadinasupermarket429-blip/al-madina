@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession, isOwner } from "@/lib/auth";
 import { logAdminAction } from "@/lib/audit";
+import { isValidEmail } from "@/lib/disposable-email";
 
 // admin_users is a role marker (user_id, role) on top of users — the actual
 // account (email, password, name) lives in users, shared with the customer
@@ -30,6 +31,9 @@ export async function POST(req: NextRequest) {
   if (!name || !email || !password) {
     return NextResponse.json({ error: "Name, E-Mail und Passwort sind erforderlich." }, { status: 400 });
   }
+  if (!isValidEmail(email)) {
+    return NextResponse.json({ error: "Bitte eine gültige E-Mail-Adresse angeben." }, { status: 400 });
+  }
   if (password.length < 8) {
     return NextResponse.json({ error: "Das Passwort muss mindestens 8 Zeichen lang sein." }, { status: 400 });
   }
@@ -46,17 +50,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Ein Admin-Konto mit dieser E-Mail existiert bereits." }, { status: 409 });
   }
 
-  // If they already have a customer account, grant admin on it (shared login) —
-  // otherwise create a fresh account with the given password.
-  const existingUser = await prisma.$queryRaw<{ id: string }[]>`
-    select id from users where email = ${normalizedEmail} and deleted_at is null limit 1
+  // A confirmed customer account gets admin on top (shared login). An unconfirmed one may have been
+  // registered by someone else who guessed the employee's address, so the owner's details replace it
+  // and every existing session on it ends. Accounts the owner creates count as confirmed.
+  const existingUser = await prisma.$queryRaw<{ id: string; verified: boolean }[]>`
+    select id, email_verified_at is not null as verified from users where email = ${normalizedEmail} and deleted_at is null limit 1
   `;
 
+  const passwordHash = await bcrypt.hash(password, 10);
   const userId = await prisma.$transaction(async (tx) => {
-    if (existingUser[0]) return existingUser[0].id;
-    const passwordHash = await bcrypt.hash(password, 10);
+    const existing = existingUser[0];
+    if (existing?.verified) return existing.id;
+    if (existing) {
+      await tx.$executeRaw`
+        update users set password_hash = ${passwordHash}, full_name = ${name.trim()},
+          password_changed_at = now(), email_verified_at = now()
+        where id = ${existing.id}::uuid
+      `;
+      await tx.$executeRaw`delete from email_verifications where user_id = ${existing.id}::uuid`;
+      return existing.id;
+    }
     const created = await tx.$queryRaw<{ id: string }[]>`
-      insert into users (email, password_hash, full_name) values (${normalizedEmail}, ${passwordHash}, ${name.trim()})
+      insert into users (email, password_hash, full_name, email_verified_at)
+      values (${normalizedEmail}, ${passwordHash}, ${name.trim()}, now())
       returning id
     `;
     return created[0].id;

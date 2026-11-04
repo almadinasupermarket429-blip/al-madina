@@ -1,5 +1,6 @@
 // app/api/cart/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { isUuid } from "@/lib/orders";
 import { randomUUID } from "crypto";
 import { getCustomerSession } from "@/lib/customer-auth";
 import {
@@ -63,8 +64,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { identity, newGuestToken } = await resolveIdentity(req);
 
-  const { variantId, quantity } = await req.json();
-  if (!variantId || !Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+  const { variantId, quantity } = await req.json().catch(() => ({}));
+  if (!variantId || typeof variantId !== "string" || !isUuid(variantId) || !Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
     return NextResponse.json({ error: "variantId und eine positive Menge sind erforderlich." }, { status: 400 });
   }
 
@@ -79,8 +80,8 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const { identity, newGuestToken } = await resolveIdentity(req);
 
-  const { itemId, quantity } = await req.json();
-  if (!itemId || !Number.isInteger(quantity) || quantity > 99) {
+  const { itemId, quantity } = await req.json().catch(() => ({}));
+  if (!itemId || typeof itemId !== "string" || !isUuid(itemId) || !Number.isInteger(quantity) || quantity > 99) {
     return NextResponse.json({ error: "itemId und Menge sind erforderlich." }, { status: 400 });
   }
 
@@ -98,6 +99,9 @@ export async function DELETE(req: NextRequest) {
   const { itemId } = await req.json().catch(() => ({}));
 
   try {
+    if (itemId && (typeof itemId !== "string" || !isUuid(itemId))) {
+      return NextResponse.json({ error: "Artikel nicht gefunden." }, { status: 404 });
+    }
     if (!itemId) {
       // No itemId = clear the whole cart (used right after a successful checkout).
       await clearCart(identity);

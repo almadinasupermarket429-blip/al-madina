@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
   const session = await getAdminSession();
   if (!isOwner(session)) return NextResponse.json({ error: "Inhaberzugriff erforderlich." }, { status: 403 });
 
-  const body = await req.json();
+  const body = await req.json().catch(() => ({}));
   const { name, category, description, image, badge, unitNote, active, sizes, tags } = body;
 
   if (!name || !category || !image || !Array.isArray(sizes) || sizes.length === 0) {

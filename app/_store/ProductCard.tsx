@@ -63,11 +63,7 @@ export const ProductCard = memo(function ProductCard({ product, liked, onLike, o
               {product.ratingAverage.toFixed(1)} ({product.ratingCount})
             </small>
           </button>
-        ) : (
-          <button onClick={open} style={linkButton}>
-            <small style={{ color: "rgba(24,32,27,.7)" }}>{t("Noch keine Bewertungen", "No reviews yet")}</small>
-          </button>
-        )}
+        ) : null /* A new shop starts with no reviews: don't fill every card with "no reviews yet". */}
 
         {product.sizes.length > 1 && (
           <div className="size-row">

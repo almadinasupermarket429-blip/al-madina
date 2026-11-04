@@ -7,7 +7,8 @@ import { generateOrderNumber, generateDeliveryToken, LOW_STOCK_THRESHOLD, SUBSTI
 import { broadcastOrderEvent } from "@/lib/events";
 import { sendCustomerConfirmationEmail, sendStoreNotificationEmail, sendLowStockAlert } from "@/lib/mailer";
 import { isEmailVerified } from "@/lib/email-verification";
-import { isDisposableEmail } from "@/lib/disposable-email";
+import { isDisposableEmail, isValidEmail } from "@/lib/disposable-email";
+import { rateLimit } from "@/lib/rate-limit";
 import { isPlausiblePhoneNumber } from "@/lib/phone";
 import { getOrderById, listOrders, publicOrder, type FullOrder } from "@/lib/orders";
 import { getStoreSettings, deliveryFeeFor } from "@/lib/settings";
@@ -109,6 +110,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Every order emails the customer and the shop and reserves stock, so cap orders per account.
+    if (!(await rateLimit(`order:${customerSession.userId}`, 10, 10 * 60_000)).allowed) {
+      return NextResponse.json({ error: "Zu viele Bestellungen in kurzer Zeit. Bitte warten Sie ein paar Minuten oder rufen Sie uns an." }, { status: 429 });
+    }
+
     const settings = await getStoreSettings();
     if (!settings.acceptingOrders) {
       return NextResponse.json({ error: settings.closedMessage, code: "STORE_CLOSED" }, { status: 409 });
@@ -122,6 +128,9 @@ export async function POST(req: NextRequest) {
     }
     if (String(customerName).length > 120 || String(notes ?? "").length > 1000 || String(address ?? "").length > 300) {
       return NextResponse.json({ error: "Eine der Angaben ist zu lang." }, { status: 400 });
+    }
+    if (!isValidEmail(customerEmail)) {
+      return NextResponse.json({ error: "Bitte geben Sie eine gültige E-Mail-Adresse ein." }, { status: 400 });
     }
     if (isDisposableEmail(customerEmail)) {
       return NextResponse.json(

@@ -1,4 +1,5 @@
 // lib/auth.ts
+import { createHash } from "node:crypto";
 import { cookies } from "next/headers";
 import { prisma } from "./prisma";
 import { getCustomerSession } from "./customer-auth";
@@ -14,16 +15,24 @@ type AdminTokenPayload = {
   adminId: string | null; // the users.id for a real admin account, null for the .env fallback
 };
 
-export function signAdminToken(payload: AdminTokenPayload): Promise<string> {
+/**
+ * Fingerprint of the .env ADMIN_PASSWORD, carried in fallback-login tokens:
+ * changing the password then signs out every existing fallback session.
+ */
+export function envPasswordTag(): string {
+  return createHash("sha256").update(`almadina-admin:${process.env.ADMIN_PASSWORD ?? ""}`).digest("base64url").slice(0, 16);
+}
+
+export function signAdminToken(payload: AdminTokenPayload & { pw?: string }): Promise<string> {
   // typ marks this as an admin token: customer tokens are signed with the same
   // secret and must never be accepted in the admin cookie.
   return signToken({ ...payload, typ: "admin" }, "30d");
 }
 
-async function verifyAdminToken(token: string): Promise<(AdminTokenPayload & { iat?: number }) | null> {
+async function verifyAdminToken(token: string): Promise<(AdminTokenPayload & { iat?: number; pw?: string }) | null> {
   const payload = await verifyToken(token);
   if (!payload || payload.typ !== "admin" || (payload.role !== "OWNER" && payload.role !== "STAFF")) return null;
-  return payload as unknown as AdminTokenPayload & { iat?: number };
+  return payload as unknown as AdminTokenPayload & { iat?: number; pw?: string };
 }
 
 /** OWNER-only areas (analytics, product editing, review moderation, team management). */
@@ -39,7 +48,7 @@ async function lookupAdmin(userId: string, iat?: number): Promise<{ role: AdminR
     select a.role, u.email, floor(extract(epoch from u.password_changed_at))::int as changed
     from admin_users a
     join users u on u.id = a.user_id
-    where a.user_id = ${userId}::uuid and u.deleted_at is null
+    where a.user_id = ${userId}::uuid and u.deleted_at is null and u.email_verified_at is not null
   `;
   const row = rows[0];
   if (!row) return null;
@@ -61,8 +70,8 @@ export async function getAdminSession(): Promise<AdminTokenPayload | null> {
   const payload = adminToken ? await verifyAdminToken(adminToken) : null;
   if (payload) {
     if (payload.adminId === null) {
-      // .env fallback: valid only while that username is still the configured one.
-      if (process.env.ADMIN_USERNAME && payload.username === process.env.ADMIN_USERNAME) {
+      // .env fallback: valid only while that username and password are still the configured ones.
+      if (process.env.ADMIN_USERNAME && payload.username === process.env.ADMIN_USERNAME && payload.pw === envPasswordTag()) {
         return { username: payload.username, role: "OWNER", adminId: null };
       }
     } else {

@@ -14,8 +14,11 @@ export function googleLoginEnabled(): boolean {
 
 /** Only same-site paths, so the login can't be used to redirect people elsewhere. */
 export function safeNextPath(next: string | null | undefined): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return "/account";
-  return next;
+  // Browsers drop tabs and line breaks from URLs, so "/\t/evil.example" would become "//evil.example".
+  // Reject control characters and backslashes, then confirm the path stays on this site.
+  if (!next || /[\u0000-\u001f\u007f\\]/.test(next) || !next.startsWith("/") || next.startsWith("//")) return "/account";
+  const url = new URL(next, "https://same-site.invalid");
+  return url.origin === "https://same-site.invalid" ? url.pathname + url.search : "/account";
 }
 
 function redirectUri(origin: string): string {
