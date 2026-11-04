@@ -73,7 +73,10 @@ describe("parseDecimal", () => {
     ["2.49", 2.49],
     ["€ 3,99", 3.99],
     ["10", 10],
+    ["1.299,00 €", 1299],
+    ["1,299.00", 1299],
+    ["12,5 EUR", 12.5],
   ])("%s → %s", (input, expected) => expect(parseDecimal(input)).toBe(expected));
 
-  it.each([[""], ["  "], ["abc"], [undefined]])("%s → null", (input) => expect(parseDecimal(input)).toBeNull());
+  it.each([[""], ["  "], ["abc"], [undefined], ["1,2,3"], ["2,49abc"]])("%s → null", (input) => expect(parseDecimal(input)).toBeNull());
 });

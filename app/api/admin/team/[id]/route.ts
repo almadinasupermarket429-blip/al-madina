@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession, isOwner } from "@/lib/auth";
 import { logAdminAction } from "@/lib/audit";
+import { isUuid } from "@/lib/orders";
 
 // Removes admin access only (deletes the admin_users role row) — the
 // underlying users account, and any customer history on it, is untouched.
@@ -10,6 +11,8 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (!isOwner(session)) return NextResponse.json({ error: "Inhaberzugriff erforderlich." }, { status: 403 });
 
   const { id } = await params;
+
+  if (!isUuid(id)) return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
   if (id === session?.adminId) {
     return NextResponse.json({ error: "Sie können Ihr eigenes Konto nicht entfernen, während Sie damit angemeldet sind." }, { status: 400 });
   }

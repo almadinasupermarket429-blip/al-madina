@@ -80,7 +80,17 @@ export async function POST(req: NextRequest) {
   const rows = parseCsv(body.csv);
   const header = (rows.shift() ?? []).map((h) => h.trim().toLowerCase());
   const col = (name: string) => header.indexOf(name);
-  const [iId, iPrice, iOld, iStock, iActive, iQty, iUnit, iDeposit] = ["variant_id", "preis", "vorher_preis", "bestand", "sichtbar", "nettomenge", "einheit", "pfand"].map(col);
+  const [iId, iPrice, iOld, iStock, iActive, iQty, iUnit, iDeposit, iStockAtExport] = [
+    "variant_id",
+    "preis",
+    "vorher_preis",
+    "bestand",
+    "sichtbar",
+    "nettomenge",
+    "einheit",
+    "pfand",
+    "bestand_beim_export",
+  ].map(col);
   const iFood = {
     ingredients: col("zutaten"),
     ingredientsNot: col("zutaten_nicht_noetig"),
@@ -112,6 +122,9 @@ export async function POST(req: NextRequest) {
   const depositUpdates = new Map<string, number>();
   const foodUpdates = new Map<string, Food>();
   const seenProducts = new Set<string>();
+  const seenVariants = new Set<string>();
+  // With bestand_beim_export the stock change is applied as a difference (see the export route).
+  const stockDeltas = new Map<string, number>();
 
   rows.forEach((r, i) => {
     const line = i + 2;
@@ -120,6 +133,11 @@ export async function POST(req: NextRequest) {
       errors.push(`Zeile ${line}: unbekannte variant_id`);
       return;
     }
+    if (seenVariants.has(cur.id)) {
+      errors.push(`Zeile ${line}: diese Größe steht schon in einer früheren Zeile (variant_id doppelt)`);
+      return;
+    }
+    seenVariants.add(cur.id);
     const cell = (idx: number) => (idx >= 0 ? (r[idx] ?? "").trim() : "");
     const change: Change = { variantId: cur.id, name: cur.name };
     if (iPrice >= 0) {
@@ -135,8 +153,17 @@ export async function POST(req: NextRequest) {
     }
     if (iStock >= 0) {
       const s = Number((r[iStock] ?? "").trim());
+      const exported = iStockAtExport >= 0 && cell(iStockAtExport) !== "" ? Number(cell(iStockAtExport)) : null;
       if (!Number.isInteger(s) || s < 0 || s > 100_000) errors.push(`Zeile ${line}: ungültiger Bestand „${r[iStock] ?? ""}“`);
-      else if (s !== cur.stock) change.stock = [cur.stock, s];
+      else if (exported !== null && !Number.isInteger(exported)) errors.push(`Zeile ${line}: „bestand_beim_export“ bitte nicht ändern`);
+      else if (exported !== null) {
+        // Only what the owner changed: 10 → 20 adds 10, even if 2 were sold since the export.
+        const delta = s - exported;
+        if (delta !== 0) {
+          change.stock = [cur.stock, Math.max(cur.stock + delta, 0)];
+          stockDeltas.set(cur.id, delta);
+        }
+      } else if (s !== cur.stock) change.stock = [cur.stock, s];
     }
     if (iActive >= 0) {
       const v = r[iActive] ?? "";
@@ -246,7 +273,12 @@ export async function POST(req: NextRequest) {
     for (const c of changes) {
       if (c.price) await tx.$executeRaw`update product_variants set price = ${c.price[1]} where id = ${c.variantId}::uuid`;
       if (c.oldPrice) await tx.$executeRaw`update product_variants set compare_at_price = ${c.oldPrice[1]} where id = ${c.variantId}::uuid`;
-      if (c.stock) await tx.$executeRaw`update product_variants set stock_quantity = ${c.stock[1]} where id = ${c.variantId}::uuid`;
+      const delta = stockDeltas.get(c.variantId);
+      if (delta !== undefined) {
+        await tx.$executeRaw`update product_variants set stock_quantity = greatest(stock_quantity + ${delta}, 0) where id = ${c.variantId}::uuid`;
+      } else if (c.stock) {
+        await tx.$executeRaw`update product_variants set stock_quantity = ${c.stock[1]} where id = ${c.variantId}::uuid`;
+      }
       if (c.active) {
         await tx.$executeRaw`update products set is_active = ${c.active[1]} where id = (select product_id from product_variants where id = ${c.variantId}::uuid)`;
       }

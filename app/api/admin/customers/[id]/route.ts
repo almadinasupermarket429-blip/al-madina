@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, isOwner } from "@/lib/auth";
 import { logAdminAction } from "@/lib/audit";
 import { anonymizeAccount, deletionBlocker, exportAccountData } from "@/lib/account-data";
+import { isUuid } from "@/lib/orders";
 
 // Owner only: GDPR requests handled by the shop (e.g. a customer asks by phone or email).
 //   GET    → download everything stored about the customer (Art. 15 / 20)
@@ -11,6 +12,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const session = await getAdminSession();
   if (!isOwner(session)) return NextResponse.json({ error: "Inhaberzugriff erforderlich." }, { status: 403 });
   const { id } = await params;
+  if (!isUuid(id)) return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
   const data = await exportAccountData(id).catch(() => null);
   if (!data) return NextResponse.json({ error: "Kunde nicht gefunden." }, { status: 404 });
   await logAdminAction(session, "customer.export", "customer", id, `Datenauskunft erstellt, Konto ${id.slice(0, 8)}`);
@@ -27,6 +29,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const session = await getAdminSession();
   if (!isOwner(session)) return NextResponse.json({ error: "Inhaberzugriff erforderlich." }, { status: 403 });
   const { id } = await params;
+  if (!isUuid(id)) return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
   const data = await exportAccountData(id).catch(() => null);
   if (!data) return NextResponse.json({ error: "Kunde nicht gefunden." }, { status: 404 });
 

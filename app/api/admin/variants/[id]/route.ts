@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession, isOwner } from "@/lib/auth";
 import { logAdminAction } from "@/lib/audit";
+import { isUuid } from "@/lib/orders";
 
 // Owner only: quick inline stock / price edit for one product size, without
 // opening (and re-saving) the whole product form.
@@ -12,6 +13,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const session = await getAdminSession();
   if (!isOwner(session)) return NextResponse.json({ error: "Inhaberzugriff erforderlich." }, { status: 403 });
   const { id } = await params;
+  if (!isUuid(id)) return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
   const body = await req.json().catch(() => ({}));
   const [before] = await prisma.$queryRaw<{ stock: number; price: string; label: string; product: string }[]>`
     select v.stock_quantity as stock, v.price, v.size_label as label, p.name as product

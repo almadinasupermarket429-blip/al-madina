@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession, isOwner } from "@/lib/auth";
 import { toCsv } from "@/lib/csv";
+import { addDays, isIsoDate } from "@/lib/store-info";
 
 type Row = {
   order_number: string;
@@ -17,7 +18,6 @@ type Row = {
   items: string;
 };
 
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 // Owner only: orders in a date range as a spreadsheet (e.g. for the accountant).
 // ?from=2026-10-01&to=2026-10-31 (Berlin dates, inclusive). Defaults to the current month.
@@ -28,8 +28,14 @@ export async function GET(req: NextRequest) {
   const now = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
   const fromParam = req.nextUrl.searchParams.get("from") ?? "";
   const toParam = req.nextUrl.searchParams.get("to") ?? "";
-  const from = DATE.test(fromParam) ? fromParam : `${now.slice(0, 7)}-01`;
-  const to = DATE.test(toParam) ? toParam : now;
+  if ((fromParam && !isIsoDate(fromParam)) || (toParam && !isIsoDate(toParam))) {
+    return NextResponse.json({ error: "Bitte gültige Daten im Format JJJJ-MM-TT angeben." }, { status: 400 });
+  }
+  const from = fromParam || `${now.slice(0, 7)}-01`;
+  const to = toParam || now;
+  if (from > to) return NextResponse.json({ error: "Das Startdatum liegt nach dem Enddatum." }, { status: 400 });
+  // At most a bit over two years per file, so one request can't load the whole history at once.
+  if (addDays(from, 800) < to) return NextResponse.json({ error: "Bitte höchstens zwei Jahre auf einmal exportieren." }, { status: 400 });
 
   const rows = await prisma.$queryRaw<Row[]>`
     select o.order_number, o.created_at, o.status, o.fulfillment, o.customer_name, o.subtotal, o.discount, o.coupon_code,

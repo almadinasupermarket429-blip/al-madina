@@ -151,6 +151,22 @@ function hoursOn(date: string) {
   return h?.open && h.close ? { open: h.open, close: h.close } : null;
 }
 
+/** The moment a calendar day (YYYY-MM-DD) starts in Germany, as a Date (handles summer/winter time). */
+export function berlinMidnight(date: string): Date {
+  for (const offset of ["+01:00", "+02:00"]) {
+    const d = new Date(`${date}T00:00:00${offset}`);
+    if (berlinDateTime(d).date === date && berlinDateTime(d).time === "00:00") return d;
+  }
+  return new Date(`${date}T00:00:00+01:00`);
+}
+
+/** True for a real calendar date written as YYYY-MM-DD (not 2026-02-30). */
+export function isIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const d = new Date(`${value}T12:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
+}
+
 export type OpenState = {
   open: boolean;
   closesAt: string | null;

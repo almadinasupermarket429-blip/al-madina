@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession, isOwner } from "@/lib/auth";
 import { listCategories } from "@/lib/catalog-admin";
+import { isUuid } from "@/lib/orders";
 
 // Owner only: rename, reorder, set image, show/hide.
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!isOwner(session)) return NextResponse.json({ error: "Inhaberzugriff erforderlich." }, { status: 403 });
   const { id } = await params;
+  if (!isUuid(id)) return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
   const body = await req.json().catch(() => ({}));
 
   if (body.name !== undefined) {
@@ -41,6 +43,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const session = await getAdminSession();
   if (!isOwner(session)) return NextResponse.json({ error: "Inhaberzugriff erforderlich." }, { status: 403 });
   const { id } = await params;
+  if (!isUuid(id)) return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
   await prisma.$executeRaw`delete from categories where id = ${id}::uuid`;
   return NextResponse.json(await listCategories());
 }

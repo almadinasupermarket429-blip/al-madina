@@ -185,22 +185,7 @@ drop trigger if exists trg_settings_updated_at on store_settings;
 create trigger trg_settings_updated_at before update on store_settings
   for each row execute function set_updated_at();
 
--- Distance x subtotal fee matrix used by lib/pricing.ts. Not wired into
--- checkout (which needs geocoded addresses); fees come from store_settings.
-create table if not exists delivery_fee_rules (
-  id              uuid primary key default gen_random_uuid(),
-  min_distance_km numeric(6,2) not null default 0,
-  max_distance_km numeric(6,2),
-  min_subtotal    numeric(10,2) not null default 0,
-  max_subtotal    numeric(10,2),
-  fee             numeric(10,2) not null,
-  priority        int not null default 0,
-  is_active       boolean not null default true,
-  created_at      timestamptz not null default now(),
-  constraint chk_distance_range check (max_distance_km is null or max_distance_km > min_distance_km),
-  constraint chk_subtotal_range check (max_subtotal is null or max_subtotal > min_subtotal)
-);
-create index if not exists idx_fee_rules_priority on delivery_fee_rules(priority) where is_active;
+-- (A distance-based delivery_fee_rules table lived here; it was never used and 009 drops it.)
 
 -- ---- Cart (account OR anonymous guest token) ---------------------------
 create table if not exists carts (

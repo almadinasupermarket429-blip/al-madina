@@ -3,9 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { getAdminSession, isOwner } from "@/lib/auth";
 import { logAdminAction } from "@/lib/audit";
+import { isUuid } from "@/lib/orders";
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
   const [customerSession, adminSession] = await Promise.all([getCustomerSession(), getAdminSession()]);
 
   const review = await prisma.$queryRaw<{ id: string; user_id: string }[]>`

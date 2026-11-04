@@ -45,6 +45,8 @@ export const metadata: Metadata = {
     icon: "/logo.png",
     apple: "/logo.png",
   },
+  // The home page's own address; every other indexable route sets its own (layouts, product pages).
+  alternates: { canonical: "/" },
   openGraph: {
     title: "Al-Madina Markt — Supermarkt & Halal-Metzgerei, Schweinfurt",
     description: "Arabische, türkische & mediterrane Lebensmittel und frisches Halal-Fleisch. Lieferung oder Abholung, bar bezahlen.",

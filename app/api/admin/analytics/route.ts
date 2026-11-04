@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession, isOwner } from "@/lib/auth";
 import { LOW_STOCK_THRESHOLD } from "@/lib/order-utils";
+import { addDays, berlinDateTime, berlinMidnight } from "@/lib/store-info";
 
 // Reads the live orders/order_items/product_variants schema. Cancelled
 // orders never count toward revenue/units — only the status breakdown shows them.
@@ -19,8 +20,11 @@ export async function GET(req: NextRequest) {
 
   const requested = Number(req.nextUrl.searchParams.get("days"));
   const days = RANGES.includes(requested) ? requested : 30;
-  const since = new Date(Date.now() - days * 86_400_000);
-  const prevSince = new Date(Date.now() - 2 * days * 86_400_000);
+  // Whole calendar days in Germany: today and the days - 1 before it (the chart's buckets).
+  const today = berlinDateTime().date;
+  const firstDay = addDays(today, -(days - 1));
+  const since = berlinMidnight(firstDay);
+  const prevSince = berlinMidnight(addDays(firstDay, -days));
 
   const [orders, prevTotals, items, lowStock, orderCountByStatus, newCustomers, cancelled] = await Promise.all([
     prisma.$queryRaw<OrderRow[]>`
@@ -55,10 +59,7 @@ export async function GET(req: NextRequest) {
 
   // Revenue + order count per (Berlin) day, every day in range including empty ones.
   const byDay = new Map<string, { revenue: number; orders: number }>();
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 86_400_000).toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
-    byDay.set(d, { revenue: 0, orders: 0 });
-  }
+  for (let i = 0; i < days; i++) byDay.set(addDays(firstDay, i), { revenue: 0, orders: 0 });
   const byHour = Array.from({ length: 24 }, () => 0);
   const byWeekday = Array.from({ length: 7 }, () => ({ orders: 0, revenue: 0 }));
   const fulfillment = { DELIVERY: { orders: 0, revenue: 0 }, PICKUP: { orders: 0, revenue: 0 } };

@@ -25,5 +25,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
     { url: `${SITE_URL}/impressum`, changeFrequency: "yearly", priority: 0.1 },
     { url: `${SITE_URL}/datenschutz`, changeFrequency: "yearly", priority: 0.1 },
+    { url: `${SITE_URL}/widerruf`, changeFrequency: "yearly", priority: 0.1 },
+    { url: `${SITE_URL}/cookie-einstellungen`, changeFrequency: "yearly", priority: 0.1 },
   ];
 }

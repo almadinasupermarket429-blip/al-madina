@@ -4,6 +4,7 @@ import { getAdminSession, isOwner } from "@/lib/auth";
 import { getAdminProductView, parseProductContent, parseTags, replaceVariants, resolveCategoryId } from "@/lib/catalog-admin";
 import { logAdminAction } from "@/lib/audit";
 import { slugify } from "@/lib/slug";
+import { isUuid } from "@/lib/orders";
 
 // Admin only: update a product and fully replace its size list
 // (simplest, most predictable way to keep sizes in sync with the admin form).
@@ -12,6 +13,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!isOwner(session)) return NextResponse.json({ error: "Inhaberzugriff erforderlich." }, { status: 403 });
 
   const { id } = await params;
+
+  if (!isUuid(id)) return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
   const body = await req.json().catch(() => ({}));
   const { name, category, description, image, badge, unitNote, active, sizes, tags } = body;
 
@@ -71,6 +74,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!isOwner(session)) return NextResponse.json({ error: "Inhaberzugriff erforderlich." }, { status: 403 });
 
   const { id } = await params;
+
+  if (!isUuid(id)) return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
   const rows = await prisma.$queryRaw<{ name: string }[]>`select name from products where id = ${id}::uuid`;
   const deleted = await prisma.$executeRaw`delete from products where id = ${id}::uuid`.catch(() => null);
   if (deleted === null) {

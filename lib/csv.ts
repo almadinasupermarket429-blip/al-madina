@@ -60,10 +60,23 @@ export function parseCsv(input: string): string[][] {
 }
 
 /** Accepts "2,49", "2.49", "€ 2,49" → 2.49; returns null for empty/invalid. */
+/**
+ * A number from a spreadsheet cell: "2,49", "2.49", "€ 3,99", "1.299,00 €" or "1,299.00".
+ * With both separators the last one is the decimal point; a lone comma is always decimal.
+ */
 export function parseDecimal(value: string | undefined): number | null {
   if (value == null) return null;
-  const s = value.replace(/[€\s]/g, "").replace(",", ".");
+  let s = value.replace(/[€\s\u00a0]|EUR/gi, "");
   if (s === "") return null;
+  const comma = s.lastIndexOf(",");
+  const dot = s.lastIndexOf(".");
+  if (comma >= 0 && dot >= 0) {
+    s = comma > dot ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, "");
+  } else if (comma >= 0) {
+    if (s.indexOf(",") !== comma) return null; // "1,2,3"
+    s = s.replace(",", ".");
+  }
+  if (!/^-?\d+(\.\d+)?$/.test(s)) return null;
   const n = Number(s);
   return Number.isFinite(n) ? n : null;
 }

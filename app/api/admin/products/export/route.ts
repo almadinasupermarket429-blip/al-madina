@@ -14,6 +14,9 @@ const IMPORT_HEADER = [
   "preis",
   "vorher_preis",
   "bestand",
+  // Stock when the file was made: the import applies only the owner's change, so sales made
+  // while the file was being edited aren't overwritten.
+  "bestand_beim_export",
   "sichtbar",
   "nettomenge",
   "einheit",
@@ -84,6 +87,7 @@ export async function GET() {
       r.category ?? "",
       comma(r.price),
       comma(r.old_price),
+      r.stock,
       r.stock,
       yesNo(r.active),
       plain(r.size_value),

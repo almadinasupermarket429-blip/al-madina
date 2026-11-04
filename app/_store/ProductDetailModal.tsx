@@ -12,7 +12,7 @@ import type { Account, Product, ProductSize, Translate } from "./types";
 import { imageFallback, useEuro } from "./ui";
 import { useDialog } from "./useDialog";
 
-type Related = { id: string; name: string; image: string; category: string };
+type Related = { id: string; name: string; nameEn?: string | null; image: string; category: string };
 
 type Props = {
   product: Product;
@@ -145,11 +145,11 @@ export function ProductDetailModal({ product, account, liked, onLike, onClose, o
                 >
                   <img loading="lazy"
                     src={sizedImage(r.image, 200)}
-                    alt={r.name}
+                    alt={(language === "en" && r.nameEn) || r.name}
                     onError={imageFallback}
                     style={{ width: 96, height: 96, objectFit: "contain", borderRadius: 10, marginBottom: 4 }}
                   />
-                  <small style={{ display: "block", lineHeight: 1.2 }}>{r.name}</small>
+                  <small style={{ display: "block", lineHeight: 1.2 }}>{(language === "en" && r.nameEn) || r.name}</small>
                 </button>
               ))}
             </div>
