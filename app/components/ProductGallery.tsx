@@ -41,7 +41,7 @@ export function ProductGallery({ images: given, alt, zoomHint }: { images: strin
         <div className="pg-thumbs">
           {images.map((src, i) => (
             <button key={src} type="button" className={i === index ? "active" : ""} onClick={() => setIndex(i)} aria-label={`${alt} ${i + 1}`}>
-              <img src={sizedImage(src, 160)} alt="" />
+              <img src={sizedImage(src, 160)} alt="" loading="lazy" />
             </button>
           ))}
         </div>

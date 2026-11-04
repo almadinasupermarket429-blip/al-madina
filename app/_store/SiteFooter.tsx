@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Facebook, Instagram } from "lucide-react";
 import { STORE, hoursSummary } from "@/lib/store-info";
 import type { Translate } from "./types";
 import { MAP_URL, PHONE_LINK } from "./ui";
@@ -11,7 +10,7 @@ export function SiteFooter({ t }: { t: Translate }) {
         <div className="footer-main">
           <div>
             <a href="#top" className="footer-logo-wrap">
-              <img src="/logo.png" alt="Al-Madina Markt logo" className="footer-logo" />
+              <img src="/logo.png" alt="Al-Madina Markt logo" className="footer-logo" loading="lazy" />
               <span className="header-logo-text">
                 <b>al-madina</b>
                 <small>market · seit 1998</small>
@@ -40,15 +39,6 @@ export function SiteFooter({ t }: { t: Translate }) {
                 <br />
                 {t("So geschlossen", "Sun closed")}
               </span>
-            </div>
-            <div>
-              <b>{t("Folgen", "Follow")}</b>
-              <a href="https://www.instagram.com/" target="_blank" rel="noreferrer">
-                <Instagram size={15} /> Instagram
-              </a>
-              <a href="https://www.facebook.com/" target="_blank" rel="noreferrer">
-                <Facebook size={15} /> Facebook
-              </a>
             </div>
             <div>
               <b>{t("Rechtliches", "Legal")}</b>

@@ -105,8 +105,10 @@ export default function Home() {
         for (const it of order.items) {
           const product = it.sizeId ? products.find((p) => p.sizes.some((s) => s.id === it.sizeId)) : undefined;
           const size = product?.sizes.find((s) => s.id === it.sizeId);
-          if (product && size) {
-            add(product, size, it.qty, true);
+          // Stock may have dropped since: take what is there (at most 50), skip sold-out sizes.
+          const qty = size ? Math.min(it.qty, size.stock, 50) : 0;
+          if (product && size && qty > 0) {
+            add(product, size, qty, true);
             added++;
           }
         }
@@ -121,7 +123,6 @@ export default function Home() {
   }, [products, add, showToast, t]);
 
   function finishOrder() {
-    cart.clear();
     setCheckoutOpen(false);
     setCartOpen(false);
   }
@@ -192,6 +193,7 @@ export default function Home() {
           settings={settings}
           slots={slots}
           onClose={() => setCheckoutOpen(false)}
+          onPlaced={cart.clear}
           onSuccess={finishOrder}
           t={t}
         />

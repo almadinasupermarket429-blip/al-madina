@@ -6,14 +6,26 @@ import { MAP_URL, PHONE, PHONE_LINK } from "./ui";
 
 type OpenState = ReturnType<typeof storeOpenState> | null;
 
+/** "öffnet um 07:00 Uhr" / "opens Tuesday 07:00", in the visitor's language. */
+function opensText(o: NonNullable<OpenState>, t: Translate) {
+  const n = o.nextOpenAt;
+  if (!n) return "";
+  if (n.today) return t(`öffnet um ${n.time} Uhr`, `opens at ${n.time}`);
+  const day = OPENING_HOURS.find((h) => h.day === n.weekday);
+  return t(`öffnet ${day?.de ?? ""} um ${n.time} Uhr`, `opens ${day?.en ?? ""} at ${n.time}`);
+}
+
 function OpenBadge({ openState, long, t }: { openState: NonNullable<OpenState>; long: boolean; t: Translate }) {
+  const closed = openState.holiday
+    ? t(`Heute geschlossen (${openState.holiday.de})`, `Closed today (${openState.holiday.en})`)
+    : t("Geschlossen", "Closed");
   const label = long
     ? openState.open
-      ? t(`Jetzt geöffnet · bis ${openState.closesAt} Uhr`, `Open now · until ${openState.closesAt}`)
-      : t(`Geschlossen · öffnet ${openState.nextOpen ?? ""}`, `Closed · opens ${openState.nextOpen ?? ""}`)
+      ? t(`Jetzt geöffnet bis ${openState.closesAt} Uhr`, `Open now until ${openState.closesAt}`)
+      : `${closed}, ${opensText(openState, t)}`
     : openState.open
       ? t("Jetzt geöffnet", "Open now")
-      : t("Geschlossen", "Closed");
+      : closed;
   return (
     <span className={openState.open ? "open-badge open" : "open-badge"}>
       <i />
@@ -134,7 +146,7 @@ export function FreshBand({ t }: { t: Translate }) {
           </a>
         </div>
         <div className="feature-photo">
-          <img src="/images/feature-produce.jpg" alt="Fresh produce market display" />
+          <img loading="lazy" src="/images/feature-produce.jpg" alt={t("Frisches Obst und Gemüse in der Auslage", "Fresh produce market display")} />
           <div>
             <b>{t("Sorgfältig ausgewählt.", "Carefully chosen.")}</b>
             <span>{t("Qualität, die man sieht.", "Quality you can see.")}</span>
@@ -149,7 +161,7 @@ export function Story({ t }: { t: Translate }) {
   return (
     <section id="story" className="story reveal mx-auto grid max-w-7xl gap-12 px-5 py-20 lg:grid-cols-[.9fr_1.1fr] lg:px-8">
       <div className="story-photo">
-        <img src="/images/story-shelves.jpg" alt="Grocery store shelves" />
+        <img loading="lazy" src="/images/story-shelves.jpg" alt={t("Regale im Laden", "Grocery store shelves")} />
       </div>
       <div className="story-copy">
         <span className="eyebrow">{t("Unsere kleine Ecke des Orients", "Our little corner of the Orient")}</span>

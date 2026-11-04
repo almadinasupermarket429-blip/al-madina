@@ -55,7 +55,7 @@ export function CartDrawer({ items, count, subtotal, settings, onChangeQty, onCh
             <div className="cart-items">
               {items.map((item) => (
                 <div className="cart-item" key={item.key}>
-                  <img src={sizedImage(item.image, 200)} alt="" onError={imageFallback} />
+                  <img src={sizedImage(item.image, 200)} alt="" onError={imageFallback} loading="lazy" />
                   <div>
                     <b>{item.name}</b>
                     <span>

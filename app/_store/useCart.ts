@@ -3,10 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { mapServerCart, type CartItem, type Product, type ProductSize, type ServerCartItem, type Translate } from "./types";
 
-type CartResponse = { items: ServerCartItem[]; error?: string };
+type CartResponse = { items: ServerCartItem[]; error?: string; code?: string };
 
-/** The server refused the change (e.g. out of stock); its message is meant for the customer. */
-class CartRejected extends Error {}
+/** The server refused the change (e.g. out of stock); `code` says why. */
+class CartRejected extends Error {
+  constructor(public code: string) {
+    super(code);
+  }
+}
 
 /** The basket, kept in sync with the server-side cart (guest cookie or account). */
 export function useCart(t: Translate, notify: (message: string) => void) {
@@ -24,7 +28,7 @@ export function useCart(t: Translate, notify: (message: string) => void) {
         body: body ? JSON.stringify(body) : undefined,
       });
       const data: CartResponse = await res.json();
-      if (!res.ok) throw new CartRejected(data.error || "");
+      if (!res.ok) throw new CartRejected(data.code || "");
       if (seq.current === mine && Array.isArray(data.items)) setItems(mapServerCart(data.items));
       return data;
     },
@@ -36,12 +40,20 @@ export function useCart(t: Translate, notify: (message: string) => void) {
   }, [send]);
 
   const connectionError = useCallback(
-    (e: unknown, rejectedFallback: string) =>
-      notify(
-        e instanceof CartRejected
-          ? e.message || rejectedFallback
-          : t("Verbindungsfehler. Bitte versuchen Sie es erneut.", "Connection error. Please try again.")
-      ),
+    (e: unknown, rejectedFallback: string) => {
+      if (!(e instanceof CartRejected)) {
+        notify(t("Verbindungsfehler. Bitte versuchen Sie es erneut.", "Connection error. Please try again."));
+        return;
+      }
+      const messages: Record<string, string> = {
+        OUT_OF_STOCK: t("So viele sind leider nicht mehr auf Lager.", "Sorry, there aren't that many left in stock."),
+        ITEM_LIMIT: t("Höchstens 50 Stück pro Artikel.", "At most 50 of each item."),
+        CART_FULL: t("Ihr Warenkorb ist voll.", "Your basket is full."),
+        VARIANT_NOT_FOUND: t("Dieser Artikel ist nicht mehr erhältlich.", "This item is no longer available."),
+        ITEM_NOT_FOUND: t("Dieser Artikel ist nicht mehr im Warenkorb.", "This item is no longer in your basket."),
+      };
+      notify(messages[e.code] ?? rejectedFallback);
+    },
     [notify, t]
   );
 

@@ -17,6 +17,8 @@ type Props = {
   settings: StoreSettings;
   slots: Slot[];
   onClose: () => void;
+  /** The order went through: empty the basket now (the thank-you screen stays open). */
+  onPlaced: () => void;
   onSuccess: () => void;
   t: Translate;
 };
@@ -30,7 +32,7 @@ type Placed = { orderNumber: string; total: number; slot: Slot | null; fulfillme
 
 const row = { display: "flex", justifyContent: "space-between" } as const;
 
-export function CheckoutModal({ cart, subtotal, account, settings, slots, onClose, onSuccess, t }: Props) {
+export function CheckoutModal({ cart, subtotal, account, settings, slots, onClose, onPlaced, onSuccess, t }: Props) {
   const { language } = useLanguage();
   const euro = useEuro();
   const dialogRef = useDialog<HTMLDivElement>(() => (placed ? onSuccess() : onClose()));
@@ -134,6 +136,7 @@ export function CheckoutModal({ cart, subtotal, account, settings, slots, onClos
         if (data.code === "EMAIL_NOT_VERIFIED") setNeedsVerification(true);
         setError(data.error || t("Bestellung fehlgeschlagen. Bitte versuchen Sie es erneut.", "Could not place order. Please try again."));
       } else {
+        onPlaced();
         setPlaced({ orderNumber: data.orderNumber, total: data.total, slot: slots.find((s) => s.id === slotId) ?? null, fulfillment });
       }
     } catch {
@@ -349,6 +352,17 @@ export function CheckoutModal({ cart, subtotal, account, settings, slots, onClos
         )}
 
         <div className="checkout-box" style={{ flexDirection: "column", gap: 6, alignItems: "stretch" }}>
+          {/* The order overview right above the button (BGB § 312j): what is bought, how many, at what price. */}
+          <ul aria-label={t("Ihre Artikel", "Your items")} style={{ listStyle: "none", margin: 0, padding: "0 0 6px", borderBottom: "1px solid var(--line)", display: "grid", gap: 4 }}>
+            {cart.map((c) => (
+              <li key={c.key} style={{ ...row, gap: 12, fontSize: 14 }}>
+                <span>
+                  {c.qty} × {c.name} ({c.sizeLabel})
+                </span>
+                <span>{euro(c.price * c.qty)}</span>
+              </li>
+            ))}
+          </ul>
           <div style={row}>
             <span>{t("Zwischensumme", "Subtotal")}</span>
             <span>{euro(subtotal)}</span>
@@ -369,6 +383,7 @@ export function CheckoutModal({ cart, subtotal, account, settings, slots, onClos
             <span>{t("Gesamt (bar)", "Total (cash)")}</span>
             <span>{euro(total)}</span>
           </div>
+          <small style={{ color: "#5f6762" }}>{t("Alle Preise inkl. MwSt.", "All prices incl. VAT.")}</small>
         </div>
 
         <p className="privacy-note">

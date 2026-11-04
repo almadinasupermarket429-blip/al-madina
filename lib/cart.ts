@@ -30,28 +30,29 @@ export type Cart = {
   subtotal: number;
 };
 
+/** Most of one size per basket (orders merge and cap lines the same way). */
+export const MAX_QTY_PER_ITEM = 50;
+/** Most different items per basket (an order takes at most 100 lines). */
+export const MAX_CART_LINES = 100;
+
+/** Error codes the cart API answers with; the shop translates them (app/_store/useCart.ts). */
+export type CartErrorCode = "VARIANT_NOT_FOUND" | "ITEM_NOT_FOUND" | "OUT_OF_STOCK" | "ITEM_LIMIT" | "CART_FULL";
+
 async function getOrCreateCartId(identity: CartIdentity): Promise<string> {
-  if ("userId" in identity) {
-    const existing = await prisma.$queryRaw<{ id: string }[]>`
-      select id from carts where user_id = ${identity.userId}::uuid limit 1
-    `;
-    if (existing[0]) return existing[0].id;
-
-    const created = await prisma.$queryRaw<{ id: string }[]>`
-      insert into carts (user_id) values (${identity.userId}::uuid) returning id
-    `;
-    return created[0].id;
-  }
-
-  const existing = await prisma.$queryRaw<{ id: string }[]>`
-    select id from carts where guest_token = ${identity.guestToken} limit 1
-  `;
-  if (existing[0]) return existing[0].id;
-
-  const created = await prisma.$queryRaw<{ id: string }[]>`
-    insert into carts (guest_token) values (${identity.guestToken}) returning id
-  `;
-  return created[0].id;
+  // Upsert: two first "add" clicks at once would otherwise both insert and one would fail on the unique key.
+  const rows =
+    "userId" in identity
+      ? await prisma.$queryRaw<{ id: string }[]>`
+          insert into carts (user_id) values (${identity.userId}::uuid)
+          on conflict (user_id) do update set user_id = excluded.user_id
+          returning id
+        `
+      : await prisma.$queryRaw<{ id: string }[]>`
+          insert into carts (guest_token) values (${identity.guestToken})
+          on conflict (guest_token) do update set guest_token = excluded.guest_token
+          returning id
+        `;
+  return rows[0].id;
 }
 
 // Split from getCart() so mutating operations that already resolved a
@@ -107,24 +108,27 @@ export async function addToCart(
     select stock_quantity from product_variants where id = ${variantId}::uuid and is_active = true
   `;
   if (!variant[0]) throw new Error("VARIANT_NOT_FOUND");
+  const limit = Math.min(variant[0].stock_quantity, MAX_QTY_PER_ITEM);
+  if (quantity > limit) throw new Error(variant[0].stock_quantity < MAX_QTY_PER_ITEM ? "OUT_OF_STOCK" : "ITEM_LIMIT");
 
   const cartId = await getOrCreateCartId(identity);
 
-  const existingItem = await prisma.$queryRaw<{ id: string; quantity: number }[]>`
-    select id, quantity from cart_items where cart_id = ${cartId}::uuid and variant_id = ${variantId}::uuid
+  const lines = await prisma.$queryRaw<{ n: bigint; has: boolean }[]>`
+    select count(*) as n, bool_or(variant_id = ${variantId}::uuid) as has
+    from cart_items where cart_id = ${cartId}::uuid
   `;
+  if (!lines[0]?.has && Number(lines[0]?.n ?? 0) >= MAX_CART_LINES) throw new Error("CART_FULL");
 
-  const nextQuantity = (existingItem[0]?.quantity ?? 0) + quantity;
-  if (nextQuantity > variant[0].stock_quantity) throw new Error("OUT_OF_STOCK");
-
-  if (existingItem[0]) {
-    await prisma.$executeRaw`update cart_items set quantity = ${nextQuantity} where id = ${existingItem[0].id}::uuid`;
-  } else {
-    await prisma.$executeRaw`
-      insert into cart_items (cart_id, variant_id, quantity)
-      values (${cartId}::uuid, ${variantId}::uuid, ${quantity})
-    `;
-  }
+  // One statement, so two quick clicks can't both read the old quantity and lose one.
+  const saved = await prisma.$queryRaw<{ quantity: number }[]>`
+    insert into cart_items (cart_id, variant_id, quantity)
+    values (${cartId}::uuid, ${variantId}::uuid, ${quantity})
+    on conflict (cart_id, variant_id) do update
+      set quantity = cart_items.quantity + excluded.quantity
+      where cart_items.quantity + excluded.quantity <= ${limit}
+    returning quantity
+  `;
+  if (!saved[0]) throw new Error(variant[0].stock_quantity < MAX_QTY_PER_ITEM ? "OUT_OF_STOCK" : "ITEM_LIMIT");
 
   return getCartByCartId(cartId);
 }
@@ -148,6 +152,7 @@ export async function updateCartItemQuantity(
     where ci.id = ${itemId}::uuid and ci.cart_id = ${cartId}::uuid
   `;
   if (!variant[0]) throw new Error("ITEM_NOT_FOUND");
+  if (quantity > MAX_QTY_PER_ITEM) throw new Error("ITEM_LIMIT");
   if (quantity > variant[0].stock_quantity) throw new Error("OUT_OF_STOCK");
 
   await prisma.$executeRaw`
@@ -170,10 +175,9 @@ export async function clearCart(identity: CartIdentity): Promise<void> {
 }
 
 /**
- * Called on login/register: folds a guest cart's items into the user's
- * cart (merging quantities where both have the same variant), then
- * deletes the now-empty guest cart. Safe to call even if the guest never
- * had a cart at all.
+ * Called on login/register: folds a guest cart's items into the user's cart (adding quantities
+ * where both have the same size, capped at MAX_QTY_PER_ITEM and the stock), then deletes the guest
+ * cart. Lines beyond MAX_CART_LINES are dropped. Safe to call when the guest never had a cart.
  */
 export async function mergeGuestCartIntoUser(guestToken: string, userId: string): Promise<void> {
   const guestCart = await prisma.$queryRaw<{ id: string }[]>`
@@ -184,25 +188,30 @@ export async function mergeGuestCartIntoUser(guestToken: string, userId: string)
   const guestCartId = guestCart[0].id;
   const userCartId = await getOrCreateCartId({ userId });
 
-  const guestItems = await prisma.$queryRaw<{ variant_id: string; quantity: number }[]>`
-    select variant_id, quantity from cart_items where cart_id = ${guestCartId}::uuid
-  `;
-
-  for (const item of guestItems) {
-    const existing = await prisma.$queryRaw<{ id: string; quantity: number }[]>`
-      select id, quantity from cart_items where cart_id = ${userCartId}::uuid and variant_id = ${item.variant_id}::uuid
-    `;
-    if (existing[0]) {
-      await prisma.$executeRaw`
-        update cart_items set quantity = ${existing[0].quantity + item.quantity} where id = ${existing[0].id}::uuid
-      `;
-    } else {
-      await prisma.$executeRaw`
-        insert into cart_items (cart_id, variant_id, quantity)
-        values (${userCartId}::uuid, ${item.variant_id}::uuid, ${item.quantity})
-      `;
-    }
-  }
-
-  await prisma.$executeRaw`delete from carts where id = ${guestCartId}::uuid`;
+  await prisma.$transaction([
+    prisma.$executeRaw`
+      with room as (
+        select greatest(${MAX_CART_LINES} - count(*), 0) as free from cart_items where cart_id = ${userCartId}::uuid
+      ),
+      incoming as (
+        select g.variant_id, least(g.quantity, ${MAX_QTY_PER_ITEM}, pv.stock_quantity) as quantity,
+               exists (select 1 from cart_items u where u.cart_id = ${userCartId}::uuid and u.variant_id = g.variant_id) as existing,
+               g.created_at
+        from cart_items g
+        join product_variants pv on pv.id = g.variant_id and pv.is_active = true
+        where g.cart_id = ${guestCartId}::uuid and pv.stock_quantity > 0
+      ),
+      ranked as (
+        select *, row_number() over (partition by existing order by created_at) as rn from incoming
+      )
+      insert into cart_items (cart_id, variant_id, quantity)
+      select ${userCartId}::uuid, variant_id, quantity
+      from ranked, room
+      where existing or rn <= room.free
+      on conflict (cart_id, variant_id) do update
+        set quantity = least(cart_items.quantity + excluded.quantity, ${MAX_QTY_PER_ITEM},
+                             (select stock_quantity from product_variants where id = excluded.variant_id))
+    `,
+    prisma.$executeRaw`delete from carts where id = ${guestCartId}::uuid`,
+  ]);
 }

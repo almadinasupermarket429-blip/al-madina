@@ -143,7 +143,7 @@ export function ProductDetailModal({ product, account, liked, onLike, onClose, o
                   onClick={() => onOpenRelated(r.id)}
                   style={{ flex: "0 0 auto", width: 96, textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}
                 >
-                  <img
+                  <img loading="lazy"
                     src={sizedImage(r.image, 200)}
                     alt={r.name}
                     onError={imageFallback}

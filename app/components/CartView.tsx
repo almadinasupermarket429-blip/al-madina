@@ -4,14 +4,16 @@
 import Link from "next/link";
 import { sizedImage } from "@/lib/images";
 import { useState, useTransition } from "react";
-import { Minus, Plus, ShoppingBag } from "lucide-react";
-import { formatCurrency } from "@/lib/format";
+import { ArrowLeft, Minus, Plus, ShoppingBag } from "lucide-react";
+import { formatEuro } from "@/lib/format";
 import type { Cart } from "@/lib/cart";
 import { useLanguage } from "@/lib/i18n";
 
 export function CartView({ initialCart, cartMinimum }: { initialCart: Cart; cartMinimum: number }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const money = (n: number) => formatEuro(n, language);
   const [cart, setCart] = useState(initialCart);
+  const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
   async function updateQuantity(itemId: string, quantity: number) {
@@ -20,7 +22,19 @@ export function CartView({ initialCart, cartMinimum }: { initialCart: Cart; cart
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ itemId, quantity }),
     });
-    if (res.ok) setCart(await res.json());
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setCart(data);
+      setError("");
+    } else {
+      setError(
+        data.code === "ITEM_LIMIT"
+          ? t("Höchstens 50 Stück pro Artikel.", "At most 50 of each item.")
+          : data.code === "OUT_OF_STOCK"
+            ? t("So viele sind leider nicht mehr auf Lager.", "Sorry, there aren't that many left in stock.")
+            : t("Der Warenkorb konnte nicht geändert werden.", "Couldn't update your basket.")
+      );
+    }
   }
 
   const belowMinimum = cart.subtotal < cartMinimum;
@@ -44,7 +58,7 @@ export function CartView({ initialCart, cartMinimum }: { initialCart: Cart; cart
         {cart.items.map((item) => (
           <div className="cart-item" key={item.id}>
             {item.image_url ? (
-              <img src={sizedImage(item.image_url, 200)} alt={item.product_name} />
+              <img src={sizedImage(item.image_url, 200)} alt={item.product_name} loading="lazy" />
             ) : (
               <div style={{ width: 75, height: 75, borderRadius: 12, background: "#eee" }} />
             )}
@@ -53,7 +67,7 @@ export function CartView({ initialCart, cartMinimum }: { initialCart: Cart; cart
                 <b>{item.product_name}</b>
               </Link>
               <span>
-                {item.size_label} · {formatCurrency(item.price)}
+                {item.size_label}, {money(item.price)}
               </span>
               <div className="qty">
                 <button
@@ -62,10 +76,10 @@ export function CartView({ initialCart, cartMinimum }: { initialCart: Cart; cart
                 >
                   <Minus size={13} />
                 </button>
-                <span>{item.quantity}</span>
+                <span aria-live="polite">{item.quantity}</span>
                 <button
                   onClick={() => startTransition(() => updateQuantity(item.id, item.quantity + 1))}
-                  disabled={item.quantity >= item.stock_quantity}
+                  disabled={item.quantity >= Math.min(item.stock_quantity, 50)}
                   aria-label={t("Menge erhöhen", "Increase quantity")}
                 >
                   <Plus size={13} />
@@ -76,16 +90,22 @@ export function CartView({ initialCart, cartMinimum }: { initialCart: Cart; cart
         ))}
       </div>
 
+      {error && (
+        <div className="checkout-error" role="alert">
+          {error}
+        </div>
+      )}
+
       <div className="cart-summary">
         <div>
           <span>{t("Zwischensumme", "Subtotal")}</span>
-          <b>{formatCurrency(cart.subtotal)}</b>
+          <b>{money(cart.subtotal)}</b>
         </div>
         {belowMinimum ? (
           <small style={{ textAlign: "left", color: "#b3261e" }}>
             {t(
-              `Fügen Sie noch ${formatCurrency(cartMinimum - cart.subtotal)} hinzu, um den Mindestbestellwert von ${formatCurrency(cartMinimum)} zu erreichen.`,
-              `Add ${formatCurrency(cartMinimum - cart.subtotal)} more to reach the ${formatCurrency(cartMinimum)} order minimum.`
+              `Fügen Sie noch ${money(cartMinimum - cart.subtotal)} hinzu, um den Mindestbestellwert von ${money(cartMinimum)} zu erreichen.`,
+              `Add ${money(cartMinimum - cart.subtotal)} more to reach the ${money(cartMinimum)} order minimum.`
             )}
           </small>
         ) : (
@@ -103,5 +123,18 @@ export function CartView({ initialCart, cartMinimum }: { initialCart: Cart; cart
         <small>{t("Barzahlung bei Lieferung oder Abholung", "Cash payment on delivery or pickup")}</small>
       </div>
     </div>
+  );
+}
+
+/** Back link and heading of /cart, in the visitor's language. */
+export function CartPageHeader() {
+  const { t } = useLanguage();
+  return (
+    <>
+      <Link href="/" className="text-btn" style={{ display: "flex", width: "fit-content", marginBottom: 24 }}>
+        <ArrowLeft size={16} /> {t("Zurück zum Shop", "Back to the shop")}
+      </Link>
+      <h1 style={{ fontSize: 30, margin: "8px 0 24px" }}>{t("Ihr Warenkorb", "Your basket")}</h1>
+    </>
   );
 }

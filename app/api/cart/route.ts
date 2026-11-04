@@ -9,6 +9,8 @@ import {
   updateCartItemQuantity,
   removeCartItem,
   clearCart,
+  MAX_QTY_PER_ITEM,
+  type CartErrorCode,
   type CartIdentity,
 } from "@/lib/cart";
 
@@ -48,11 +50,23 @@ function withGuestCookie(res: NextResponse, newGuestToken?: string) {
   return res;
 }
 
+const CART_ERRORS: Record<CartErrorCode, { status: number; error: string }> = {
+  VARIANT_NOT_FOUND: { status: 404, error: "Dieser Artikel ist nicht mehr erhältlich." },
+  ITEM_NOT_FOUND: { status: 404, error: "Dieser Artikel ist nicht mehr im Warenkorb." },
+  OUT_OF_STOCK: { status: 409, error: "So viele sind leider nicht mehr auf Lager." },
+  ITEM_LIMIT: { status: 409, error: `Höchstens ${MAX_QTY_PER_ITEM} Stück pro Artikel.` },
+  CART_FULL: { status: 409, error: "Ihr Warenkorb ist voll." },
+};
+
+/** `code` lets the shop show the message in the visitor's language; `error` is the German text. */
 function errorResponse(err: unknown) {
-  const message = err instanceof Error ? err.message : "Unknown error";
-  const status =
-    message === "OUT_OF_STOCK" ? 409 : message === "VARIANT_NOT_FOUND" || message === "ITEM_NOT_FOUND" ? 404 : 400;
-  return NextResponse.json({ error: message }, { status });
+  const code = (err instanceof Error ? err.message : "") as CartErrorCode;
+  const known = CART_ERRORS[code];
+  if (!known) {
+    console.error("[cart]", err);
+    return NextResponse.json({ error: "Warenkorb konnte nicht geändert werden.", code: "UNKNOWN" }, { status: 500 });
+  }
+  return NextResponse.json({ error: known.error, code }, { status: known.status });
 }
 
 export async function GET(req: NextRequest) {
@@ -65,7 +79,7 @@ export async function POST(req: NextRequest) {
   const { identity, newGuestToken } = await resolveIdentity(req);
 
   const { variantId, quantity } = await req.json().catch(() => ({}));
-  if (!variantId || typeof variantId !== "string" || !isUuid(variantId) || !Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+  if (!variantId || typeof variantId !== "string" || !isUuid(variantId) || !Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QTY_PER_ITEM) {
     return NextResponse.json({ error: "variantId und eine positive Menge sind erforderlich." }, { status: 400 });
   }
 
@@ -81,7 +95,7 @@ export async function PATCH(req: NextRequest) {
   const { identity, newGuestToken } = await resolveIdentity(req);
 
   const { itemId, quantity } = await req.json().catch(() => ({}));
-  if (!itemId || typeof itemId !== "string" || !isUuid(itemId) || !Number.isInteger(quantity) || quantity > 99) {
+  if (!itemId || typeof itemId !== "string" || !isUuid(itemId) || !Number.isInteger(quantity) || quantity > MAX_QTY_PER_ITEM) {
     return NextResponse.json({ error: "itemId und Menge sind erforderlich." }, { status: 400 });
   }
 

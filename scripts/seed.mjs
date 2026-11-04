@@ -56,6 +56,14 @@ try {
         );
       }
     }
+    // Net quantity for the price per kg / litre, read from labels like "500 g" (same rule as migration 007).
+    // String.raw keeps the regex backslashes (a plain template string would drop them).
+    await prisma.$executeRawUnsafe(String.raw`
+      update product_variants
+      set size_value = replace((regexp_match(size_label, '(\d+(?:[.,]\d+)?)\s*(kg|g|ml|l)(?![a-zA-ZäöüÄÖÜ])', 'i'))[1], ',', '.')::numeric,
+          size_unit = lower((regexp_match(size_label, '(\d+(?:[.,]\d+)?)\s*(kg|g|ml|l)(?![a-zA-ZäöüÄÖÜ])', 'i'))[2])::variant_size_unit
+      where size_value is null and size_label ~* '\d\s*(kg|g|ml|l)(?![a-zA-ZäöüÄÖÜ])'
+    `);
     console.log(`seeded ${CATALOG.length} demo products`);
   }
 } catch (err) {
