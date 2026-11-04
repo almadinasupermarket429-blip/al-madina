@@ -5,12 +5,9 @@ import { randomUUID } from "crypto";
 
 const run = process.env.TEST_DB === "1";
 
-describe.skipIf(!run)("orders and email codes (database)", async () => {
-  // Vitest still runs this body while collecting a skipped suite: stop before touching the database.
-  if (!run) {
-    it.skip("needs TEST_DB=1 and a throwaway DATABASE_URL", () => {});
-    return;
-  }
+// Only defined with TEST_DB=1: vitest runs a skipped suite's body to collect its tests, which would need a database.
+if (!run) it.skip("needs TEST_DB=1 and a throwaway database", () => {});
+if (run) describe("orders and email codes (database)", async () => {
   const { prisma } = await import("@/lib/prisma");
   const { cancelOrder, getOrderById, setOrderStatus } = await import("@/lib/orders");
   const { createEmailVerification, verifyEmailCode } = await import("@/lib/email-verification");
@@ -25,7 +22,7 @@ describe.skipIf(!run)("orders and email codes (database)", async () => {
     const rows = await prisma.$queryRaw<{ id: string }[]>`
       insert into orders (order_number, customer_name, customer_email, customer_phone, fulfillment,
                           subtotal, discount, delivery_fee, total, delivery_token, user_id, status, substitution)
-      values (${`AM-TEST-${randomUUID().slice(0, 8)}`}, 'Test', 'test@example.com', '01520 0000000', 'PICKUP',
+      values (${`HS-TEST-${randomUUID().slice(0, 8)}`}, 'Test', 'test@example.com', '01520 0000000', 'PICKUP',
               10, 0, 0, 10, ${randomUUID()}, ${userId}::uuid, 'PLACED', 'CALL')
       returning id
     `;

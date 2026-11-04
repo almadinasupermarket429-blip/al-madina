@@ -5,12 +5,9 @@ import { randomUUID } from "crypto";
 
 const run = process.env.TEST_DB === "1";
 
-describe.skipIf(!run)("cart (database)", async () => {
-  // Vitest still runs this body while collecting a skipped suite: stop before touching the database.
-  if (!run) {
-    it.skip("needs TEST_DB=1 and a throwaway DATABASE_URL", () => {});
-    return;
-  }
+// Only defined with TEST_DB=1: vitest runs a skipped suite's body to collect its tests, which would need a database.
+if (!run) it.skip("needs TEST_DB=1 and a throwaway database", () => {});
+if (run) describe("cart (database)", async () => {
   const { prisma } = await import("@/lib/prisma");
   const cart = await import("@/lib/cart");
 

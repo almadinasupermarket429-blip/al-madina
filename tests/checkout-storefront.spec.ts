@@ -30,7 +30,7 @@ test("a logged-in customer can order for pickup and pay in cash", async ({ page 
 
     const done = page.getByRole("dialog", { name: "Bestellung aufgegeben" });
     await expect(done).toBeVisible({ timeout: 20_000 });
-    await expect(done).toContainText(/#HS-\d{8}-[0-9A-F]{6}/);
+    await expect(done).toContainText(/#AM-\d{8}-[0-9A-F]{6}/);
     // The basket empties as soon as the order is placed.
     await expect(page.locator(".cart-btn i")).toHaveText("0");
 
