@@ -72,7 +72,8 @@ describe("unitPrice", () => {
   });
 
   it("formats in German style", () => {
-    expect(formatUnitPrice(2.49, 500, "g")).toBe("4,98 €/kg");
+    expect(formatUnitPrice(2.49, 500, "g").replace(/ /g, " ")).toBe("4,98 €/kg");
+    expect(formatUnitPrice(2.49, 500, "g", "en")).toBe("€4.98/kg");
     expect(formatUnitPrice(1, null, null)).toBe("");
   });
 });

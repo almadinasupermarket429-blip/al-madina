@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Heart, Plus, X } from "lucide-react";
 import { sizedImage } from "@/lib/images";
-import { ProductDetails, ProductGallery } from "@/app/components/ProductDetails";
+import { FoodFacts, PriceNotes, ProductDetails, ProductGallery } from "@/app/components/ProductDetails";
+import { useLanguage } from "@/lib/i18n";
 import { StarRating } from "@/app/components/StarRating";
 import { Reviews, useReviews } from "./Reviews";
 import type { Account, Product, ProductSize, Translate } from "./types";
-import { euro, imageFallback } from "./ui";
+import { imageFallback, useEuro } from "./ui";
+import { useDialog } from "./useDialog";
 
 type Related = { id: string; name: string; image: string; category: string };
 
@@ -24,6 +26,8 @@ type Props = {
 };
 
 export function ProductDetailModal({ product, account, liked, onLike, onClose, onAdd, onOpenRelated, t }: Props) {
+  const euro = useEuro();
+  const { language } = useLanguage();
   const [sizeId, setSizeId] = useState(product.sizes[0]?.id);
   const size = product.sizes.find((s) => s.id === sizeId) ?? product.sizes[0];
   const [related, setRelated] = useState<Related[]>([]);
@@ -36,18 +40,14 @@ export function ProductDetailModal({ product, account, liked, onLike, onClose, o
       .catch(() => {});
   }, [product.id]);
 
-  // Close on Escape, like any dialog.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const dialogRef = useDialog<HTMLDivElement>(onClose);
 
   if (!size) return null;
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div
+        ref={dialogRef}
         className="checkout-modal"
         role="dialog"
         aria-modal="true"
@@ -87,6 +87,7 @@ export function ProductDetailModal({ product, account, liked, onLike, onClose, o
         </div>
 
         <ProductDetails description={product.description} highlights={product.highlights} specs={product.specs} t={t} />
+        <FoodFacts food={product.food} language={language} t={t} />
         {product.tags?.length > 0 && (
           <div className="tag-row" style={{ margin: "8px 0" }}>
             {product.tags.map((tag) => (
@@ -116,6 +117,8 @@ export function ProductDetailModal({ product, account, liked, onLike, onClose, o
           <div>
             <b>{euro(size.price)}</b>
             {product.unitNote && <small> {product.unitNote}</small>}
+            {size.oldPrice && <del>{euro(size.oldPrice)}</del>}
+            <PriceNotes price={size.price} sizeValue={size.sizeValue} sizeUnit={size.sizeUnit} deposit={size.deposit} language={language} t={t} />
           </div>
           <button
             className="primary-btn"

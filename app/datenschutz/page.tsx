@@ -17,7 +17,7 @@ export default function DatenschutzPage() {
   const { t } = useLanguage();
 
   return (
-    <main className="min-h-screen bg-[#f8f7f3] text-[#18201b] py-12 px-4 md:px-8">
+    <main id="main" tabIndex={-1} className="min-h-screen bg-[#f8f7f3] text-[#18201b] py-12 px-4 md:px-8">
       <div className="w-full max-w-2xl mx-auto bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-black/5">
         <Link href="/" className="text-btn" style={{ display: "inline-flex", marginBottom: 24 }}>
           <ArrowLeft size={16} /> {t("Zurück zum Shop", "Back to shop")}

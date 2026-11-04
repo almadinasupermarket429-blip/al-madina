@@ -49,7 +49,7 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-[#f8f7f3] px-4">
+    <main id="main" tabIndex={-1} className="min-h-screen flex items-center justify-center bg-[#f8f7f3] px-4">
       <form onSubmit={handleSubmit} className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-black/5 p-8">
         <div className="flex items-center gap-3 mb-6">
           <img src="/logo.png" alt="Al-Madina" className="w-12 h-14 object-contain" />

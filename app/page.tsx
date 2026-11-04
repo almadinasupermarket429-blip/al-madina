@@ -127,7 +127,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f8f7f3] text-[#18201b]">
+    <main id="main" tabIndex={-1} className="min-h-screen bg-[#f8f7f3] text-[#18201b]">
       <SiteHeader
         settings={settings}
         account={account}

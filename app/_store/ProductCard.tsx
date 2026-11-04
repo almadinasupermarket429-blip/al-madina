@@ -4,9 +4,11 @@ import { memo, useState } from "react";
 import { Heart, Plus } from "lucide-react";
 import { sizedImage } from "@/lib/images";
 import { StarRating } from "@/app/components/StarRating";
+import { PriceNotes } from "@/app/components/ProductDetails";
+import { useLanguage } from "@/lib/i18n";
 import { salePercent } from "./catalog-filters";
 import type { Product, ProductSize, Translate } from "./types";
-import { euro, imageFallback } from "./ui";
+import { imageFallback, useEuro } from "./ui";
 
 type Props = {
   product: Product;
@@ -21,6 +23,8 @@ const linkButton = { background: "none", border: "none", padding: 0, cursor: "po
 
 /** One product tile in the grid. Memoised: the grid can hold hundreds of these. */
 export const ProductCard = memo(function ProductCard({ product, liked, onLike, onAdd, onOpen, t }: Props) {
+  const euro = useEuro();
+  const { language } = useLanguage();
   const [sizeId, setSizeId] = useState(product.sizes[0]?.id);
   const size = product.sizes.find((s) => s.id === sizeId) ?? product.sizes[0];
   if (!size) return null;
@@ -80,6 +84,7 @@ export const ProductCard = memo(function ProductCard({ product, liked, onLike, o
             <b>{euro(size.price)}</b>
             {product.unitNote && <small> {product.unitNote}</small>}
             {size.oldPrice && <del>{euro(size.oldPrice)}</del>}
+            <PriceNotes price={size.price} sizeValue={size.sizeValue} sizeUnit={size.sizeUnit} deposit={size.deposit} language={language} t={t} />
           </div>
           <button
             onClick={() => onAdd(product, size)}

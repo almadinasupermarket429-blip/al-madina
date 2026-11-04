@@ -1,5 +1,7 @@
 // Small display helpers shared by storefront components.
 import { STORE } from "@/lib/store-info";
+import { formatEuro } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 
 export const MAP_URL = STORE.mapUrl;
 export const PHONE = STORE.phoneDisplay;
@@ -26,4 +28,8 @@ export function slotLabel(slot: { date: string; start: string; end: string }, la
   return `${d}, ${slot.start}–${slot.end}`;
 }
 
-export const euro = (n: number) => `€${n.toFixed(2)}`;
+/** Price formatter in the page language: "43,89 €" in German, "€43.89" in English. */
+export function useEuro() {
+  const { language } = useLanguage();
+  return (n: number) => formatEuro(n, language);
+}

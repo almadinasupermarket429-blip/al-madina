@@ -6,7 +6,7 @@ import { useLanguage } from "@/lib/i18n";
 export default function GlobalError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   const { t } = useLanguage();
   return (
-    <main className="min-h-screen bg-[#f8f7f3] text-[#18201b] flex flex-col items-center justify-center py-12 px-4 text-center">
+    <main id="main" tabIndex={-1} className="min-h-screen bg-[#f8f7f3] text-[#18201b] flex flex-col items-center justify-center py-12 px-4 text-center">
       <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-sm border border-black/5">
         <div className="icon-btn mx-auto mb-5" style={{ width: 56, height: 56, color: "#b3261e" }}>
           <AlertTriangle size={26} />

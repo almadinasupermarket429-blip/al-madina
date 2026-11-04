@@ -4,7 +4,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { formatCurrency } from "@/lib/format";
+import { formatEuro } from "@/lib/format";
+import { PriceNotes } from "./ProductDetails";
 import { useLanguage } from "@/lib/i18n";
 
 export type Variant = {
@@ -14,10 +15,13 @@ export type Variant = {
   price: number;
   compare_at_price: number | null;
   stock_quantity: number;
+  size_value?: number | null;
+  size_unit?: string | null;
+  deposit?: number | null;
 };
 
 export function VariantSelector({ variants }: { variants: Variant[] }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [selectedId, setSelectedId] = useState(variants[0]?.id);
   const [status, setStatus] = useState<"idle" | "adding" | "added" | "error">("idle");
 
@@ -63,10 +67,11 @@ export function VariantSelector({ variants }: { variants: Variant[] }) {
 
       <div className="checkout-box" style={{ marginBottom: 20 }}>
         <div>
-          <b>{formatCurrency(selected.price)}</b>
+          <b>{formatEuro(selected.price, language)}</b>
           {selected.compare_at_price && (
-            <del style={{ marginLeft: 8, color: "#a2a6a3", fontSize: 12 }}>{formatCurrency(selected.compare_at_price)}</del>
+            <del style={{ marginLeft: 8, color: "#a2a6a3", fontSize: 12 }}>{formatEuro(selected.compare_at_price, language)}</del>
           )}
+          <PriceNotes price={selected.price} sizeValue={selected.size_value} sizeUnit={selected.size_unit} deposit={selected.deposit} language={language} t={t} />
         </div>
         <button className="primary-btn" onClick={handleAddToCart} disabled={outOfStock || status === "adding"}>
           <Plus size={17} />

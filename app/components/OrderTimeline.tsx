@@ -3,7 +3,7 @@
 import { Check, Package, Truck, ClipboardList, XCircle } from "lucide-react";
 import { ORDER_STATUSES } from "@/lib/order-utils";
 import { useLanguage } from "@/lib/i18n";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatEuro } from "@/lib/format";
 
 type StatusEvent = { status: string; createdAt: string };
 export type TrackableOrder = {
@@ -129,18 +129,18 @@ export default function OrderTimeline({ order }: { order: TrackableOrder }) {
           <span>
             {t("Rabatt", "Discount")} {order.couponCode ? `(${order.couponCode})` : ""}
           </span>
-          <span>−€{order.discount.toFixed(2)}</span>
+          <span>−{formatEuro(order.discount, language)}</span>
         </div>
       ) : null}
       {order.deliveryFee ? (
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
           <span>{t("Liefergebühr", "Delivery fee")}</span>
-          <span>€{order.deliveryFee.toFixed(2)}</span>
+          <span>{formatEuro(order.deliveryFee, language)}</span>
         </div>
       ) : null}
       <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, borderTop: "1px solid var(--line)", paddingTop: 6 }}>
         <span>{t("Gesamt (bar)", "Total (cash)")}</span>
-        <span>€{order.total.toFixed(2)}</span>
+        <span>{formatEuro(order.total, language)}</span>
       </div>
     </div>
   );

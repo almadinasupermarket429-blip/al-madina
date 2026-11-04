@@ -5,9 +5,10 @@ import Link from "next/link";
 import { CalendarClock, Check, Repeat, Store, Ticket, Truck, X } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import { deliveryFeeFor, type StoreSettings } from "@/lib/settings-shared";
-import { STORE } from "@/lib/store-info";
+import { STORE, hoursSummary } from "@/lib/store-info";
 import type { Account, CartItem, Slot, Translate } from "./types";
-import { euro, slotLabel } from "./ui";
+import { slotLabel, useEuro } from "./ui";
+import { useDialog } from "./useDialog";
 
 type Props = {
   cart: CartItem[];
@@ -21,13 +22,18 @@ type Props = {
 };
 
 type Coupon = { code: string; discount: number; freeDelivery: boolean; description: string | null };
-type SavedAddress = { id: string; label: string; address: string; isDefault: boolean };
+type SavedAddress = { id: string; label: string; line1: string; line2: string | null; postalCode: string; city: string; isDefault: boolean };
+
+/** One line, as the order stores it: "Hauptstr. 1, 97421 Schweinfurt". */
+const addressText = (a: SavedAddress) => [a.line1, a.line2, `${a.postalCode} ${a.city}`].filter(Boolean).join(", ");
 type Placed = { orderNumber: string; total: number; slot: Slot | null; fulfillment: string };
 
 const row = { display: "flex", justifyContent: "space-between" } as const;
 
 export function CheckoutModal({ cart, subtotal, account, settings, slots, onClose, onSuccess, t }: Props) {
   const { language } = useLanguage();
+  const euro = useEuro();
+  const dialogRef = useDialog<HTMLDivElement>(() => (placed ? onSuccess() : onClose()));
   const [fulfillment, setFulfillment] = useState<"DELIVERY" | "PICKUP">(settings.deliveryEnabled ? "DELIVERY" : "PICKUP");
   const [slotId, setSlotId] = useState("");
   const [substitution, setSubstitution] = useState("CALL");
@@ -56,7 +62,7 @@ export function CheckoutModal({ cart, subtotal, account, settings, slots, onClos
         const list = Array.isArray(data) ? data : [];
         setSavedAddresses(list);
         const def = list.find((a) => a.isDefault) ?? list[0];
-        if (def) setAddress(def.address);
+        if (def) setAddress(addressText(def));
       })
       .catch(() => {});
   }, [account]);
@@ -138,8 +144,8 @@ export function CheckoutModal({ cart, subtotal, account, settings, slots, onClos
 
   if (placed) {
     return (
-      <div className="modal-backdrop">
-        <div className="checkout-modal">
+      <div className="modal-backdrop" ref={dialogRef}>
+        <div className="checkout-modal" role="dialog" aria-modal="true" aria-label={t("Bestellung aufgegeben", "Order placed")}>
           <button className="close-modal" onClick={onSuccess} aria-label={t("Schließen", "Close")}>
             <X />
           </button>
@@ -186,8 +192,8 @@ export function CheckoutModal({ cart, subtotal, account, settings, slots, onClos
   );
 
   return (
-    <div className="modal-backdrop">
-      <form className="checkout-modal" onSubmit={submit} style={{ maxHeight: "90vh", overflow: "auto" }}>
+    <div className="modal-backdrop" ref={dialogRef}>
+      <form className="checkout-modal" role="dialog" aria-modal="true" aria-label={t("Kasse", "Checkout")} onSubmit={submit} style={{ maxHeight: "90vh", overflow: "auto" }}>
         <button type="button" className="close-modal" onClick={onClose} aria-label={t("Schließen", "Close")}>
           <X />
         </button>
@@ -212,15 +218,15 @@ export function CheckoutModal({ cart, subtotal, account, settings, slots, onClos
         {fulfillment === "PICKUP" && (
           <p className="pickup-note">
             {t(
-              `Wir packen Ihre Bestellung — Abholung im Laden oder am Straßenrand: ${STORE.street}, ${STORE.postalCode} ${STORE.city} (Mo–Sa 07:00–20:00).`,
-              `We'll pack your order — pick it up in store or at the kerb: ${STORE.street}, ${STORE.postalCode} ${STORE.city} (Mon–Sat 07:00–20:00).`
+              `Wir packen Ihre Bestellung — Abholung im Laden oder am Straßenrand: ${STORE.street}, ${STORE.postalCode} ${STORE.city} (${hoursSummary("de")}).`,
+              `We'll pack your order — pick it up in store or at the kerb: ${STORE.street}, ${STORE.postalCode} ${STORE.city} (${hoursSummary("en")}).`
             )}
           </p>
         )}
         {fulfillment === "DELIVERY" && settings.deliveryArea && (
           <p className="pickup-note">
             {t("Liefergebiet", "Delivery area")}: {settings.deliveryArea}
-            {settings.freeDeliveryThreshold > 0 && ` · ${t(`ab €${settings.freeDeliveryThreshold} kostenlos`, `free from €${settings.freeDeliveryThreshold}`)}`}
+            {settings.freeDeliveryThreshold > 0 && `. ${t(`Ab ${euro(settings.freeDeliveryThreshold)} kostenlos`, `Free from ${euro(settings.freeDeliveryThreshold)}`)}`}
           </p>
         )}
 
@@ -243,21 +249,21 @@ export function CheckoutModal({ cart, subtotal, account, settings, slots, onClos
         )}
 
         <div className="checkout-fields">
-          <input required autoComplete="name" placeholder={t("Vollständiger Name", "Full name")} value={name} onChange={(e) => setName(e.target.value)} />
-          <input required type="email" autoComplete="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input required type="tel" autoComplete="tel" placeholder={t("Telefonnummer", "Phone number")} value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <input required autoComplete="name" aria-label={t("Vollständiger Name", "Full name")} placeholder={t("Vollständiger Name", "Full name")} value={name} onChange={(e) => setName(e.target.value)} />
+          <input required type="email" autoComplete="email" aria-label={t("E-Mail", "Email")} placeholder={t("E-Mail", "Email")} value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input required type="tel" autoComplete="tel" aria-label={t("Telefonnummer", "Phone number")} placeholder={t("Telefonnummer", "Phone number")} value={phone} onChange={(e) => setPhone(e.target.value)} />
           {fulfillment === "DELIVERY" && (
             <>
               {savedAddresses.length > 0 && (
                 <select
                   onChange={(e) => setAddress(e.target.value)}
-                  defaultValue={address}
+                  value={savedAddresses.some((a) => addressText(a) === address) ? address : ""}
                   aria-label={t("Gespeicherte Adresse", "Saved address")}
                   style={{ padding: "10px 12px", border: "1px solid rgba(0,0,0,.12)", borderRadius: 8 }}
                 >
                   {savedAddresses.map((a) => (
-                    <option key={a.id} value={a.address}>
-                      {a.label} — {a.address}
+                    <option key={a.id} value={addressText(a)}>
+                      {a.label} — {addressText(a)}
                     </option>
                   ))}
                   <option value="">{t("Andere Adresse eingeben…", "Enter a different address…")}</option>
@@ -266,6 +272,7 @@ export function CheckoutModal({ cart, subtotal, account, settings, slots, onClos
               <input
                 required
                 autoComplete="street-address"
+                aria-label={t("Lieferadresse", "Delivery address")}
                 placeholder={t("Lieferadresse", "Delivery address")}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
@@ -283,6 +290,7 @@ export function CheckoutModal({ cart, subtotal, account, settings, slots, onClos
             </select>
           </label>
           <textarea
+            aria-label={t("Hinweise zur Bestellung", "Order notes")}
             placeholder={t("Hinweise zur Bestellung (optional, z. B. Klingel, Zuschnitt beim Fleisch)", "Order notes (optional, e.g. doorbell, how to cut the meat)")}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -333,7 +341,7 @@ export function CheckoutModal({ cart, subtotal, account, settings, slots, onClos
         )}
 
         {error && (
-          <div className="checkout-error">
+          <div className="checkout-error" role="alert">
             {error}
             {needsLogin && loginHint(t("Jetzt anmelden", "Log in now"))}
             {needsVerification && loginHint(t("E-Mail jetzt bestätigen", "Verify your email now"))}

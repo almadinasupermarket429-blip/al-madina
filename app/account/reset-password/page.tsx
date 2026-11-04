@@ -108,7 +108,7 @@ function ResetPasswordForm() {
 export default function ResetPasswordPage() {
   const { t } = useLanguage();
   return (
-    <main className="min-h-screen bg-[#f8f7f3] text-[#18201b] py-10 px-4 md:px-8">
+    <main id="main" tabIndex={-1} className="min-h-screen bg-[#f8f7f3] text-[#18201b] py-10 px-4 md:px-8">
       <div className="w-full max-w-3xl mx-auto">
         <Link href="/account" className="text-btn" style={{ display: "inline-flex", marginBottom: 32 }}>
           <ArrowLeft size={16} /> {t("Zurück zur Anmeldung", "Back to sign in")}

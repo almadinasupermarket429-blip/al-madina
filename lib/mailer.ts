@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import { STORE } from "./store-info";
+import { STORE, hoursSummary } from "./store-info";
 
 // A structural subset of lib/orders.ts's FullOrder — only the fields these
 // templates actually use, so callers don't need to supply statusEvents etc.
@@ -135,7 +135,7 @@ function baseWrapper(title: string, bodyHtml: string) {
       </div>
       <div style="padding:16px 24px;background:#f8f7f3;color:#999;font-size:11px">
         ${STORE.name} · ${STORE.street}, ${STORE.postalCode} ${STORE.city} · Tel. ${STORE.phoneDisplay}<br/>
-        Mo–Sa 07:00–20:00 Uhr · Dies ist eine automatische Nachricht.
+        ${hoursSummary("de")} Uhr · Dies ist eine automatische Nachricht.
       </div>
     </div>
   </div>`;
@@ -252,7 +252,7 @@ export async function sendStatusUpdateEmail(order: OrderWithItems) {
           order.fulfillment === "PICKUP" ? "Abholung" : "Lieferung"
         }).</p>${
           order.status === "PACKED" && order.fulfillment === "PICKUP"
-            ? `<p>Abholung: ${STORE.street}, ${STORE.postalCode} ${STORE.city} · Mo–Sa 07:00–20:00 Uhr</p>`
+            ? `<p>Abholung: ${STORE.street}, ${STORE.postalCode} ${STORE.city} · ${hoursSummary("de")} Uhr</p>`
             : ""
         }`
   );

@@ -1,12 +1,5 @@
 // app/api/account/addresses/route.ts
-//
-// CONTRACT CHANGE: the old Address model stored one free-text `address`
-// field. The new schema splits it into line1/line2/city/postalCode, plus
-// latitude/longitude for the distance-based delivery fee. The account
-// page's "add address" form currently posts { label, address, isDefault }
-// and will need a small update to collect these fields separately (and
-// ideally geocode them) — the request body below is what it should send
-// once that's done.
+// Saved delivery addresses: street (line1/line2), postcode and city stored separately.
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";

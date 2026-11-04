@@ -1,7 +1,8 @@
 // Mandatory food information for online sales (EU Regulation 1169/2011 "LMIV", Art. 9 + 14):
 // customers must see it before they buy. Also the price per kg / litre (German PAngV § 4)
-// and the bottle deposit (PAngV § 7). Shared by the admin (what is still missing) and,
-// later, the shop pages.
+// and the bottle deposit (PAngV § 7). Shared by the admin (what is still missing) and
+// the shop pages (app/components/ProductDetails.tsx).
+import { formatEuro } from "./format";
 
 /** The 14 allergens that must be declared (LMIV Annex II). Keys are stored in products.allergens. */
 export const ALLERGENS = [
@@ -133,8 +134,28 @@ export function unitPrice(price: number, sizeValue: number | string | null | und
   return { amount: Math.round((price * f[0]) / value * 100) / 100, per: f[1] };
 }
 
-/** "4,98 €/kg" */
-export function formatUnitPrice(price: number, sizeValue: number | string | null | undefined, sizeUnit: string | null | undefined): string {
+/** "4,98 €/kg" (de) or "€4.98/kg" (en). Empty when there is no price per kg / litre. */
+export function formatUnitPrice(
+  price: number,
+  sizeValue: number | string | null | undefined,
+  sizeUnit: string | null | undefined,
+  language: string = "de"
+): string {
   const u = unitPrice(price, sizeValue, sizeUnit);
-  return u ? `${u.amount.toFixed(2).replace(".", ",")} €/${u.per}` : "";
+  return u ? `${formatEuro(u.amount, language)}/${u.per}` : "";
 }
+
+/** The food details the shop pages show (same fields as FOOD_INFO_COLUMNS in lib/catalog-admin.ts). */
+export type FoodFactsData = {
+  ingredients?: string | null;
+  ingredientsEn?: string | null;
+  allergens?: string[] | null;
+  allergensConfirmed?: boolean | null;
+  traces?: string | null;
+  nutrition?: Nutrition | null;
+  nutritionNotRequired?: boolean | null;
+  storage?: string | null;
+  storageEn?: string | null;
+  manufacturer?: string | null;
+  origin?: string | null;
+};

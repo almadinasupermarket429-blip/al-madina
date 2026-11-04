@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Printer } from "lucide-react";
-import { STORE } from "@/lib/store-info";
+import { STORE, hoursSummary } from "@/lib/store-info";
+import { formatEuro } from "@/lib/format";
 import { SUBSTITUTION_LABELS } from "@/lib/order-utils";
 
 type Order = {
@@ -125,8 +126,8 @@ export default function PackingSlipPage() {
               <td style={{ padding: "8px 4px", fontWeight: 600 }}>{it.name}</td>
               <td style={{ padding: "8px 4px" }}>{it.sizeLabel ?? "–"}</td>
               <td style={{ padding: "8px 4px", textAlign: "center", fontSize: 15, fontWeight: 700 }}>{it.qty}</td>
-              <td style={{ padding: "8px 4px", textAlign: "right" }}>€{it.price.toFixed(2)}</td>
-              <td style={{ padding: "8px 4px", textAlign: "right" }}>€{(it.price * it.qty).toFixed(2)}</td>
+              <td style={{ padding: "8px 4px", textAlign: "right" }}>{formatEuro(it.price)}</td>
+              <td style={{ padding: "8px 4px", textAlign: "right" }}>{formatEuro(it.price * it.qty)}</td>
             </tr>
           ))}
         </tbody>
@@ -138,21 +139,21 @@ export default function PackingSlipPage() {
           <tbody>
             <tr>
               <td>Zwischensumme</td>
-              <td style={{ textAlign: "right" }}>€{order.subtotal.toFixed(2)}</td>
+              <td style={{ textAlign: "right" }}>{formatEuro(order.subtotal)}</td>
             </tr>
             {order.discount > 0 && (
               <tr>
                 <td>Rabatt {order.couponCode ? `(${order.couponCode})` : ""}</td>
-                <td style={{ textAlign: "right" }}>−€{order.discount.toFixed(2)}</td>
+                <td style={{ textAlign: "right" }}>−{formatEuro(order.discount)}</td>
               </tr>
             )}
             <tr>
               <td>{order.fulfillment === "PICKUP" ? "Abholung" : "Lieferung"}</td>
-              <td style={{ textAlign: "right" }}>{order.deliveryFee ? `€${order.deliveryFee.toFixed(2)}` : "kostenlos"}</td>
+              <td style={{ textAlign: "right" }}>{order.deliveryFee ? formatEuro(order.deliveryFee) : "kostenlos"}</td>
             </tr>
             <tr style={{ fontSize: 17, fontWeight: 700 }}>
               <td style={{ paddingTop: 6, borderTop: "1px solid #111" }}>Bar zu kassieren</td>
-              <td style={{ paddingTop: 6, borderTop: "1px solid #111", textAlign: "right" }}>€{order.total.toFixed(2)}</td>
+              <td style={{ paddingTop: 6, borderTop: "1px solid #111", textAlign: "right" }}>{formatEuro(order.total)}</td>
             </tr>
           </tbody>
         </table>
@@ -163,7 +164,7 @@ export default function PackingSlipPage() {
           Fahrer: nach Übergabe bestätigen unter {origin}/deliver/{order.deliveryToken}
         </p>
       )}
-      <p style={{ marginTop: 24, fontSize: 11, color: "#555", textAlign: "center" }}>Vielen Dank für Ihren Einkauf bei {STORE.name}! · Mo–Sa 07:00–20:00 Uhr</p>
+      <p style={{ marginTop: 24, fontSize: 11, color: "#555", textAlign: "center" }}>Vielen Dank für Ihren Einkauf bei {STORE.name}! · {hoursSummary("de")} Uhr</p>
     </main>
   );
 }

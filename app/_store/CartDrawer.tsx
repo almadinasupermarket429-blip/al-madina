@@ -5,7 +5,8 @@ import { sizedImage } from "@/lib/images";
 import type { StoreSettings } from "@/lib/settings-shared";
 import { remainingForFreeDelivery } from "./catalog-filters";
 import type { CartItem, Translate } from "./types";
-import { euro, imageFallback } from "./ui";
+import { imageFallback, useEuro } from "./ui";
+import { useDialog } from "./useDialog";
 
 type Props = {
   items: CartItem[];
@@ -19,6 +20,8 @@ type Props = {
 };
 
 export function CartDrawer({ items, count, subtotal, settings, onChangeQty, onCheckout, onClose, t }: Props) {
+  const euro = useEuro();
+  const dialogRef = useDialog<HTMLElement>(onClose);
   const belowMinimum = settings.minimumOrder > subtotal;
   const canCheckout = settings.acceptingOrders && !belowMinimum;
   const threshold = settings.freeDeliveryThreshold;
@@ -26,7 +29,7 @@ export function CartDrawer({ items, count, subtotal, settings, onChangeQty, onCh
 
   return (
     <div className="drawer-backdrop" onClick={onClose}>
-      <aside className="cart-drawer" onClick={(e) => e.stopPropagation()}>
+      <aside ref={dialogRef} className="cart-drawer" role="dialog" aria-modal="true" aria-label={t("Ihr Warenkorb", "Your basket")} onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>
             <span className="eyebrow">{t("Ihr Warenkorb", "Your basket")}</span>

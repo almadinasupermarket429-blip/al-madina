@@ -5,6 +5,7 @@ import { Menu, Phone, Search, ShieldCheck, ShoppingBag, Truck, User, X } from "l
 import type { StoreSettings } from "@/lib/settings-shared";
 import type { Account, Language, Translate } from "./types";
 import { PHONE, PHONE_LINK } from "./ui";
+import { formatEuro } from "@/lib/format";
 
 type Props = {
   settings: StoreSettings;
@@ -44,8 +45,10 @@ export function SiteHeader({ settings, account, cartCount, query, onQueryChange,
             {t("Kostenlose Abholung in Schweinfurt", "Free pickup in Schweinfurt")}
             {settings.freeDeliveryThreshold > 0 && (
               <>
-                {" "}
-                · <strong>€{settings.freeDeliveryThreshold}+</strong> {t("für kostenlose Lieferung", "for free delivery")}
+                .{" "}
+                <strong>
+                  {t("Kostenlose Lieferung ab", "Free delivery from")} {formatEuro(settings.freeDeliveryThreshold, language)}
+                </strong>
               </>
             )}{" "}
             · {t("Zahlung bar bei Lieferung/Abholung", "Cash on delivery/pickup")}

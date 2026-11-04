@@ -9,7 +9,7 @@ function cloudinaryPrefix(): string | null {
 const IMAGE_WIDTHS = [160, 200, 240, 600, 900, 1200, 2000] as const;
 type ImageWidth = (typeof IMAGE_WIDTHS)[number];
 
-const IMG_PATH = new RegExp(`^/img/f_auto,q_auto,c_limit,w_(${IMAGE_WIDTHS.join("|")})/[A-Za-z0-9_\-./]+$`);
+const IMG_PATH = new RegExp(`^/img/f_auto,q_auto,c_limit,w_(${IMAGE_WIDTHS.join("|")})/[A-Za-z0-9_./-]+$`);
 
 /** Shown in the product gallery for products without a photo: the shop logo. */
 export const PLACEHOLDER_IMAGE = "/logo.png";

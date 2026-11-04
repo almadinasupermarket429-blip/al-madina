@@ -188,7 +188,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         />
       </aside>
 
-      <main className="flex-1 p-4 lg:p-8 max-w-[1400px] overflow-x-hidden">{children}</main>
+      <main id="main" tabIndex={-1} className="flex-1 p-4 lg:p-8 max-w-[1400px] overflow-x-hidden">{children}</main>
     </div>
   );
 }

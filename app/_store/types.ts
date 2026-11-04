@@ -3,11 +3,24 @@
 export type Translate = (de: string, en: string) => string;
 export type Language = "de" | "en";
 
-export type ProductSize = { id: string; label: string; price: number; oldPrice: number | null; stock: number };
+import type { FoodFactsData } from "@/lib/food-info";
+
+export type ProductSize = {
+  id: string;
+  label: string;
+  price: number;
+  oldPrice: number | null;
+  stock: number;
+  /** Net quantity for the price per kg / litre. */
+  sizeValue?: number | null;
+  sizeUnit?: string | null;
+  /** Bottle/can deposit, charged on top of the price. */
+  deposit?: number | null;
+};
 type ProductSpec = { label: string; labelEn?: string | null; value: string; valueEn?: string | null };
 
 /** Shape returned by /api/products: German in the plain fields, English in *En (may be empty). */
-export type RawProduct = {
+export type RawProduct = FoodFactsData & {
   id: string;
   name: string;
   nameEn: string | null;
@@ -52,6 +65,7 @@ export type Product = {
   sizes: ProductSize[];
   ratingAverage: number;
   ratingCount: number;
+  food: FoodFactsData;
 };
 
 export function localizeProduct(p: RawProduct, language: Language): Product {
@@ -79,6 +93,19 @@ export function localizeProduct(p: RawProduct, language: Language): Product {
     sizes: p.sizes,
     ratingAverage: p.ratingAverage,
     ratingCount: p.ratingCount,
+    food: {
+      ingredients: p.ingredients,
+      ingredientsEn: p.ingredientsEn,
+      allergens: p.allergens,
+      allergensConfirmed: p.allergensConfirmed,
+      traces: p.traces,
+      nutrition: p.nutrition,
+      nutritionNotRequired: p.nutritionNotRequired,
+      storage: p.storage,
+      storageEn: p.storageEn,
+      manufacturer: p.manufacturer,
+      origin: p.origin,
+    },
   };
 }
 

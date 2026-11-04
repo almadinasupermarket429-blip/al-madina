@@ -37,7 +37,7 @@ export default function AccountOrderDetailPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f8f7f3] text-[#18201b]">
+    <main id="main" tabIndex={-1} className="min-h-screen bg-[#f8f7f3] text-[#18201b]">
       <div className="mx-auto max-w-2xl px-5 py-10">
         <Link href="/account" className="text-btn" style={{ display: "inline-flex", marginBottom: 24 }}>
           <ArrowLeft size={16} /> {t("Zurück zum Bestellverlauf", "Back to order history")}

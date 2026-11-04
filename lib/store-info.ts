@@ -38,6 +38,22 @@ export const OPENING_HOURS: { day: number; de: string; en: string; open: string 
   { day: 0, de: "Sonntag", en: "Sunday", open: null, close: null }, // Sundays and public holidays closed (Bavarian shop-closing law); holidays: publicHolidays()
 ];
 
+/** Short opening hours from OPENING_HOURS, e.g. "Mo–Sa 07:00–20:00" (de) or "Mon–Sat 07:00–20:00" (en). */
+export function hoursSummary(language: string = "de"): string {
+  const short = (d: (typeof OPENING_HOURS)[number]) => (language === "en" ? d.en.slice(0, 3) : d.de.slice(0, 2));
+  const week = [1, 2, 3, 4, 5, 6, 0].map((n) => OPENING_HOURS.find((h) => h.day === n)!);
+  const groups: { from: (typeof week)[number]; to: (typeof week)[number] }[] = [];
+  for (const d of week) {
+    const last = groups.at(-1);
+    if (!d.open) continue;
+    if (last && last.to.open === d.open && last.to.close === d.close && week.indexOf(last.to) === week.indexOf(d) - 1) last.to = d;
+    else groups.push({ from: d, to: d });
+  }
+  return groups
+    .map((g) => `${short(g.from)}${g.from === g.to ? "" : `–${short(g.to)}`} ${g.from.open}–${g.from.close}`)
+    .join(", ");
+}
+
 // ---- Public holidays (Bavaria, as observed in Schweinfurt) ----
 // 15 August (Mariä Himmelfahrt) is left out on purpose: in Bavaria it is only a holiday in
 // municipalities with a Catholic majority, and the city of Schweinfurt is not one of them.

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Check, MapPin, Package, Phone, Store, Truck } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { formatEuro } from "@/lib/format";
 
 type Order = {
   orderNumber: string;
@@ -18,7 +19,7 @@ type Order = {
 };
 
 export default function DeliverPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const params = useParams<{ token: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState("");
@@ -47,7 +48,7 @@ export default function DeliverPage() {
 
   if (error) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-[#f8f7f3] p-6 text-center">
+      <main id="main" tabIndex={-1} className="min-h-screen flex items-center justify-center bg-[#f8f7f3] p-6 text-center">
         <p className="text-black/50">{error}</p>
       </main>
     );
@@ -55,7 +56,7 @@ export default function DeliverPage() {
 
   if (!order) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-[#f8f7f3]">
+      <main id="main" tabIndex={-1} className="min-h-screen flex items-center justify-center bg-[#f8f7f3]">
         <p className="text-black/40 text-sm">{t("Bestellung wird geladen…", "Loading order…")}</p>
       </main>
     );
@@ -64,7 +65,7 @@ export default function DeliverPage() {
   const alreadyDelivered = order.status === "DELIVERED";
 
   return (
-    <main className="min-h-screen bg-[#f8f7f3] flex items-center justify-center p-4">
+    <main id="main" tabIndex={-1} className="min-h-screen bg-[#f8f7f3] flex items-center justify-center p-4">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-black/5 p-6">
         <div className="flex items-center gap-2 mb-4">
           <img src="/logo.png" alt="Al-Madina" className="w-10 h-12 object-contain" />
@@ -107,7 +108,7 @@ export default function DeliverPage() {
 
         <div className="flex justify-between items-center bg-[#f8f7f3] rounded-xl px-4 py-3 mb-5">
           <span className="text-sm font-medium">{t("Bargeld einsammeln", "Collect cash")}</span>
-          <span className="text-xl font-serif">€{order.total.toFixed(2)}</span>
+          <span className="text-xl font-serif">{formatEuro(order.total, language)}</span>
         </div>
 
         {order.status === "CANCELLED" ? (

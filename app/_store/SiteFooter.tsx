@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Facebook, Instagram } from "lucide-react";
-import { STORE } from "@/lib/store-info";
+import { STORE, hoursSummary } from "@/lib/store-info";
 import type { Translate } from "./types";
 import { MAP_URL, PHONE_LINK } from "./ui";
 
@@ -36,7 +36,7 @@ export function SiteFooter({ t }: { t: Translate }) {
               <a href={PHONE_LINK}>{t("Anrufen", "Call")}</a>
               <a href="#visit">{t("Öffnungszeiten", "Opening hours")}</a>
               <span className="footer-hours">
-                {t("Mo–Sa 07:00–20:00", "Mon–Sat 07:00–20:00")}
+                {t(hoursSummary("de"), hoursSummary("en"))}
                 <br />
                 {t("So geschlossen", "Sun closed")}
               </span>

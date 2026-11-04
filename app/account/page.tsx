@@ -7,7 +7,7 @@ import { DeleteAccount } from "@/app/components/DeleteAccount";
 import { GoogleLogo } from "@/app/components/GoogleLogo";
 import { ArrowLeft, LogOut, Package, User as UserIcon, Heart, MapPin, RefreshCw, Plus, Trash2, ShieldCheck, MailWarning, MailCheck, KeyRound, Pencil, XCircle } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatEuro } from "@/lib/format";
 
 type Account = { id: string; name: string; email: string; phone: string | null; role: "OWNER" | "STAFF" | null; emailVerified: boolean };
 type OrderItem = { id: string; name: string; sizeLabel: string | null; price: number; qty: number };
@@ -300,7 +300,7 @@ export default function AccountPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f8f7f3] text-[#18201b] py-10 px-4 md:px-8">
+    <main id="main" tabIndex={-1} className="min-h-screen bg-[#f8f7f3] text-[#18201b] py-10 px-4 md:px-8">
       <div className="w-full max-w-3xl mx-auto">
         <Link href="/" className="text-btn" style={{ display: "inline-flex", marginBottom: 32 }}>
           <ArrowLeft size={16} /> {t("Zurück zum Shop", "Back to shop")}
@@ -666,7 +666,7 @@ export default function AccountPage() {
                         }}
                       >
                         <span>
-                          {t("Gesamt (bar)", "Total (cash)")} · €{o.total.toFixed(2)}
+                          {t("Gesamt (bar)", "Total (cash)")}: {formatEuro(o.total, language)}
                         </span>
                         <span style={{ display: "flex", gap: 14 }}>
                           {o.status === "PLACED" && (
