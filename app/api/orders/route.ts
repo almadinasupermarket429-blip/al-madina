@@ -12,6 +12,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { isPlausiblePhoneNumber } from "@/lib/phone";
 import { getOrderById, listOrders, publicOrder, isUuid, type FullOrder } from "@/lib/orders";
 import { toCsv } from "@/lib/csv";
+import { formatEuro } from "@/lib/format";
 import { getStoreSettings, deliveryFeeFor } from "@/lib/settings";
 import { evaluateCoupon } from "@/lib/coupons";
 import { hasBookableSlots, isSlotBookable } from "@/lib/slots";
@@ -25,6 +26,7 @@ type VariantRow = {
   product_name: string;
   product_active: boolean;
   variant_active: boolean;
+  deposit: string | number;
 };
 
 function ordersToCsv(orders: FullOrder[]): string {
@@ -115,6 +117,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
     const { customerName, customerPhone, fulfillment, address, notes, items, couponCode, slotId, substitution } = body;
+    const language = body.language === "en" ? "en" : "de";
     // Order emails always go to the account's own (verified) address, never to one typed into the request,
     // so the shop can't be used to send mail to strangers.
     const [account] = await prisma.$queryRaw<{ email: string }[]>`
@@ -190,7 +193,7 @@ export async function POST(req: NextRequest) {
     const variantIds = [...wanted.keys()];
 
     const variants = await prisma.$queryRaw<VariantRow[]>`
-      select v.id, v.product_id, v.size_label, v.price, v.stock_quantity, v.is_active as variant_active,
+      select v.id, v.product_id, v.size_label, v.price, v.deposit, v.stock_quantity, v.is_active as variant_active,
              p.name as product_name, p.is_active as product_active
       from product_variants v
       join products p on p.id = v.product_id
@@ -199,7 +202,7 @@ export async function POST(req: NextRequest) {
 
     const variantMap = new Map(variants.map((v) => [v.id, v]));
 
-    const orderItemsData: { productId: string; variantId: string; name: string; sizeLabel: string; price: number; qty: number }[] = [];
+    const orderItemsData: { productId: string; variantId: string; name: string; sizeLabel: string; price: number; deposit: number; qty: number }[] = [];
 
     for (const [vId, qty] of wanted) {
       const variant = variantMap.get(vId);
@@ -218,6 +221,7 @@ export async function POST(req: NextRequest) {
         name: variant.product_name,
         sizeLabel: variant.size_label,
         price: Number(variant.price),
+        deposit: Number(variant.deposit ?? 0),
         qty,
       });
     }
@@ -225,7 +229,7 @@ export async function POST(req: NextRequest) {
     const subtotal = Math.round(orderItemsData.reduce((sum, it) => sum + it.price * it.qty, 0) * 100) / 100;
     if (settings.minimumOrder > 0 && subtotal < settings.minimumOrder) {
       return NextResponse.json(
-        { error: `Der Mindestbestellwert beträgt €${settings.minimumOrder.toFixed(2)}.`, code: "BELOW_MINIMUM" },
+        { error: `Der Mindestbestellwert beträgt ${formatEuro(settings.minimumOrder)}.`, code: "BELOW_MINIMUM" },
         { status: 400 }
       );
     }
@@ -242,7 +246,9 @@ export async function POST(req: NextRequest) {
     }
 
     const deliveryFee = freeDelivery ? 0 : deliveryFeeFor(settings, fulfillment, subtotal - discount);
-    const total = Math.round((subtotal - discount + deliveryFee) * 100) / 100;
+    // Deposit is charged on top and isn't discounted (PAngV § 7: shown separately, not part of the price).
+    const depositTotal = Math.round(orderItemsData.reduce((sum, it) => sum + it.deposit * it.qty, 0) * 100) / 100;
+    const total = Math.round((subtotal - discount + deliveryFee + depositTotal) * 100) / 100;
 
     const orderNumber = generateOrderNumber();
     const deliveryToken = generateDeliveryToken();
@@ -287,13 +293,13 @@ export async function POST(req: NextRequest) {
       const orderInsert = await tx.$queryRaw<{ id: string }[]>`
         insert into orders (
           order_number, customer_name, customer_email, customer_phone,
-          fulfillment, address, notes, subtotal, discount, coupon_code, delivery_fee, total,
-          delivery_token, user_id, status, delivery_slot_id, substitution
+          fulfillment, address, notes, subtotal, discount, coupon_code, delivery_fee, deposit_total, total,
+          delivery_token, user_id, status, delivery_slot_id, substitution, language
         ) values (
           ${orderNumber}, ${customerName}, ${customerEmail}, ${customerPhone},
           ${fulfillment}, ${fulfillment === "DELIVERY" ? address : null}, ${notes || null},
-          ${subtotal}, ${discount}, ${appliedCoupon}, ${deliveryFee}, ${total}, ${deliveryToken},
-          ${customerSession.userId}::uuid, 'PLACED', ${slotId || null}::uuid, ${substitutionValue}
+          ${subtotal}, ${discount}, ${appliedCoupon}, ${deliveryFee}, ${depositTotal}, ${total}, ${deliveryToken},
+          ${customerSession.userId}::uuid, 'PLACED', ${slotId || null}::uuid, ${substitutionValue}, ${language}
         )
         returning id
       `;
@@ -301,8 +307,8 @@ export async function POST(req: NextRequest) {
 
       for (const it of orderItemsData) {
         await tx.$executeRaw`
-          insert into order_items (order_id, product_id, variant_id, name, size_label, price, qty)
-          values (${newOrderId}::uuid, ${it.productId}::uuid, ${it.variantId}::uuid, ${it.name}, ${it.sizeLabel}, ${it.price}, ${it.qty})
+          insert into order_items (order_id, product_id, variant_id, name, size_label, price, deposit, qty)
+          values (${newOrderId}::uuid, ${it.productId}::uuid, ${it.variantId}::uuid, ${it.name}, ${it.sizeLabel}, ${it.price}, ${it.deposit}, ${it.qty})
         `;
       }
 
@@ -331,10 +337,18 @@ export async function POST(req: NextRequest) {
     const variantIdsToCheck = orderItemsData.map((it) => it.variantId);
 
     after(async () => {
-      await Promise.all([
-        sendCustomerConfirmationEmail(fullOrder).catch((e: unknown) => console.error("[mailer] customer email failed", e)),
+      const [customerMail] = await Promise.all([
+        sendCustomerConfirmationEmail(fullOrder).catch((e: unknown) => {
+          console.error("[mailer] customer email failed", e);
+          return { sent: false };
+        }),
         sendStoreNotificationEmail(fullOrder).catch((e: unknown) => console.error("[mailer] store email failed", e)),
       ]);
+      // The customer has no written confirmation: flag it so staff call them (shown on the order in the admin).
+      if (!customerMail.sent) {
+        await prisma.$executeRaw`update orders set confirmation_email_failed = true where id = ${fullOrder.id}::uuid`;
+        await broadcastOrderEvent({ type: "order_updated", orderId: fullOrder.id, status: fullOrder.status });
+      }
 
       const updatedVariants = await prisma.$queryRaw<{ id: string; stock: number; label: string; product_name: string }[]>`
         select v.id, v.stock_quantity as stock, v.size_label as label, p.name as product_name

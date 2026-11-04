@@ -44,7 +44,7 @@ export async function consumeReset(token: string, passwordHash: string): Promise
     // Proving control of the inbox also verifies the email address; password_changed_at
     // logs out every existing session (e.g. whoever knew the old password).
     await tx.$executeRaw`
-      update users set password_hash = ${passwordHash}, password_changed_at = now(),
+      update users set password_hash = ${passwordHash}, has_password = true, password_changed_at = now(),
         email_verified_at = coalesce(email_verified_at, now())
       where id = ${userId}::uuid
     `;

@@ -25,7 +25,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ to
   }
   if (existing.status === "DELIVERED") return NextResponse.json(driverOrder(existing));
 
-  await setOrderStatus(existing.id, "DELIVERED");
+  if (!(await setOrderStatus(existing.id, "DELIVERED"))) {
+    const now = await getOrderByToken(token);
+    return now ? NextResponse.json(driverOrder(now)) : NextResponse.json({ error: "Bestellung nicht gefunden." }, { status: 404 });
+  }
   const order = await getOrderByToken(token);
   if (!order) return NextResponse.json({ error: "Bestellung nicht gefunden." }, { status: 404 });
 

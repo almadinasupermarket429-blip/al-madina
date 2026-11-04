@@ -42,6 +42,11 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   // no matter which admin page you're on.
   useEffect(() => {
     const source = new EventSource("/api/orders/stream");
+    // Access was removed (or the password changed) while this tab was open: back to the login.
+    source.addEventListener("unauthorized", () => {
+      source.close();
+      window.location.href = "/admin/login";
+    });
     source.addEventListener("order", (e) => {
       try {
         const data = JSON.parse((e as MessageEvent).data);

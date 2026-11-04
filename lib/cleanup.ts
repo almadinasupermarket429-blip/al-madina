@@ -15,6 +15,8 @@ import { rateLimit } from "./rate-limit";
  * - Expired or used email codes and password-reset links: removed.
  * - Contact details on orders (email, phone, notes; name and address on receipts up to
  *   €250): 90 days after the order is delivered or cancelled.
+ * - Orders never marked delivered or cancelled: closed as cancelled after 180 days (nobody
+ *   collects a basket half a year later), then their contact details go 90 days on as above.
  * - Orders: 8 years (German tax law, § 147 AO, § 257 HGB, since 2025), then deleted.
  * - Deleted accounts: the anonymous placeholder goes once none of its orders remain.
  * - Admin activity log: 2 years.
@@ -38,6 +40,10 @@ export async function runCleanupIfDue(): Promise<void> {
       `,
       prisma.$executeRaw`delete from email_verifications where expires_at < now()`,
       prisma.$executeRaw`delete from password_resets where expires_at < now() or used_at is not null`,
+      prisma.$executeRaw`
+        update orders set status = 'CANCELLED', cancel_reason = coalesce(cancel_reason, 'Automatisch geschlossen (nach 180 Tagen nicht abgeschlossen)')
+        where status in ('PLACED', 'PACKED', 'OUT_FOR_DELIVERY') and created_at < now() - interval '180 days'
+      `,
       redactFinishedOrders(Prisma.sql`updated_at < now() - interval '90 days'`),
       prisma.$executeRaw`delete from orders where created_at < now() - interval '8 years'`,
       prisma.$executeRaw`delete from admin_audit_log where created_at < now() - interval '2 years'`,

@@ -15,11 +15,14 @@ type UserRow = {
   phone: string | null;
   role: "OWNER" | "STAFF" | null;
   emailVerified: boolean;
+  /** False for "Continue with Google" accounts: deleting asks for the email address instead. */
+  hasPassword: boolean;
 };
 
 async function loadUser(userId: string): Promise<UserRow | null> {
   const rows = await prisma.$queryRaw<UserRow[]>`
-    select u.id, u.full_name as "name", u.email, u.phone, a.role, (u.email_verified_at is not null) as "emailVerified"
+    select u.id, u.full_name as "name", u.email, u.phone, a.role, (u.email_verified_at is not null) as "emailVerified",
+           u.has_password as "hasPassword"
     from users u
     left join admin_users a on a.user_id = u.id
     where u.id = ${userId}::uuid and u.deleted_at is null
@@ -40,7 +43,14 @@ export async function PATCH(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const { name, phone, currentPassword, newPassword } = body as Record<string, string | undefined>;
+  const { name, phone, currentPassword, newPassword, language } = body as Record<string, unknown>;
+  if (
+    (phone !== undefined && phone !== null && typeof phone !== "string") ||
+    (currentPassword !== undefined && typeof currentPassword !== "string") ||
+    (language !== undefined && language !== "de" && language !== "en")
+  ) {
+    return NextResponse.json({ error: "Ungültige Angaben." }, { status: 400 });
+  }
 
   if (newPassword !== undefined) {
     if (
@@ -52,6 +62,9 @@ export async function PATCH(req: NextRequest) {
     if (typeof newPassword !== "string" || newPassword.length < 8) {
       return NextResponse.json({ error: "Das neue Passwort muss mindestens 8 Zeichen lang sein." }, { status: 400 });
     }
+    if (Buffer.byteLength(newPassword, "utf8") > 72) {
+      return NextResponse.json({ error: "Das Passwort darf höchstens 72 Zeichen lang sein." }, { status: 400 });
+    }
     const rows = await prisma.$queryRaw<{ password_hash: string }[]>`
       select password_hash from users where id = ${session.userId}::uuid
     `;
@@ -60,7 +73,7 @@ export async function PATCH(req: NextRequest) {
     }
     const hash = await bcrypt.hash(newPassword, 10);
     // password_changed_at ends every other session (see getCustomerSession).
-    await prisma.$executeRaw`update users set password_hash = ${hash}, password_changed_at = now() where id = ${session.userId}::uuid`;
+    await prisma.$executeRaw`update users set password_hash = ${hash}, has_password = true, password_changed_at = now() where id = ${session.userId}::uuid`;
   }
 
   if (name !== undefined) {
@@ -70,10 +83,14 @@ export async function PATCH(req: NextRequest) {
     await prisma.$executeRaw`update users set full_name = ${name.trim()} where id = ${session.userId}::uuid`;
   }
   if (phone !== undefined) {
-    if (phone && !isPlausiblePhoneNumber(phone)) {
+    if (phone && (phone.length > 40 || !isPlausiblePhoneNumber(phone))) {
       return NextResponse.json({ error: "Bitte geben Sie eine gültige Telefonnummer ein." }, { status: 400 });
     }
     await prisma.$executeRaw`update users set phone = ${phone?.trim() || null} where id = ${session.userId}::uuid`;
+  }
+
+  if (language !== undefined) {
+    await prisma.$executeRaw`update users set language = ${language} where id = ${session.userId}::uuid`;
   }
 
   const res = NextResponse.json({ user: await loadUser(session.userId) });
@@ -85,7 +102,8 @@ export async function PATCH(req: NextRequest) {
 }
 
 /**
- * Delete account (GDPR Art. 17). Requires the current password.
+ * Delete account (GDPR Art. 17). Requires the current password, or, for accounts made with
+ * "Continue with Google" (no password of their own), the account's email address typed in.
  *
  * See anonymizeAccount() for what is erased and what is kept.
  */
@@ -97,13 +115,17 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Zu viele Versuche. Bitte versuchen Sie es später erneut." }, { status: 429 });
   }
 
-  const { password } = (await req.json().catch(() => ({}))) as { password?: string };
-  const [user] = await prisma.$queryRaw<{ password_hash: string }[]>`
-    select password_hash from users where id = ${session.userId}::uuid and deleted_at is null
+  const { password, confirmEmail } = (await req.json().catch(() => ({}))) as { password?: unknown; confirmEmail?: unknown };
+  const [user] = await prisma.$queryRaw<{ password_hash: string; email: string; has_password: boolean }[]>`
+    select password_hash, email, has_password from users where id = ${session.userId}::uuid and deleted_at is null
   `;
   if (!user) return NextResponse.json({ error: "Konto nicht gefunden." }, { status: 404 });
-  if (!password || !(await bcrypt.compare(password, user.password_hash))) {
-    return NextResponse.json({ error: "Das Passwort ist falsch." }, { status: 400 });
+  if (user.has_password) {
+    if (typeof password !== "string" || !(await bcrypt.compare(password, user.password_hash))) {
+      return NextResponse.json({ error: "Das Passwort ist falsch." }, { status: 400 });
+    }
+  } else if (typeof confirmEmail !== "string" || confirmEmail.trim().toLowerCase() !== user.email) {
+    return NextResponse.json({ error: "Bitte geben Sie zur Bestätigung die E-Mail-Adresse Ihres Kontos ein." }, { status: 400 });
   }
   const blocker = await deletionBlocker(session.userId);
   if (blocker === "ADMIN") {

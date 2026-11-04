@@ -17,6 +17,10 @@ export async function POST(req: NextRequest) {
   const orderNumber = String(body.orderNumber ?? "").trim().toUpperCase();
   const email = String(body.email ?? "").trim().toLowerCase();
   const message = String(body.message ?? "").trim().slice(0, 1000);
+  const name = String(body.name ?? "").trim().slice(0, 120);
+  // The form says: name the items, otherwise the whole order. Naming items is a partial withdrawal:
+  // the rest of the order still stands, so it must not be cancelled automatically.
+  const partial = body.scope === "part" || (body.scope !== "all" && message.length > 0);
   if (!orderNumber || !email) {
     return NextResponse.json({ error: "Bestellnummer und E-Mail sind erforderlich." }, { status: 400 });
   }
@@ -35,22 +39,24 @@ export async function POST(req: NextRequest) {
   let outcome: WithdrawalOutcome;
 
   // Not out of the door yet: cancel right away and put the items back in stock.
-  if ((order.status === "PLACED" || order.status === "PACKED") && (await cancelOrder(order.id, "Widerruf durch Kunden (Online-Formular)"))) {
+  if (!partial && (order.status === "PLACED" || order.status === "PACKED") && (await cancelOrder(order.id, "Widerruf durch Kunden (Online-Formular)"))) {
     outcome = "cancelled";
   } else {
     outcome = "recorded";
   }
   await appendInternalNote(
     order.id,
-    `↩️ WIDERRUF erklärt am ${stamp} (Online-Formular)${outcome === "cancelled" ? ", automatisch storniert" : ", bitte Kunden kontaktieren"}${message ? `. Nachricht: ${message}` : ""}`
+    `WIDERRUF ${partial ? "(einzelne Artikel) " : ""}erklärt am ${stamp} (Online-Formular)${name ? ` von ${name}` : ""}${
+      outcome === "cancelled" ? ", automatisch storniert" : ", bitte Kunden kontaktieren"
+    }${message ? `. Angaben: ${message}` : ""}`
   );
 
   const updated = (await getOrderById(order.id)) ?? order;
   await broadcastOrderEvent({ type: "order_updated", orderId: updated.id, status: updated.status });
   after(async () => {
-    await sendWithdrawalConfirmationEmail(updated, outcome, receivedAt).catch((e: unknown) => console.error("[mailer] withdrawal confirmation failed", e));
-    await sendStoreWithdrawalNotice(updated.orderNumber, outcome).catch((e: unknown) => console.error("[mailer] withdrawal store notice failed", e));
+    await sendWithdrawalConfirmationEmail(updated, outcome, receivedAt, { partial, message }).catch((e: unknown) => console.error("[mailer] withdrawal confirmation failed", e));
+    await sendStoreWithdrawalNotice(updated.orderNumber, outcome, partial).catch((e: unknown) => console.error("[mailer] withdrawal store notice failed", e));
   });
 
-  return NextResponse.json({ outcome, receivedAt: receivedAt.toISOString() });
+  return NextResponse.json({ outcome, partial, receivedAt: receivedAt.toISOString() });
 }

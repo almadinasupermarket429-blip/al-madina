@@ -3,8 +3,19 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 
-/** "Delete my account" (GDPR Art. 17): asks for the password, explains what is kept and why. */
-export function DeleteAccount({ t, onDeleted }: { t: (de: string, en: string) => string; onDeleted: () => void }) {
+/**
+ * "Delete my account" (GDPR Art. 17): asks for the password (or, for "Continue with Google"
+ * accounts that have none, the account's email address) and explains what is kept and why.
+ */
+export function DeleteAccount({
+  t,
+  hasPassword = true,
+  onDeleted,
+}: {
+  t: (de: string, en: string) => string;
+  hasPassword?: boolean;
+  onDeleted: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -18,7 +29,7 @@ export function DeleteAccount({ t, onDeleted }: { t: (de: string, en: string) =>
       const res = await fetch("/api/account/me", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify(hasPassword ? { password } : { confirmEmail: password }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -48,20 +59,21 @@ export function DeleteAccount({ t, onDeleted }: { t: (de: string, en: string) =>
       </h2>
       <p style={{ fontSize: 13, lineHeight: 1.6, color: "#4b544e", margin: "8px 0 12px" }}>
         {t(
-          "Ihr Name, Ihre E-Mail-Adresse, Telefonnummer, Adressen, Wunschliste, Warenkorb und Bewertungen werden gelöscht. Frühere Bestellungen müssen wir aus steuerlichen Gründen 6–10 Jahre aufbewahren; sie sind danach nicht mehr mit einem Konto verbunden. Dies kann nicht rückgängig gemacht werden.",
-          "Your name, email address, phone number, addresses, wishlist, cart and reviews will be deleted. We must keep past orders for 6–10 years for tax reasons; they will no longer be linked to an account. This cannot be undone."
+          "Ihr Name, Ihre E-Mail-Adresse, Telefonnummer, Adressen, Wunschliste, Warenkorb und Bewertungen werden gelöscht. Frühere Bestellungen müssen wir aus steuerlichen Gründen 8 Jahre aufbewahren; sie sind dann nicht mehr mit einem Konto verbunden. Dies kann nicht rückgängig gemacht werden.",
+          "Your name, email address, phone number, addresses, wishlist, cart and reviews will be deleted. We must keep past orders for 8 years for tax reasons; they will no longer be linked to an account. This cannot be undone."
         )}
       </p>
       <form onSubmit={submit} className="checkout-fields" style={{ marginBottom: 0 }}>
         <input
           required
-          type="password"
-          autoComplete="current-password"
-          placeholder={t("Passwort zur Bestätigung", "Password to confirm")}
+          type={hasPassword ? "password" : "email"}
+          autoComplete={hasPassword ? "current-password" : "email"}
+          aria-label={hasPassword ? t("Passwort zur Bestätigung", "Password to confirm") : t("E-Mail-Adresse zur Bestätigung", "Email address to confirm")}
+          placeholder={hasPassword ? t("Passwort zur Bestätigung", "Password to confirm") : t("E-Mail-Adresse zur Bestätigung", "Email address to confirm")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        {error && <div className="checkout-error">{error}</div>}
+        {error && <div className="checkout-error" role="alert">{error}</div>}
         <div style={{ display: "flex", gap: 8 }}>
           <button className="primary-btn" disabled={busy}>
             {busy ? t("Wird gelöscht…", "Deleting…") : t("Konto löschen", "Delete account")}

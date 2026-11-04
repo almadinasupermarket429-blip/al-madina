@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import { SUBSTITUTION_LABELS } from "@/lib/order-utils";
+import { formatEuro } from "@/lib/format";
 
 type OrderItem = { id: string; name: string; sizeLabel: string | null; price: number; qty: number };
 type Order = {
@@ -42,6 +43,9 @@ type Order = {
   substitution: string;
   cancelReason: string | null;
   internalNote: string | null;
+  depositTotal?: number;
+  language?: "de" | "en";
+  confirmationEmailFailed?: boolean;
   slot: { date: string; start: string; end: string } | null;
   status: "PLACED" | "PACKED" | "OUT_FOR_DELIVERY" | "DELIVERED" | "CANCELLED";
   deliveryToken: string;
@@ -87,7 +91,7 @@ function formatSlot(slot: Order["slot"], language: string) {
 }
 
 export default function AdminOrdersPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
   // The CSV export contains customer contact details and is owner-only.
   const [isOwnerRole, setIsOwnerRole] = useState(false);
@@ -207,7 +211,7 @@ export default function AdminOrdersPage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <Stat label={t("Heute", "Today")} value={String(todayCount.length)} />
-        <Stat label={t("Umsatz heute", "Revenue today")} value={`€${todayRevenue.toFixed(2)}`} />
+        <Stat label={t("Umsatz heute", "Revenue today")} value={formatEuro(todayRevenue, language)} />
         <Stat label={t("Neu", "New")} value={String(orders.filter((o) => o.status === "PLACED").length)} highlight />
         <Stat label={t("Zu packen / unterwegs", "To pack / en route")} value={String(orders.filter((o) => o.status === "PACKED" || o.status === "OUT_FOR_DELIVERY").length)} />
       </div>
@@ -342,10 +346,21 @@ function OrderCard({
               </span>
             )}
           </div>
-          <div className="text-xs text-black/40 mt-1">{new Date(order.createdAt).toLocaleString(language === "de" ? "de-DE" : "en-GB")}</div>
+          <div className="text-xs text-black/40 mt-1">
+            {new Date(order.createdAt).toLocaleString(language === "de" ? "de-DE" : "en-GB", { timeZone: "Europe/Berlin" })}
+            {order.language === "en" && <span className="ml-2">{t("Kunde schreibt Englisch", "Customer uses English")}</span>}
+          </div>
+          {order.confirmationEmailFailed && order.status !== "CANCELLED" && (
+            <div role="status" className="mt-2 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1">
+              {t(
+                "Bestätigungs-E-Mail konnte nicht gesendet werden. Bitte Kunden anrufen.",
+                "The confirmation email could not be sent. Please call the customer."
+              )}
+            </div>
+          )}
         </div>
         <div className="text-right">
-          <div className="text-xl font-serif font-medium">€{order.total.toFixed(2)}</div>
+          <div className="text-xl font-serif font-medium">{formatEuro(order.total, language)}</div>
           <div className="text-[11px] text-black/40">
             {order.fulfillment === "PICKUP" ? t("bar bei Abholung", "cash on pickup") : t("bar bei Lieferung", "cash on delivery")}
           </div>
@@ -395,7 +410,7 @@ function OrderCard({
                     {it.name} {it.sizeLabel && <span className="text-black/40">· {it.sizeLabel}</span>}
                   </td>
                   <td className="py-1.5 text-center text-black/50">×{it.qty}</td>
-                  <td className="py-1.5 text-right">€{(it.price * it.qty).toFixed(2)}</td>
+                  <td className="py-1.5 text-right">{formatEuro(it.price * it.qty, language)}</td>
                 </tr>
               ))}
             </tbody>
@@ -403,12 +418,17 @@ function OrderCard({
           <div className="text-xs text-black/50 mt-2 space-y-0.5 text-right">
             {order.discount > 0 && (
               <div className="text-green-700 flex items-center justify-end gap-1">
-                <Ticket size={12} /> {order.couponCode} −€{order.discount.toFixed(2)}
+                <Ticket size={12} /> {order.couponCode} −{formatEuro(order.discount, language)}
               </div>
             )}
             {order.deliveryFee > 0 && (
               <div>
-                {t("Liefergebühr", "Delivery fee")} €{order.deliveryFee.toFixed(2)}
+                {t("Liefergebühr", "Delivery fee")} {formatEuro(order.deliveryFee, language)}
+              </div>
+            )}
+            {!!order.depositTotal && (
+              <div>
+                {t("Pfand", "Deposit")} {formatEuro(order.depositTotal, language)}
               </div>
             )}
           </div>

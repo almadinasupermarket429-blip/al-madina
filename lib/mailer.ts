@@ -1,9 +1,16 @@
 import nodemailer from "nodemailer";
+import { formatEuro } from "./format";
 import { STORE, hoursSummary } from "./store-info";
+
+// Customer emails go out in the customer's language (orders.language / users.language);
+// emails to the shop stay German. Every email has a plain-text part as well as HTML.
+
+type Lang = "de" | "en";
+const L = (lang: Lang, de: string, en: string) => (lang === "en" ? en : de);
 
 // A structural subset of lib/orders.ts's FullOrder — only the fields these
 // templates actually use, so callers don't need to supply statusEvents etc.
-type OrderItem = { name: string; sizeLabel: string | null; price: number; qty: number };
+type OrderItem = { name: string; sizeLabel: string | null; price: number; qty: number; deposit?: number };
 type OrderWithItems = {
   orderNumber: string;
   customerName: string;
@@ -16,13 +23,17 @@ type OrderWithItems = {
   discount?: number;
   couponCode?: string | null;
   deliveryFee: number;
+  depositTotal?: number;
   total: number;
   status: string;
   substitution?: string;
   cancelReason?: string | null;
+  language?: Lang;
   slot?: { date: string; start: string; end: string } | null;
   items: OrderItem[];
 };
+
+const SITE_URL = () => process.env.NEXT_PUBLIC_SITE_URL || "";
 
 const SUBSTITUTION_TEXT: Record<string, string> = {
   SUBSTITUTE: "Durch ähnlichen Artikel ersetzen",
@@ -30,26 +41,11 @@ const SUBSTITUTION_TEXT: Record<string, string> = {
   REMOVE: "Artikel weglassen",
 };
 
-function slotLine(order: OrderWithItems) {
-  if (!order.slot) return "";
-  const day = new Date(`${order.slot.date}T12:00:00Z`).toLocaleDateString("de-DE", {
-    weekday: "long",
-    day: "2-digit",
-    month: "2-digit",
-    timeZone: "UTC",
-  });
-  return `<p><b>Zeitfenster:</b> ${escapeHtml(day)}, ${escapeHtml(order.slot.start)}–${escapeHtml(order.slot.end)} Uhr</p>`;
-}
-
-function discountRow(order: OrderWithItems) {
-  if (!order.discount) return "";
-  return `<tr style="color:#2f6b3a"><td>Rabatt${order.couponCode ? ` (${escapeHtml(order.couponCode)})` : ""}</td><td style="text-align:right">−${money(order.discount)}</td></tr>`;
-}
-
 // ---------------------------------------------------------------------------
 // SMTP transport. Reads its settings from environment variables — see
-// .env.example for exactly which ones to fill in and where to get them
-// (Gmail App Password, Resend, Brevo, SendGrid, Mailgun, or your host's SMTP).
+// .env.example. SMTP_FROM is the sender; without it the SMTP login is used,
+// which works for Gmail (the login is the mailbox). Providers like Brevo need
+// SMTP_FROM set to a verified sender.
 // ---------------------------------------------------------------------------
 function getTransport() {
   const host = process.env.SMTP_HOST;
@@ -69,8 +65,38 @@ function getTransport() {
   });
 }
 
-function money(n: number) {
-  return `€${n.toFixed(2)}`;
+type SendResult = { sent: boolean; reason?: string };
+
+/** Sends one email (HTML + plain text). Returns sent: false when SMTP isn't set up. */
+async function send(to: string, subject: string, html: string, what: string): Promise<SendResult> {
+  const transport = getTransport();
+  if (!transport) {
+    console.warn(`[mailer] SMTP not configured (SMTP_HOST, SMTP_USER, SMTP_PASSWORD) — skipping ${what}`);
+    return { sent: false, reason: "SMTP not configured" };
+  }
+  await transport.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to, subject, html, text: htmlToText(html) });
+  return { sent: true };
+}
+
+/** Plain-text version of an email body: keeps paragraphs, table rows and link targets. */
+export function htmlToText(html: string): string {
+  return html
+    .replace(/<a\s[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (_m, href: string, label: string) => `${label.replace(/<[^>]+>/g, "")} (${href})`)
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|h2|h3|tr|li|div|table|ul)>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "- ")
+    .replace(/<\/t[dh]>/gi, "  ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .split("\n")
+    .map((line) => line.replace(/[ \t]+/g, " ").trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 // These templates interpolate customer-supplied text (name, address, notes,
@@ -94,15 +120,29 @@ function escapeHtml(value: unknown): string {
   });
 }
 
-function itemsTable(items: OrderItem[]) {
+const button = (href: string, label: string) =>
+  `<p><a href="${escapeHtml(href)}" style="display:inline-block;margin:12px 0;background:#a12e3d;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold">${escapeHtml(label)}</a></p>`;
+
+const small = (text: string) => `<p style="font-size:12px;color:#6b6f6c">${text}</p>`;
+
+function slotLine(order: OrderWithItems, lang: Lang) {
+  if (!order.slot) return "";
+  const day = new Date(`${order.slot.date}T12:00:00Z`).toLocaleDateString(lang === "en" ? "en-GB" : "de-DE", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "UTC",
+  });
+  return `<p><b>${L(lang, "Zeitfenster", "Time slot")}:</b> ${escapeHtml(day)}, ${escapeHtml(order.slot.start)}–${escapeHtml(order.slot.end)}${L(lang, " Uhr", "")}</p>`;
+}
+
+function itemsTable(items: OrderItem[], lang: Lang) {
+  const th = (text: string, align = "left") => `<th style="padding:6px 4px;text-align:${align}">${text}</th>`;
   return `
     <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px">
       <thead>
-        <tr style="text-align:left;border-bottom:2px solid #a12e3d">
-          <th style="padding:6px 4px">Artikel</th>
-          <th style="padding:6px 4px">Größe</th>
-          <th style="padding:6px 4px;text-align:center">Menge</th>
-          <th style="padding:6px 4px;text-align:right">Preis</th>
+        <tr style="border-bottom:2px solid #a12e3d">
+          ${th(L(lang, "Artikel", "Item"))}${th(L(lang, "Größe", "Size"))}${th(L(lang, "Menge", "Qty"), "center")}${th(L(lang, "Preis", "Price"), "right")}
         </tr>
       </thead>
       <tbody>
@@ -113,7 +153,7 @@ function itemsTable(items: OrderItem[]) {
             <td style="padding:6px 4px">${escapeHtml(it.name)}</td>
             <td style="padding:6px 4px">${escapeHtml(it.sizeLabel ?? "-")}</td>
             <td style="padding:6px 4px;text-align:center">${it.qty}</td>
-            <td style="padding:6px 4px;text-align:right">${money(it.price * it.qty)}</td>
+            <td style="padding:6px 4px;text-align:right">${formatEuro(it.price * it.qty, lang)}</td>
           </tr>`
           )
           .join("")}
@@ -121,73 +161,108 @@ function itemsTable(items: OrderItem[]) {
     </table>`;
 }
 
-function baseWrapper(title: string, bodyHtml: string) {
+function totalsTable(order: OrderWithItems, lang: Lang) {
+  const row = (label: string, value: string, style = "") => `<tr style="${style}"><td>${label}</td><td style="text-align:right">${value}</td></tr>`;
+  const pickup = order.fulfillment === "PICKUP";
+  return `
+    <table style="width:100%;font-size:14px">
+      ${row(L(lang, "Zwischensumme", "Subtotal"), formatEuro(order.subtotal, lang))}
+      ${order.discount ? row(`${L(lang, "Rabatt", "Discount")}${order.couponCode ? ` (${escapeHtml(order.couponCode)})` : ""}`, `−${formatEuro(order.discount, lang)}`, "color:#2f6b3a") : ""}
+      ${row(pickup ? L(lang, "Abholung", "Pickup") : L(lang, "Lieferung", "Delivery"), order.deliveryFee === 0 ? L(lang, "Kostenlos", "Free") : formatEuro(order.deliveryFee, lang))}
+      ${order.depositTotal ? row(L(lang, "Pfand", "Deposit"), formatEuro(order.depositTotal, lang)) : ""}
+      ${row(`<b>${L(lang, "Gesamt (bar, inkl. MwSt.)", "Total (cash, incl. VAT)")}</b>`, `<b>${formatEuro(order.total, lang)}</b>`, "font-size:16px")}
+    </table>`;
+}
+
+function baseWrapper(title: string, bodyHtml: string, lang: Lang = "de") {
   return `
   <div style="font-family:Arial,Helvetica,sans-serif;background:#f8f7f3;padding:24px">
     <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #eee">
       <div style="background:linear-gradient(135deg,#a12e3d,#7a1a26);color:#fff;padding:20px 24px">
-        <div style="font-size:20px;font-weight:bold;letter-spacing:-0.02em">Al-Madina Markt</div>
-        <div style="font-size:12px;opacity:.85;margin-top:2px">Halal Lebensmittel · Schweinfurt</div>
+        <div style="font-size:20px;font-weight:bold">${STORE.name}</div>
+        <div style="font-size:12px;opacity:.85;margin-top:2px">Halal Lebensmittel · ${STORE.city}</div>
       </div>
       <div style="padding:24px;color:#222">
         <h2 style="margin:0 0 12px;font-size:20px">${title}</h2>
         ${bodyHtml}
       </div>
-      <div style="padding:16px 24px;background:#f8f7f3;color:#999;font-size:11px">
-        ${STORE.name} · ${STORE.street}, ${STORE.postalCode} ${STORE.city} · Tel. ${STORE.phoneDisplay}<br/>
-        ${hoursSummary("de")} Uhr · Dies ist eine automatische Nachricht.
+      <div style="padding:16px 24px;background:#f8f7f3;color:#6b6f6c;font-size:11px">
+        ${STORE.name}, ${STORE.street}, ${STORE.postalCode} ${STORE.city}<br/>
+        ${L(lang, "Telefon", "Phone")} ${STORE.phoneDisplay}<br/>
+        ${L(lang, `${hoursSummary("de")} Uhr, sonn- und feiertags geschlossen`, `${hoursSummary("en")}, closed Sundays and public holidays`)}<br/>
+        ${L(lang, "Dies ist eine automatische Nachricht.", "This is an automatic message.")}
       </div>
     </div>
   </div>`;
 }
 
-function fulfillmentLine(order: OrderWithItems) {
+function fulfillmentLine(order: OrderWithItems, lang: Lang) {
   return order.fulfillment === "PICKUP"
-    ? `<p><b>Abholung im Laden</b> — wir packen Ihre Bestellung, sie ist bei Al-Madina Markt zur Abholung bereit.</p>`
-    : `<p><b>Lieferung nach Hause</b> an: ${escapeHtml(order.address ?? "")}</p>`;
+    ? `<p><b>${L(lang, "Abholung im Laden", "Pickup in store")}:</b> ${STORE.street}, ${STORE.postalCode} ${STORE.city}. ${L(
+        lang,
+        "Wir sagen Bescheid, sobald Ihre Bestellung abholbereit ist.",
+        "We'll let you know as soon as your order is ready to collect."
+      )}</p>`
+    : `<p><b>${L(lang, "Lieferung an", "Delivery to")}:</b> ${escapeHtml(order.address ?? "")}</p>`;
+}
+
+/**
+ * The withdrawal notice (Widerrufsbelehrung, Anlage 1 zu Art. 246a § 1 EGBGB) on a durable medium,
+ * as the order confirmation must carry it (§ 312f Abs. 2 BGB), plus where the online form is.
+ */
+function withdrawalNotice(orderNumber: string, lang: Lang) {
+  const formUrl = `${SITE_URL()}/widerruf?order=${encodeURIComponent(orderNumber)}`;
+  const address = `${STORE.name}, ${STORE.street}, ${STORE.postalCode} ${STORE.city}, ${L(lang, "Telefon", "phone")} ${STORE.phoneDisplay}`;
+  const body =
+    lang === "en"
+      ? `<p><b>Right of withdrawal.</b> You have the right to withdraw from this contract within fourteen days without giving any reason. The withdrawal period will expire after fourteen days from the day on which you acquire, or a third party other than the carrier and indicated by you acquires, physical possession of the goods. To exercise the right of withdrawal, you must inform us (${escapeHtml(address)}) of your decision to withdraw from this contract by an unequivocal statement (e.g. a letter sent by post, or our online form). You may use the model withdrawal form on our website, but it is not obligatory. To meet the withdrawal deadline, it is sufficient for you to send your communication before the withdrawal period has expired.</p>
+         <p><b>Effects of withdrawal.</b> If you withdraw from this contract, we shall reimburse to you all payments received from you, including the costs of delivery (with the exception of the supplementary costs resulting from your choice of a type of delivery other than the least expensive type of standard delivery offered by us), without undue delay and in any event not later than fourteen days from the day on which we are informed about your decision to withdraw. We will carry out such reimbursement using the same means of payment as you used for the initial transaction (cash), unless you have expressly agreed otherwise. We may withhold reimbursement until we have received the goods back or you have supplied evidence of having sent back the goods, whichever is the earliest. You shall send back the goods or hand them over to us without undue delay and in any event not later than fourteen days from the day on which you communicate your withdrawal. You will have to bear the direct cost of returning the goods. You are only liable for any diminished value of the goods resulting from handling other than what is necessary to establish their nature, characteristics and functioning.</p>
+         <p><b>Exceptions.</b> There is no right of withdrawal for goods that are liable to deteriorate or expire rapidly (e.g. fresh food), or for sealed goods which are not suitable for return due to health protection or hygiene reasons if they were unsealed after delivery (§ 312g (2) nos. 2 and 3 BGB).</p>`
+      : `<p><b>Widerrufsrecht.</b> Sie haben das Recht, binnen vierzehn Tagen ohne Angabe von Gründen diesen Vertrag zu widerrufen. Die Widerrufsfrist beträgt vierzehn Tage ab dem Tag, an dem Sie oder ein von Ihnen benannter Dritter, der nicht der Beförderer ist, die Waren in Besitz genommen haben bzw. hat. Um Ihr Widerrufsrecht auszuüben, müssen Sie uns (${escapeHtml(address)}) mittels einer eindeutigen Erklärung (z. B. ein mit der Post versandter Brief oder unser Online-Formular) über Ihren Entschluss, diesen Vertrag zu widerrufen, informieren. Sie können dafür das Muster-Widerrufsformular auf unserer Website verwenden, das jedoch nicht vorgeschrieben ist. Zur Wahrung der Widerrufsfrist reicht es aus, dass Sie die Mitteilung über die Ausübung des Widerrufsrechts vor Ablauf der Widerrufsfrist absenden.</p>
+         <p><b>Folgen des Widerrufs.</b> Wenn Sie diesen Vertrag widerrufen, haben wir Ihnen alle Zahlungen, die wir von Ihnen erhalten haben, einschließlich der Lieferkosten (mit Ausnahme der zusätzlichen Kosten, die sich daraus ergeben, dass Sie eine andere Art der Lieferung als die von uns angebotene, günstigste Standardlieferung gewählt haben), unverzüglich und spätestens binnen vierzehn Tagen ab dem Tag zurückzuzahlen, an dem die Mitteilung über Ihren Widerruf dieses Vertrags bei uns eingegangen ist. Für diese Rückzahlung verwenden wir dasselbe Zahlungsmittel, das Sie bei der ursprünglichen Transaktion eingesetzt haben (Barzahlung), es sei denn, mit Ihnen wurde ausdrücklich etwas anderes vereinbart. Wir können die Rückzahlung verweigern, bis wir die Waren wieder zurückerhalten haben oder bis Sie den Nachweis erbracht haben, dass Sie die Waren zurückgesandt haben, je nachdem, welches der frühere Zeitpunkt ist. Sie haben die Waren unverzüglich und in jedem Fall spätestens binnen vierzehn Tagen ab dem Tag, an dem Sie uns über den Widerruf dieses Vertrags unterrichten, an uns zurückzusenden oder zu übergeben. Sie tragen die unmittelbaren Kosten der Rücksendung der Waren. Sie müssen für einen etwaigen Wertverlust der Waren nur aufkommen, wenn dieser Wertverlust auf einen zur Prüfung der Beschaffenheit, Eigenschaften und Funktionsweise der Waren nicht notwendigen Umgang mit ihnen zurückzuführen ist.</p>
+         <p><b>Ausschluss.</b> Kein Widerrufsrecht besteht bei Waren, die schnell verderben können oder deren Verfallsdatum schnell überschritten würde (z. B. frische Lebensmittel), sowie bei versiegelten Waren, die aus Gründen des Gesundheitsschutzes oder der Hygiene nicht zur Rückgabe geeignet sind, wenn ihre Versiegelung nach der Lieferung entfernt wurde (§ 312g Abs. 2 Nr. 2 und 3 BGB).</p>`;
+  return `
+    <div style="margin-top:24px;padding-top:12px;border-top:1px solid #eee;font-size:12px;color:#444">
+      <h3 style="font-size:14px;margin:0 0 8px">${L(lang, "Widerrufsbelehrung", "Withdrawal notice")}</h3>
+      ${body}
+      <p>${L(lang, "Widerruf online erklären", "Withdraw online")}: <a href="${escapeHtml(formUrl)}">${escapeHtml(formUrl)}</a></p>
+    </div>`;
 }
 
 /** Email sent to the customer confirming their order. */
-export async function sendCustomerConfirmationEmail(order: OrderWithItems) {
-  const transport = getTransport();
+export async function sendCustomerConfirmationEmail(order: OrderWithItems): Promise<SendResult> {
+  const lang: Lang = order.language ?? "de";
+  const pickup = order.fulfillment === "PICKUP";
   const html = baseWrapper(
-    `Vielen Dank, ${escapeHtml(order.customerName)}!`,
+    L(lang, `Vielen Dank, ${escapeHtml(order.customerName)}!`, `Thank you, ${escapeHtml(order.customerName)}!`),
     `
-    <p>Wir haben Ihre Bestellung <b>#${escapeHtml(order.orderNumber)}</b> erhalten.</p>
-    ${fulfillmentLine(order)}
-    ${slotLine(order)}
-    ${itemsTable(order.items)}
-    <table style="width:100%;font-size:14px">
-      <tr><td>Zwischensumme</td><td style="text-align:right">${money(order.subtotal)}</td></tr>
-      ${discountRow(order)}
-      <tr><td>${order.fulfillment === "PICKUP" ? "Abholung" : "Lieferung"}</td><td style="text-align:right">${
-      order.deliveryFee === 0 ? "Kostenlos" : money(order.deliveryFee)
-    }</td></tr>
-      <tr style="font-weight:bold;font-size:16px"><td style="padding-top:8px">Gesamt (bar)</td><td style="text-align:right;padding-top:8px">${money(
-        order.total
-      )}</td></tr>
-    </table>
-    <p style="margin-top:16px">Die Zahlung erfolgt <b>bar bei ${
-      order.fulfillment === "PICKUP" ? "Abholung" : "Lieferung"
-    }</b> — bitte halten Sie nach Möglichkeit den passenden Betrag bereit.</p>
-    <p>Wir informieren Sie, sobald Ihre Bestellung von „gepackt" zu „${
-      order.fulfillment === "PICKUP" ? "abholbereit" : "unterwegs"
-    }" wechselt.</p>
-    `
+    <p>${L(lang, "Wir haben Ihre Bestellung", "We have received your order")} <b>#${escapeHtml(order.orderNumber)}</b>${L(lang, " erhalten.", ".")}</p>
+    ${fulfillmentLine(order, lang)}
+    ${slotLine(order, lang)}
+    ${itemsTable(order.items, lang)}
+    ${totalsTable(order, lang)}
+    <p style="margin-top:16px">${L(
+      lang,
+      `Sie zahlen <b>bar bei ${pickup ? "Abholung" : "Lieferung"}</b>. Bitte halten Sie nach Möglichkeit den passenden Betrag bereit.`,
+      `You pay <b>in cash on ${pickup ? "pickup" : "delivery"}</b>. Please have the exact amount ready if you can.`
+    )}</p>
+    <p>${L(
+      lang,
+      `Wir schreiben Ihnen, sobald Ihre Bestellung ${pickup ? "abholbereit" : "unterwegs"} ist.`,
+      `We'll email you as soon as your order is ${pickup ? "ready to collect" : "on its way"}.`
+    )}</p>
+    ${button(`${SITE_URL()}/account`, L(lang, "Bestellung ansehen", "View your order"))}
+    ${small(L(lang, `Fragen? Rufen Sie uns an: ${STORE.phoneDisplay}`, `Questions? Call us: ${STORE.phoneDisplay}`))}
+    ${withdrawalNotice(order.orderNumber, lang)}
+    `,
+    lang
   );
-
-  if (!transport) {
-    console.warn("[mailer] SMTP not configured — skipping customer email for order", order.orderNumber);
-    return { sent: false, reason: "SMTP not configured" };
-  }
-
-  await transport.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: order.customerEmail,
-    subject: `Ihre Al-Madina Markt Bestellung #${order.orderNumber}`,
+  return send(
+    order.customerEmail,
+    L(lang, `Ihre Bestellung #${order.orderNumber} bei ${STORE.name}`, `Your ${STORE.name} order #${order.orderNumber}`),
     html,
-  });
-  return { sent: true };
+    `customer email for order ${order.orderNumber}`
+  );
 }
 
 /**
@@ -195,168 +270,114 @@ export async function sendCustomerConfirmationEmail(order: OrderWithItems) {
  * customer's name, contact details, address and notes, so no personal data ends up in the
  * store's mailbox. The full order is in the admin portal.
  */
-export async function sendStoreNotificationEmail(order: OrderWithItems) {
-  const transport = getTransport();
+export async function sendStoreNotificationEmail(order: OrderWithItems): Promise<SendResult> {
   const storeEmail = process.env.STORE_NOTIFICATION_EMAIL;
-  const adminUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ""}/admin`;
-
+  if (!storeEmail) {
+    console.warn("[mailer] STORE_NOTIFICATION_EMAIL not set — skipping store email for order", order.orderNumber);
+    return { sent: false, reason: "Store email not configured" };
+  }
   const html = baseWrapper(
     `Neue Bestellung #${escapeHtml(order.orderNumber)}`,
     `
-    <p><b>${order.fulfillment === "PICKUP" ? "Abholung im Laden" : "Lieferung"}</b></p>
-    ${slotLine(order)}
+    <p><b>${order.fulfillment === "PICKUP" ? "Abholung im Laden" : "Lieferung"}</b>${order.language === "en" ? " (Kunde schreibt Englisch)" : ""}</p>
+    ${slotLine(order, "de")}
     <p style="color:#666">Kundendaten, Adresse und Hinweise finden Sie im Admin-Portal.</p>
     ${order.substitution ? `<p><b>Falls nicht verfügbar:</b> ${escapeHtml(SUBSTITUTION_TEXT[order.substitution] ?? order.substitution)}</p>` : ""}
-    ${order.discount ? `<p><b>Gutschein:</b> ${escapeHtml(order.couponCode ?? "")} (−${money(order.discount)})</p>` : ""}
-    ${itemsTable(order.items)}
-    <p style="font-size:16px;font-weight:bold">Einzusammelnder Betrag (bar): ${money(order.total)}</p>
-    <p><a href="${adminUrl}" style="display:inline-block;margin-top:12px;background:#a12e3d;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Admin-Portal öffnen</a></p>
+    ${order.discount ? `<p><b>Gutschein:</b> ${escapeHtml(order.couponCode ?? "")} (−${formatEuro(order.discount)})</p>` : ""}
+    ${itemsTable(order.items, "de")}
+    <p style="font-size:16px;font-weight:bold">Einzusammelnder Betrag (bar): ${formatEuro(order.total)}</p>
+    ${button(`${SITE_URL()}/admin`, "Admin-Portal öffnen")}
     `
   );
-
-  if (!transport || !storeEmail) {
-    console.warn("[mailer] SMTP or STORE_NOTIFICATION_EMAIL not configured — skipping store email for order", order.orderNumber);
-    return { sent: false, reason: "SMTP or store email not configured" };
-  }
-
-  await transport.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: storeEmail,
-    subject: `🛒 Neue Bestellung #${order.orderNumber} — ${money(order.total)} bar`,
-    html,
-  });
-  return { sent: true };
+  return send(storeEmail, `Neue Bestellung #${order.orderNumber}: ${formatEuro(order.total)} bar`, html, `store email for order ${order.orderNumber}`);
 }
 
 /** Email sent to the customer when their order status changes. */
-export async function sendStatusUpdateEmail(order: OrderWithItems) {
+export async function sendStatusUpdateEmail(order: OrderWithItems): Promise<SendResult> {
   if (!order.customerEmail) return { sent: false, reason: "Contact details removed" };
-  const transport = getTransport();
+  const lang: Lang = order.language ?? "de";
+  const pickup = order.fulfillment === "PICKUP";
   const statusText: Record<string, string> = {
-    PACKED: "Ihre Bestellung wurde gepackt",
-    OUT_FOR_DELIVERY: "Ihre Bestellung ist unterwegs",
-    DELIVERED: order.fulfillment === "PICKUP" ? "Ihre Bestellung wurde abgeholt" : "Ihre Bestellung wurde zugestellt",
-    CANCELLED: "Ihre Bestellung wurde storniert",
+    PACKED: pickup ? L(lang, "Ihre Bestellung ist abholbereit", "Your order is ready to collect") : L(lang, "Ihre Bestellung wurde gepackt", "Your order has been packed"),
+    OUT_FOR_DELIVERY: L(lang, "Ihre Bestellung ist unterwegs", "Your order is on its way"),
+    DELIVERED: pickup ? L(lang, "Ihre Bestellung wurde abgeholt", "Your order has been collected") : L(lang, "Ihre Bestellung wurde zugestellt", "Your order has been delivered"),
+    CANCELLED: L(lang, "Ihre Bestellung wurde storniert", "Your order has been cancelled"),
   };
-  if (order.status === "PACKED" && order.fulfillment === "PICKUP") statusText.PACKED = "Ihre Bestellung ist abholbereit";
   const label = statusText[order.status];
   if (!label) return { sent: false, reason: "No email for this status" };
 
+  const body =
+    order.status === "CANCELLED"
+      ? `<p>${L(lang, "Bestellung", "Order")} <b>#${escapeHtml(order.orderNumber)}</b> ${L(lang, "wurde storniert", "has been cancelled")}${
+          order.cancelReason ? ` (${escapeHtml(order.cancelReason)})` : ""
+        }. ${L(lang, "Es fällt keine Zahlung an.", "You don't need to pay anything.")}</p>`
+      : `<p>${L(lang, "Bestellung", "Order")} <b>#${escapeHtml(order.orderNumber)}</b>: ${formatEuro(order.total, lang)} ${L(
+          lang,
+          `bar bei ${pickup ? "Abholung" : "Lieferung"}`,
+          `in cash on ${pickup ? "pickup" : "delivery"}`
+        )}.</p>${
+          order.status === "PACKED" && pickup
+            ? `<p>${L(lang, "Abholung", "Pickup")}: ${STORE.street}, ${STORE.postalCode} ${STORE.city}, ${L(lang, `${hoursSummary("de")} Uhr`, hoursSummary("en"))}</p>`
+            : ""
+        }`;
   const html = baseWrapper(
     label,
-    order.status === "CANCELLED"
-      ? `<p>Bestellung <b>#${escapeHtml(order.orderNumber)}</b> wurde storniert${
-          order.cancelReason ? ` (${escapeHtml(order.cancelReason)})` : ""
-        }. Es fällt keine Zahlung an.</p><p>Fragen? Rufen Sie uns an: ${STORE.phoneDisplay}</p>`
-      : `<p>Bestellung <b>#${escapeHtml(order.orderNumber)}</b> — Gesamt ${money(order.total)} (bar bei ${
-          order.fulfillment === "PICKUP" ? "Abholung" : "Lieferung"
-        }).</p>${
-          order.status === "PACKED" && order.fulfillment === "PICKUP"
-            ? `<p>Abholung: ${STORE.street}, ${STORE.postalCode} ${STORE.city} · ${hoursSummary("de")} Uhr</p>`
-            : ""
-        }`
+    `${body}
+     ${button(`${SITE_URL()}/account`, L(lang, "Bestellung ansehen", "View your order"))}
+     ${small(L(lang, `Fragen? Rufen Sie uns an: ${STORE.phoneDisplay}`, `Questions? Call us: ${STORE.phoneDisplay}`))}`,
+    lang
   );
-
-  if (!transport) {
-    console.warn("[mailer] SMTP not configured — skipping status email for order", order.orderNumber);
-    return { sent: false, reason: "SMTP not configured" };
-  }
-
-  await transport.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: order.customerEmail,
-    subject: `Bestellung #${order.orderNumber}: ${label}`,
-    html,
-  });
-  return { sent: true };
+  return send(order.customerEmail, `${L(lang, "Bestellung", "Order")} #${order.orderNumber}: ${label}`, html, `status email for order ${order.orderNumber}`);
 }
 
 /** Email sent to the store owner when a product size drops to/below the low-stock threshold. */
-export async function sendLowStockAlert(items: { productName: string; sizeLabel: string; stock: number }[]) {
-  const transport = getTransport();
+export async function sendLowStockAlert(items: { productName: string; sizeLabel: string; stock: number }[]): Promise<SendResult> {
   const storeEmail = process.env.STORE_NOTIFICATION_EMAIL;
-  const adminUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ""}/admin/products`;
-
   if (items.length === 0) return { sent: false, reason: "Nothing to report" };
-
+  if (!storeEmail) return { sent: false, reason: "Store email not configured" };
   const html = baseWrapper(
     "Niedriger Lagerbestand",
     `
     <p>Die folgenden Artikel gehen zur Neige:</p>
     <ul style="font-size:14px">
-      ${items.map((i) => `<li><b>${escapeHtml(i.productName)}</b> (${escapeHtml(i.sizeLabel)}) — noch ${i.stock}</li>`).join("")}
+      ${items.map((i) => `<li><b>${escapeHtml(i.productName)}</b> (${escapeHtml(i.sizeLabel)}): noch ${i.stock}</li>`).join("")}
     </ul>
-    <p><a href="${adminUrl}" style="display:inline-block;margin-top:12px;background:#a12e3d;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Produkte verwalten</a></p>
+    ${button(`${SITE_URL()}/admin/products`, "Produkte verwalten")}
     `
   );
-
-  if (!transport || !storeEmail) {
-    console.warn("[mailer] SMTP or STORE_NOTIFICATION_EMAIL not configured — skipping low-stock email");
-    return { sent: false, reason: "SMTP or store email not configured" };
-  }
-
-  await transport.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: storeEmail,
-    subject: `⚠️ Niedriger Bestand: ${items.map((i) => i.productName).join(", ")}`,
-    html,
-  });
-  return { sent: true };
+  return send(storeEmail, `Niedriger Bestand: ${items.map((i) => i.productName).join(", ")}`, html, "low-stock email");
 }
 
 /** Email sent on registration (and on resend) with the one-time code to verify the account's email. */
-export async function sendVerificationEmail(email: string, name: string, code: string) {
-  const transport = getTransport();
+export async function sendVerificationEmail(email: string, name: string, code: string, lang: Lang = "de"): Promise<SendResult> {
   const html = baseWrapper(
-    "Bestätigen Sie Ihre E-Mail-Adresse",
+    L(lang, "Bestätigen Sie Ihre E-Mail-Adresse", "Confirm your email address"),
     `
-    <p>Hallo ${escapeHtml(name)}, verwenden Sie diesen Code, um Ihre E-Mail-Adresse zu bestätigen:</p>
+    <p>${L(lang, `Hallo ${escapeHtml(name)}, mit diesem Code bestätigen Sie Ihre E-Mail-Adresse:`, `Hello ${escapeHtml(name)}, use this code to confirm your email address:`)}</p>
     <p style="font-size:32px;font-weight:bold;letter-spacing:6px;text-align:center;margin:20px 0;color:#a12e3d">${escapeHtml(code)}</p>
-    <p style="font-size:12px;color:#8a918c">Dieser Code läuft in 15 Minuten ab. Sie müssen Ihre E-Mail bestätigen, bevor Sie eine Bestellung aufgeben können.</p>
-    <p style="font-size:12px;color:#8a918c">Falls Sie kein Konto erstellt haben, können Sie diese E-Mail ignorieren.</p>
-    `
+    ${small(L(lang, "Der Code ist 15 Minuten gültig. Erst nach der Bestätigung können Sie bestellen.", "The code is valid for 15 minutes. You can order once your email is confirmed."))}
+    ${small(L(lang, "Falls Sie kein Konto erstellt haben, können Sie diese E-Mail ignorieren.", "If you didn't create an account, you can ignore this email."))}
+    `,
+    lang
   );
-
-  if (!transport) {
-    console.warn("[mailer] SMTP not configured — skipping verification email");
-    return { sent: false, reason: "SMTP not configured" };
-  }
-
-  await transport.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: email,
-    subject: `Ihr Bestätigungscode: ${code}`,
-    html,
-  });
-  return { sent: true };
+  return send(email, L(lang, `Ihr Bestätigungscode: ${code}`, `Your confirmation code: ${code}`), html, "verification email");
 }
 
 /** Email with a one-time link to choose a new password. */
-export async function sendPasswordResetEmail(email: string, name: string, resetUrl: string) {
-  const transport = getTransport();
+export async function sendPasswordResetEmail(email: string, name: string, resetUrl: string, lang: Lang = "de"): Promise<SendResult> {
   const html = baseWrapper(
-    "Passwort zurücksetzen",
+    L(lang, "Passwort zurücksetzen", "Reset your password"),
     `
-    <p>Hallo ${escapeHtml(name)}, Sie haben angefordert, Ihr Passwort zurückzusetzen.</p>
-    <p><a href="${escapeHtml(resetUrl)}" style="display:inline-block;margin:12px 0;background:#a12e3d;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold">Neues Passwort festlegen</a></p>
-    <p style="font-size:12px;color:#8a918c">Der Link ist 60 Minuten gültig und kann nur einmal verwendet werden.</p>
-    <p style="font-size:12px;color:#8a918c">Falls Sie das nicht angefordert haben, können Sie diese E-Mail ignorieren — Ihr Passwort bleibt unverändert.</p>
-    `
+    <p>${L(lang, `Hallo ${escapeHtml(name)}, Sie haben angefordert, Ihr Passwort zurückzusetzen.`, `Hello ${escapeHtml(name)}, you asked to reset your password.`)}</p>
+    ${button(resetUrl, L(lang, "Neues Passwort festlegen", "Choose a new password"))}
+    ${small(L(lang, "Der Link ist 60 Minuten gültig und funktioniert nur einmal.", "The link is valid for 60 minutes and works once."))}
+    ${small(L(lang, "Falls Sie das nicht angefordert haben, ignorieren Sie diese E-Mail. Ihr Passwort bleibt unverändert.", "If you didn't ask for this, ignore this email. Your password stays the same."))}
+    `,
+    lang
   );
-
-  if (!transport) {
-    console.warn("[mailer] SMTP not configured — skipping password reset email");
-    if (process.env.NODE_ENV !== "production") console.log(`[dev] password reset link for ${email}: ${resetUrl}`);
-    return { sent: false, reason: "SMTP not configured" };
-  }
-
-  await transport.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: email,
-    subject: "Passwort zurücksetzen — Al-Madina Markt",
-    html,
-  });
-  return { sent: true };
+  const result = await send(email, L(lang, `Passwort zurücksetzen: ${STORE.name}`, `Reset your password: ${STORE.name}`), html, "password reset email");
+  if (!result.sent && process.env.NODE_ENV !== "production") console.log(`[dev] password reset link for ${email}: ${resetUrl}`);
+  return result;
 }
 
 /**
@@ -364,88 +385,85 @@ export async function sendPasswordResetEmail(email: string, name: string, resetU
  * register endpoint answers identically either way (so it can't be used to
  * find out who is a customer); this email is how the real owner learns of it.
  */
-export async function sendAccountExistsEmail(email: string, name: string, loginUrl: string, resetUrl: string) {
-  const transport = getTransport();
+export async function sendAccountExistsEmail(email: string, name: string, loginUrl: string, resetUrl: string, lang: Lang = "de"): Promise<SendResult> {
   const html = baseWrapper(
-    "Sie haben bereits ein Konto",
+    L(lang, "Sie haben bereits ein Konto", "You already have an account"),
     `
-    <p>Hallo ${escapeHtml(name)}, gerade wurde versucht, mit dieser E-Mail-Adresse ein neues Konto zu erstellen. Sie haben bereits eines.</p>
-    <p><a href="${escapeHtml(loginUrl)}" style="display:inline-block;margin:12px 0;background:#a12e3d;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold">Jetzt anmelden</a></p>
-    <p>Passwort vergessen? <a href="${escapeHtml(resetUrl)}">Hier zurücksetzen</a>.</p>
-    <p style="font-size:12px;color:#8a918c">Falls Sie das nicht waren, können Sie diese E-Mail ignorieren — an Ihrem Konto wurde nichts geändert.</p>
-    `
+    <p>${L(
+      lang,
+      `Hallo ${escapeHtml(name)}, gerade wurde versucht, mit dieser E-Mail-Adresse ein neues Konto zu erstellen. Sie haben bereits eines.`,
+      `Hello ${escapeHtml(name)}, someone just tried to create a new account with this email address. You already have one.`
+    )}</p>
+    ${button(loginUrl, L(lang, "Jetzt anmelden", "Log in"))}
+    <p>${L(lang, "Passwort vergessen?", "Forgot your password?")} <a href="${escapeHtml(resetUrl)}">${L(lang, "Hier zurücksetzen", "Reset it here")}</a>.</p>
+    ${small(L(lang, "Falls Sie das nicht waren, ignorieren Sie diese E-Mail. An Ihrem Konto wurde nichts geändert.", "If this wasn't you, ignore this email. Nothing about your account has changed."))}
+    `,
+    lang
   );
-
-  if (!transport) {
-    console.warn("[mailer] SMTP not configured — skipping account-exists email");
-    return { sent: false, reason: "SMTP not configured" };
-  }
-
-  await transport.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: email,
-    subject: "Sie haben bereits ein Konto — Al-Madina Markt",
-    html,
-  });
-  return { sent: true };
+  return send(email, L(lang, `Sie haben bereits ein Konto: ${STORE.name}`, `You already have an account: ${STORE.name}`), html, "account-exists email");
 }
 
+/** "cancelled": the whole order was stopped before it left the shop. "recorded": the shop follows up. */
 export type WithdrawalOutcome = "cancelled" | "recorded";
 
 /**
  * Confirms receipt of a withdrawal (Widerruf) to the customer. The law requires this
- * confirmation on a durable medium without delay, so it is sent for every withdrawal.
+ * confirmation on a durable medium without delay (§ 356a BGB), so it is sent for every withdrawal.
  */
-export async function sendWithdrawalConfirmationEmail(order: OrderWithItems, outcome: WithdrawalOutcome, receivedAt: Date) {
+export async function sendWithdrawalConfirmationEmail(
+  order: OrderWithItems,
+  outcome: WithdrawalOutcome,
+  receivedAt: Date,
+  details: { partial?: boolean; message?: string } = {}
+): Promise<SendResult> {
   if (!order.customerEmail) return { sent: false, reason: "Contact details removed" };
-  const transport = getTransport();
-  const when = receivedAt.toLocaleString("de-DE", { timeZone: "Europe/Berlin", dateStyle: "long", timeStyle: "short" });
+  const lang: Lang = order.language ?? "de";
+  const when = receivedAt.toLocaleString(lang === "en" ? "en-GB" : "de-DE", { timeZone: "Europe/Berlin", dateStyle: "long", timeStyle: "short" });
   const next =
     outcome === "cancelled"
-      ? `<p>Ihre Bestellung hatte unseren Laden noch nicht verlassen und ist jetzt <b>storniert</b>. Sie müssen nichts weiter tun und nichts bezahlen.</p>`
-      : `<p>Ihre Bestellung wurde bereits ausgeliefert. Wir melden uns bei Ihnen, um die Rückgabe und die Erstattung zu besprechen. Bitte beachten Sie: Für schnell verderbliche Lebensmittel und nach der Lieferung geöffnete versiegelte Waren besteht kein Widerrufsrecht.</p>`;
-
+      ? L(
+          lang,
+          "Ihre Bestellung hatte unseren Laden noch nicht verlassen und ist jetzt <b>storniert</b>. Sie müssen nichts weiter tun und nichts bezahlen.",
+          "Your order hadn't left our shop yet and is now <b>cancelled</b>. You don't need to do or pay anything."
+        )
+      : L(
+          lang,
+          `${details.partial ? "Ihr Widerruf betrifft einzelne Artikel. " : ""}Wir melden uns bei Ihnen, um Rückgabe und Erstattung zu besprechen. Für schnell verderbliche Lebensmittel und nach der Lieferung geöffnete versiegelte Waren besteht kein Widerrufsrecht.`,
+          `${details.partial ? "Your withdrawal covers some of the items. " : ""}We'll get in touch to arrange the return and refund. There is no right of withdrawal for perishable food or for sealed goods opened after delivery.`
+        );
   const html = baseWrapper(
-    `Ihr Widerruf zu Bestellung #${escapeHtml(order.orderNumber)}`,
+    L(lang, `Ihr Widerruf zu Bestellung #${escapeHtml(order.orderNumber)}`, `Your withdrawal for order #${escapeHtml(order.orderNumber)}`),
     `
-    <p>Hallo ${escapeHtml(order.customerName)},</p>
-    <p>wir bestätigen den Eingang Ihres Widerrufs für die Bestellung <b>#${escapeHtml(order.orderNumber)}</b> am <b>${escapeHtml(when)} Uhr</b>.</p>
-    ${next}
-    <p>Fragen? Rufen Sie uns an: ${escapeHtml(STORE.phoneDisplay)}.</p>
-    `
+    <p>${L(lang, `Hallo ${escapeHtml(order.customerName)},`, `Hello ${escapeHtml(order.customerName)},`)}</p>
+    <p>${L(
+      lang,
+      `wir bestätigen den Eingang Ihres Widerrufs für die Bestellung <b>#${escapeHtml(order.orderNumber)}</b> am <b>${escapeHtml(when)} Uhr</b>.`,
+      `we confirm that we received your withdrawal for order <b>#${escapeHtml(order.orderNumber)}</b> on <b>${escapeHtml(when)}</b>.`
+    )}</p>
+    ${details.message ? `<p><b>${L(lang, "Ihre Angaben", "Your note")}:</b> ${escapeHtml(details.message)}</p>` : ""}
+    <p>${next}</p>
+    ${small(L(lang, `Fragen? Rufen Sie uns an: ${STORE.phoneDisplay}`, `Questions? Call us: ${STORE.phoneDisplay}`))}
+    `,
+    lang
   );
-
-  if (!transport) {
-    console.warn("[mailer] SMTP not configured — skipping withdrawal confirmation for order", order.orderNumber);
-    return { sent: false, reason: "SMTP not configured" };
-  }
-  await transport.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: order.customerEmail,
-    subject: `Eingangsbestätigung Ihres Widerrufs — Bestellung #${order.orderNumber}`,
+  return send(
+    order.customerEmail,
+    L(lang, `Eingangsbestätigung Ihres Widerrufs: Bestellung #${order.orderNumber}`, `Withdrawal received: order #${order.orderNumber}`),
     html,
-  });
-  return { sent: true };
+    `withdrawal confirmation for order ${order.orderNumber}`
+  );
 }
 
 /** Tells the store a withdrawal came in. No customer details: those are in the admin portal. */
-export async function sendStoreWithdrawalNotice(orderNumber: string, outcome: WithdrawalOutcome) {
-  const transport = getTransport();
+export async function sendStoreWithdrawalNotice(orderNumber: string, outcome: WithdrawalOutcome, partial = false): Promise<SendResult> {
   const storeEmail = process.env.STORE_NOTIFICATION_EMAIL;
-  if (!transport || !storeEmail) return { sent: false, reason: "SMTP or store email not configured" };
-  const adminUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ""}/admin`;
+  if (!storeEmail) return { sent: false, reason: "Store email not configured" };
   const what =
     outcome === "cancelled"
       ? "Die Bestellung war noch nicht unterwegs und wurde automatisch storniert. Bitte nicht ausliefern."
-      : "Die Bestellung war bereits unterwegs oder ausgeliefert. Bitte Kunden kontaktieren (Rückgabe/Erstattung). Hinweis steht an der Bestellung im Admin-Portal.";
-  await transport.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: storeEmail,
-    subject: `↩️ Widerruf zu Bestellung #${orderNumber}`,
-    html: baseWrapper(
-      `Widerruf zu Bestellung #${escapeHtml(orderNumber)}`,
-      `<p>${what}</p><p><a href="${adminUrl}" style="display:inline-block;margin-top:12px;background:#a12e3d;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Admin-Portal öffnen</a></p>`
-    ),
-  });
-  return { sent: true };
+      : partial
+        ? "Der Widerruf betrifft nur einzelne Artikel (siehe Hinweis an der Bestellung). Die Bestellung wurde nicht storniert. Bitte Kunden kontaktieren."
+        : "Die Bestellung war bereits unterwegs oder ausgeliefert. Bitte Kunden kontaktieren (Rückgabe/Erstattung). Hinweis steht an der Bestellung im Admin-Portal.";
+  const html = baseWrapper(`Widerruf zu Bestellung #${escapeHtml(orderNumber)}`, `<p>${what}</p>${button(`${SITE_URL()}/admin`, "Admin-Portal öffnen")}`);
+  return send(storeEmail, `Widerruf zu Bestellung #${orderNumber}`, html, "withdrawal store notice");
 }

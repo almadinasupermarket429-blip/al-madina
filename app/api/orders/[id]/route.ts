@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { getAdminSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { ORDER_STATUSES } from "@/lib/order-utils";
+import { ORDER_STATUSES, canMoveTo } from "@/lib/order-utils";
 import { broadcastOrderEvent } from "@/lib/events";
 import { sendStatusUpdateEmail } from "@/lib/mailer";
 import { cancelOrder, getOrderById, setOrderStatus } from "@/lib/orders";
@@ -48,10 +48,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Nur neue oder gepackte Bestellungen können storniert werden." }, { status: 409 });
     }
   } else if (ORDER_STATUSES.includes(status)) {
-    if (existing.status === "CANCELLED") {
-      return NextResponse.json({ error: "Diese Bestellung wurde storniert." }, { status: 409 });
+    if (existing.status === status) return NextResponse.json(existing);
+    if (!canMoveTo(existing.status, status) || !(await setOrderStatus(id, status))) {
+      return NextResponse.json(
+        {
+          error:
+            existing.status === "CANCELLED"
+              ? "Diese Bestellung wurde storniert."
+              : "Dieser Statuswechsel ist nicht möglich (Bestellungen gehen nur vorwärts).",
+        },
+        { status: 409 }
+      );
     }
-    await setOrderStatus(id, status);
   } else {
     return NextResponse.json({ error: "Ungültiger Status." }, { status: 400 });
   }

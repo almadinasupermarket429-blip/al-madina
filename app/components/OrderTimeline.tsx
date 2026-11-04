@@ -15,6 +15,7 @@ export type TrackableOrder = {
   discount?: number;
   couponCode?: string | null;
   deliveryFee?: number;
+  depositTotal?: number;
   cancelReason?: string | null;
   slot?: { date: string; start: string; end: string } | null;
   createdAt: string;
@@ -136,6 +137,12 @@ export default function OrderTimeline({ order }: { order: TrackableOrder }) {
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
           <span>{t("Liefergebühr", "Delivery fee")}</span>
           <span>{formatEuro(order.deliveryFee, language)}</span>
+        </div>
+      ) : null}
+      {order.depositTotal ? (
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+          <span>{t("Pfand", "Deposit")}</span>
+          <span>{formatEuro(order.depositTotal, language)}</span>
         </div>
       ) : null}
       <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, borderTop: "1px solid var(--line)", paddingTop: 6 }}>

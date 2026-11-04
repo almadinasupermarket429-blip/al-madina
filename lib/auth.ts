@@ -1,6 +1,7 @@
 // lib/auth.ts
-import { createHash } from "node:crypto";
+import { createHmac } from "node:crypto";
 import { cookies } from "next/headers";
+import { JWT_SECRET } from "./jwt-secret";
 import { prisma } from "./prisma";
 import { getCustomerSession } from "./customer-auth";
 import { signToken, verifyToken } from "./tokens";
@@ -18,9 +19,11 @@ type AdminTokenPayload = {
 /**
  * Fingerprint of the .env ADMIN_PASSWORD, carried in fallback-login tokens:
  * changing the password then signs out every existing fallback session.
+ * Keyed with JWT_SECRET (HMAC): token payloads are readable, and a plain hash would let
+ * anyone holding the cookie guess the password offline.
  */
 export function envPasswordTag(): string {
-  return createHash("sha256").update(`almadina-admin:${process.env.ADMIN_PASSWORD ?? ""}`).digest("base64url").slice(0, 16);
+  return createHmac("sha256", JWT_SECRET).update(`almadina-admin:${process.env.ADMIN_PASSWORD ?? ""}`).digest("base64url").slice(0, 22);
 }
 
 export function signAdminToken(payload: AdminTokenPayload & { pw?: string }): Promise<string> {

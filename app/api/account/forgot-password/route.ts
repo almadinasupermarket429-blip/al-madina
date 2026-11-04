@@ -12,7 +12,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Zu viele Anfragen. Bitte versuchen Sie es später erneut." }, { status: 429 });
   }
 
-  const { email } = await req.json().catch(() => ({}));
+  const body = await req.json().catch(() => ({}));
+  const { email } = body;
+  const language = body.language === "en" ? "en" : "de";
   if (!email || typeof email !== "string") {
     return NextResponse.json({ error: "Bitte geben Sie Ihre E-Mail-Adresse ein." }, { status: 400 });
   }
@@ -20,20 +22,21 @@ export async function POST(req: NextRequest) {
 
   // Per-address cap too, so one inbox can't be flooded from rotating IPs.
   if ((await rateLimit(`forgot-password-email:${normalized}`, 3, 60 * 60_000)).allowed) {
-    const rows = await prisma.$queryRaw<{ id: string; full_name: string; email: string }[]>`
-      select id, full_name, email from users where email = ${normalized} and deleted_at is null limit 1
-    `;
-    const user = rows[0];
-    if (user) {
+    const origin = process.env.NEXT_PUBLIC_SITE_URL || req.nextUrl.origin;
+    // Lookup, token and email all run after the response: an existing address must not answer
+    // measurably slower than an unknown one.
+    after(async () => {
+      const rows = await prisma.$queryRaw<{ id: string; full_name: string; email: string }[]>`
+        select id, full_name, email from users where email = ${normalized} and deleted_at is null limit 1
+      `;
+      const user = rows[0];
+      if (!user) return;
       const token = await createPasswordReset(user.id);
-      const origin = process.env.NEXT_PUBLIC_SITE_URL || req.nextUrl.origin;
       const url = `${origin}/account/reset-password?token=${encodeURIComponent(token)}`;
-      after(async () => {
-        await sendPasswordResetEmail(user.email, user.full_name, url).catch((e: unknown) =>
-          console.error("[mailer] password reset email failed", e)
-        );
-      });
-    }
+      await sendPasswordResetEmail(user.email, user.full_name, url, language).catch((e: unknown) =>
+        console.error("[mailer] password reset email failed", e)
+      );
+    });
   }
 
   return NextResponse.json({

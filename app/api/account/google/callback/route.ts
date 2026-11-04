@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
     // owns it, so confirm it and switch off that unconfirmed password: it may not be theirs.
     const unusablePassword = await bcrypt.hash(crypto.randomUUID() + crypto.randomUUID(), 10);
     await prisma.$executeRaw`
-      update users set email_verified_at = now(), password_hash = ${unusablePassword}, password_changed_at = now()
+      update users set email_verified_at = now(), password_hash = ${unusablePassword}, has_password = false, password_changed_at = now()
       where id = ${user.id}::uuid
     `;
   }
@@ -59,8 +59,8 @@ export async function GET(req: NextRequest) {
     // New customer: no password of their own (they sign in with Google, or can set one via "forgot password").
     const unusablePassword = await bcrypt.hash(crypto.randomUUID() + crypto.randomUUID(), 10);
     const created = await prisma.$queryRaw<UserRow[]>`
-      insert into users (email, password_hash, full_name, email_verified_at)
-      values (${profile.email}, ${unusablePassword}, ${profile.name}, now())
+      insert into users (email, password_hash, full_name, email_verified_at, has_password)
+      values (${profile.email}, ${unusablePassword}, ${profile.name}, now(), false)
       on conflict (email) do nothing
       returning id, email, true as verified
     `;

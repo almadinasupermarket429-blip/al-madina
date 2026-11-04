@@ -35,8 +35,22 @@ export async function GET(req: NextRequest) {
       send(`event: ready\ndata: {}\n\n`);
       unsubscribe = subscribeOrderEvents((event) => send(`event: order\ndata: ${JSON.stringify(event)}\n\n`));
 
-      // Keep the connection alive through proxies/load balancers.
-      heartbeat = setInterval(() => send(`: heartbeat\n\n`), 25000);
+      // Keep the connection alive through proxies/load balancers, and re-check access each time:
+      // someone removed from the team (or whose password changed) stops getting live orders.
+      heartbeat = setInterval(async () => {
+        const still = await getAdminSession().catch(() => null);
+        if (!still) {
+          send(`event: unauthorized\ndata: {}\n\n`);
+          stop();
+          try {
+            controller.close();
+          } catch {
+            /* already closed */
+          }
+          return;
+        }
+        send(`: heartbeat\n\n`);
+      }, 25000);
     },
     cancel: stop,
   });

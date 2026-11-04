@@ -120,6 +120,8 @@ export type CartItem = {
   name: string;
   sizeLabel: string;
   price: number;
+  /** Bottle/can deposit per unit, charged on top. */
+  deposit: number;
   image: string;
   qty: number;
   stock: number;
@@ -135,6 +137,7 @@ export type ServerCartItem = {
   product_id: string;
   product_name: string;
   image_url: string | null;
+  deposit?: number;
 };
 
 export function mapServerCart(items: ServerCartItem[]): CartItem[] {
@@ -145,6 +148,7 @@ export function mapServerCart(items: ServerCartItem[]): CartItem[] {
     name: it.product_name,
     sizeLabel: it.size_label,
     price: it.price,
+    deposit: Number(it.deposit ?? 0),
     image: it.image_url ?? "",
     qty: it.quantity,
     stock: it.stock_quantity,

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { STORE } from "@/lib/store-info";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -36,9 +37,11 @@ export default function DatenschutzPage() {
           <p>
             [{t("PLATZHALTER — vollständiger rechtlicher Name", "PLACEHOLDER — full legal name")}]
             <br />
-            Al-Madina Markt, Landwehrstraße 12, 97421 Schweinfurt, {t("Deutschland", "Germany")}
+            {STORE.name}, {STORE.street}, {STORE.postalCode} {STORE.city}, {t("Deutschland", "Germany")}
             <br />
-            {t("Telefon", "Phone")}: +49 163 8707437 · E-Mail: [{t("PLATZHALTER", "PLACEHOLDER")}]
+            {t("Telefon", "Phone")}: {STORE.phoneDisplay}
+            <br />
+            {t("E-Mail", "Email")}: [{t("PLATZHALTER", "PLACEHOLDER")}]
           </p>
         </Section>
 

@@ -111,6 +111,13 @@ describe("mapServerCart", () => {
       mapServerCart([
         { id: "ci", variant_id: "v", quantity: 2, size_label: "1 kg", price: 2.49, stock_quantity: 5, product_id: "p", product_name: "Linsen", image_url: null },
       ])
-    ).toEqual([{ key: "ci", productId: "p", sizeId: "v", name: "Linsen", sizeLabel: "1 kg", price: 2.49, image: "", qty: 2, stock: 5 }]);
+    ).toEqual([{ key: "ci", productId: "p", sizeId: "v", name: "Linsen", sizeLabel: "1 kg", price: 2.49, deposit: 0, image: "", qty: 2, stock: 5 }]);
+  });
+
+  it("keeps the bottle deposit of a basket item", () => {
+    const [item] = mapServerCart([
+      { id: "ci", variant_id: "v", quantity: 6, size_label: "0,5 l", price: 0.99, deposit: 0.25, stock_quantity: 50, product_id: "p", product_name: "Wasser", image_url: null },
+    ]);
+    expect(item.deposit).toBe(0.25);
   });
 });

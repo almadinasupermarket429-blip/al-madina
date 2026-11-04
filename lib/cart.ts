@@ -17,6 +17,7 @@ type CartItem = {
   sku: string;
   size_label: string;
   price: number;
+  deposit: number;
   stock_quantity: number;
   product_id: string;
   product_name: string;
@@ -61,10 +62,10 @@ async function getOrCreateCartId(identity: CartIdentity): Promise<string> {
 // local dev adds real, user-visible latency, and every mutation used to
 // pay for the identity lookup twice.
 async function getCartByCartId(cartId: string): Promise<Cart> {
-  const rows = await prisma.$queryRaw<(Omit<CartItem, "price"> & { price: string })[]>`
+  const rows = await prisma.$queryRaw<(Omit<CartItem, "price" | "deposit"> & { price: string; deposit: string })[]>`
     select
       ci.id, ci.variant_id, ci.quantity,
-      pv.sku, pv.size_label, pv.price, pv.stock_quantity,
+      pv.sku, pv.size_label, pv.price, pv.deposit, pv.stock_quantity,
       p.id as product_id, p.name as product_name, p.slug as product_slug, p.image_url
     from cart_items ci
     join product_variants pv on pv.id = ci.variant_id
@@ -73,7 +74,7 @@ async function getCartByCartId(cartId: string): Promise<Cart> {
     order by ci.created_at asc
   `;
 
-  const items = rows.map((r) => ({ ...r, price: Number(r.price) }));
+  const items = rows.map((r) => ({ ...r, price: Number(r.price), deposit: Number(r.deposit ?? 0) }));
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
   return { cartId, items, subtotal };

@@ -71,7 +71,8 @@ export function CheckoutModal({ cart, subtotal, account, settings, slots, onClos
 
   const discount = coupon ? Math.min(coupon.discount, subtotal) : 0;
   const deliveryFee = coupon?.freeDelivery ? 0 : deliveryFeeFor(settings, fulfillment, subtotal - discount);
-  const total = subtotal - discount + deliveryFee;
+  const depositTotal = Math.round(cart.reduce((sum, c) => sum + c.deposit * c.qty, 0) * 100) / 100;
+  const total = subtotal - discount + deliveryFee + depositTotal;
 
   // A coupon's discount depends on the subtotal — drop it if the basket changes underneath it.
   useEffect(() => setCoupon(null), [subtotal]);
@@ -127,6 +128,7 @@ export function CheckoutModal({ cart, subtotal, account, settings, slots, onClos
           couponCode: coupon?.code,
           slotId: slotId || undefined,
           substitution,
+          language,
           items: cart.map((c) => ({ sizeId: c.sizeId, qty: c.qty })),
         }),
       });
@@ -379,6 +381,12 @@ export function CheckoutModal({ cart, subtotal, account, settings, slots, onClos
             <span>{fulfillment === "PICKUP" ? t("Abholung", "Pickup") : t("Lieferung", "Delivery")}</span>
             <span>{deliveryFee === 0 ? t("Kostenlos", "Free") : euro(deliveryFee)}</span>
           </div>
+          {depositTotal > 0 && (
+            <div style={row}>
+              <span>{t("Pfand", "Deposit")}</span>
+              <span>{euro(depositTotal)}</span>
+            </div>
+          )}
           <div style={{ ...row, fontWeight: 700, fontSize: 18, borderTop: "1px solid var(--line)", paddingTop: 6 }}>
             <span>{t("Gesamt (bar)", "Total (cash)")}</span>
             <span>{euro(total)}</span>

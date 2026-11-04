@@ -163,8 +163,8 @@ export default function WiderrufPage() {
             <form onSubmit={submit} className="checkout-fields" style={{ gridTemplateColumns: "1fr" }}>
               <p style={{ fontSize: 13 }}>
                 {t(
-                  "Geben Sie die Bestellnummer und die E-Mail-Adresse Ihrer Bestellung ein. Hat die Bestellung den Laden noch nicht verlassen, wird sie sofort storniert.",
-                  "Enter the order number and the email address used for the order. If the order hasn't left the shop yet, it is cancelled straight away."
+                  "Geben Sie die Bestellnummer und die E-Mail-Adresse Ihrer Bestellung ein. Gilt der Widerruf für die ganze Bestellung und hat sie den Laden noch nicht verlassen, wird sie sofort storniert. Nennen Sie einzelne Artikel, melden wir uns bei Ihnen.",
+                  "Enter the order number and the email address used for the order. If you withdraw from the whole order and it hasn't left the shop yet, it is cancelled straight away. If you name single items, we'll get in touch."
                 )}
               </p>
               <input required aria-label={t("Ihr Name", "Your name")} placeholder={t("Ihr Name", "Your name")} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />

@@ -9,7 +9,7 @@ import { ArrowLeft, LogOut, Package, User as UserIcon, Heart, MapPin, RefreshCw,
 import { useLanguage } from "@/lib/i18n";
 import { formatDate, formatEuro } from "@/lib/format";
 
-type Account = { id: string; name: string; email: string; phone: string | null; role: "OWNER" | "STAFF" | null; emailVerified: boolean };
+type Account = { id: string; name: string; email: string; phone: string | null; role: "OWNER" | "STAFF" | null; emailVerified: boolean; hasPassword?: boolean };
 type OrderItem = { id: string; name: string; sizeLabel: string | null; price: number; qty: number };
 type Order = {
   id: string;
@@ -103,7 +103,7 @@ export default function AccountPage() {
       const res = await fetch("/api/account/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, language }),
       });
       const data = await res.json();
       if (!res.ok) setError(data.error || t("Etwas ist schiefgelaufen.", "Something went wrong."));
@@ -217,7 +217,7 @@ export default function AccountPage() {
     setError("");
     setSubmitting(true);
     const endpoint = mode === "login" ? "/api/account/login" : "/api/account/register";
-    const body = mode === "login" ? { email, password } : { name, email, password, phone };
+    const body = mode === "login" ? { email, password } : { name, email, password, phone, language };
     try {
       const res = await fetch(endpoint, {
         method: "POST",
@@ -279,7 +279,7 @@ export default function AccountPage() {
     const res = await fetch("/api/account/resend-verification", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(pendingEmail ? { email: pendingEmail } : {}),
+      body: JSON.stringify(pendingEmail ? { email: pendingEmail, language } : { language }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -551,6 +551,7 @@ export default function AccountPage() {
 
             <DeleteAccount
               t={t}
+              hasPassword={account.hasPassword !== false}
               onDeleted={() => {
                 setAccount(null);
                 setOrders([]);

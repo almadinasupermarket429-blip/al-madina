@@ -16,7 +16,9 @@ export async function POST(req: NextRequest) {
   }
 
   const session = await getCustomerSession();
-  const { email } = session ? { email: session.email } : await req.json().catch(() => ({ email: undefined }));
+  const body = await req.json().catch(() => ({}));
+  const email = session ? session.email : body.email;
+  const language = body.language === "en" ? "en" : "de";
   if (!email || typeof email !== "string") {
     return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
   }
@@ -36,9 +38,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Diese E-Mail ist bereits bestätigt." }, { status: 400 });
   }
   if (user && !user.verified) {
-    const code = await createEmailVerification(user.id);
+    // After the response, so an existing address doesn't answer measurably slower than an unknown one.
     after(async () => {
-      await sendVerificationEmail(normalizedEmail, user.full_name, code).catch((e: unknown) =>
+      const code = await createEmailVerification(user.id);
+      await sendVerificationEmail(normalizedEmail, user.full_name, code, language).catch((e: unknown) =>
         console.error("[mailer] resend verification email failed", e)
       );
     });

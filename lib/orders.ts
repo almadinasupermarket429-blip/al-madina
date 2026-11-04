@@ -10,6 +10,7 @@
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
+import { statusesBefore } from "./order-utils";
 
 type StatusEvent = { status: string; createdAt: Date };
 
@@ -26,10 +27,16 @@ export type FullOrder = {
   discount: number;
   couponCode: string | null;
   deliveryFee: number;
+  /** Bottle/can deposit for all items, already included in `total`. */
+  depositTotal: number;
   total: number;
   substitution: string;
   cancelReason: string | null;
   internalNote: string | null;
+  /** Language the customer ordered in; their emails use it. */
+  language: "de" | "en";
+  /** The confirmation email could not be sent: staff should call the customer. */
+  confirmationEmailFailed: boolean;
   slot: { date: string; start: string; end: string } | null;
   deliveryToken: string;
   userId: string | null;
@@ -44,6 +51,8 @@ export type FullOrder = {
     name: string;
     sizeLabel: string | null;
     price: number;
+    /** Deposit per unit. */
+    deposit: number;
     qty: number;
   }[];
   statusEvents: StatusEvent[];
@@ -62,7 +71,10 @@ type OrderRow = {
   discount: string | number;
   coupon_code: string | null;
   delivery_fee: string | number;
+  deposit_total: string | number;
   total: string | number;
+  language: string;
+  confirmation_email_failed: boolean;
   substitution: string;
   cancel_reason: string | null;
   internal_note: string | null;
@@ -84,30 +96,41 @@ type ItemRow = {
   name: string;
   size_label: string | null;
   price: string | number;
+  deposit: string | number;
   qty: number;
 };
 
 // Shared column list (aliased to OrderRow) — orders is aliased `o`, delivery_slots `s`.
 const ORDER_COLUMNS = Prisma.sql`
   o.id, o.order_number, o.customer_name, o.customer_email, o.customer_phone,
-  o.fulfillment, o.address, o.notes, o.subtotal, o.discount, o.coupon_code, o.delivery_fee, o.total,
+  o.fulfillment, o.address, o.notes, o.subtotal, o.discount, o.coupon_code, o.delivery_fee, o.deposit_total, o.total,
+  o.language, o.confirmation_email_failed,
   o.substitution, o.cancel_reason, o.internal_note,
   to_char(s.slot_date, 'YYYY-MM-DD') as slot_date, s.start_time::text as slot_start, s.end_time::text as slot_end,
   o.delivery_token, o.user_id, o.status, o.created_at, o.updated_at
 `;
 
 async function assemble(order: OrderRow): Promise<FullOrder> {
+  return (await assembleMany([order]))[0];
+}
+
+/** Items + status history for many orders in two queries (not two per order). */
+async function assembleMany(rows: OrderRow[]): Promise<FullOrder[]> {
+  if (rows.length === 0) return [];
+  const ids = rows.map((r) => r.id);
   const [items, events] = await Promise.all([
     prisma.$queryRaw<ItemRow[]>`
-      select id, order_id, product_id, variant_id, name, size_label, price, qty
-      from order_items where order_id = ${order.id}::uuid
+      select id, order_id, product_id, variant_id, name, size_label, price, deposit, qty
+      from order_items where order_id = any(${ids}::uuid[])
     `,
-    prisma.$queryRaw<{ status: string; created_at: Date }[]>`
-      select status, created_at from order_status_history
-      where order_id = ${order.id}::uuid order by created_at asc
+    prisma.$queryRaw<{ order_id: string; status: string; created_at: Date }[]>`
+      select order_id, status, created_at from order_status_history
+      where order_id = any(${ids}::uuid[]) order by created_at asc
     `,
   ]);
-  return assembleSync(order, items, events);
+  return rows.map((order) =>
+    assembleSync(order, items.filter((i) => i.order_id === order.id), events.filter((e) => e.order_id === order.id))
+  );
 }
 
 function assembleSync(order: OrderRow, items: ItemRow[], events: { status: string; created_at: Date }[]): FullOrder {
@@ -124,7 +147,10 @@ function assembleSync(order: OrderRow, items: ItemRow[], events: { status: strin
     discount: Number(order.discount),
     couponCode: order.coupon_code,
     deliveryFee: Number(order.delivery_fee),
+    depositTotal: Number(order.deposit_total ?? 0),
     total: Number(order.total),
+    language: order.language === "en" ? "en" : "de",
+    confirmationEmailFailed: !!order.confirmation_email_failed,
     substitution: order.substitution,
     cancelReason: order.cancel_reason,
     internalNote: order.internal_note,
@@ -144,6 +170,7 @@ function assembleSync(order: OrderRow, items: ItemRow[], events: { status: strin
       name: it.name,
       sizeLabel: it.size_label,
       price: Number(it.price),
+      deposit: Number(it.deposit ?? 0),
       qty: it.qty,
     })),
     statusEvents: events.map((e) => ({ status: e.status, createdAt: e.created_at })),
@@ -181,11 +208,22 @@ export async function getOrderByToken(token: string): Promise<FullOrder | null> 
   return rows[0] ? assemble(rows[0]) : null;
 }
 
-export async function setOrderStatus(id: string, status: string): Promise<void> {
-  await prisma.$transaction([
-    prisma.$executeRaw`update orders set status = ${status} where id = ${id}::uuid`,
-    prisma.$executeRaw`insert into order_status_history (order_id, status) values (${id}::uuid, ${status})`,
-  ]);
+/**
+ * Moves an order to `status` if ORDER_TRANSITIONS allows it from the status it has right now.
+ * The check is part of the update, so a cancel arriving at the same moment can't be overwritten.
+ * Returns false when the move isn't allowed (any more).
+ */
+export async function setOrderStatus(id: string, status: string): Promise<boolean> {
+  const from = statusesBefore(status);
+  if (from.length === 0) return false;
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.$executeRaw`
+      update orders set status = ${status} where id = ${id}::uuid and status = any(${from}::text[])
+    `;
+    if (updated === 0) return false;
+    await tx.$executeRaw`insert into order_status_history (order_id, status) values (${id}::uuid, ${status})`;
+    return true;
+  });
 }
 
 /**
@@ -218,7 +256,7 @@ export async function getOrdersByUserId(userId: string): Promise<FullOrder[]> {
     where o.user_id = ${userId}::uuid
     order by o.created_at desc
   `;
-  return Promise.all(rows.map(assemble));
+  return assembleMany(rows);
 }
 
 type OrderFilters = {
@@ -251,24 +289,7 @@ export async function listOrders(filters: OrderFilters = {}): Promise<FullOrder[
     order by o.created_at desc
     limit ${limit}
   `;
-  if (rows.length === 0) return [];
-  const ids = rows.map((r) => r.id);
-
-  const [items, events] = await Promise.all([
-    prisma.$queryRaw<ItemRow[]>`
-      select id, order_id, product_id, variant_id, name, size_label, price, qty
-      from order_items where order_id = any(${ids}::uuid[])
-    `,
-    prisma.$queryRaw<{ order_id: string; status: string; created_at: Date }[]>`
-      select order_id, status, created_at from order_status_history
-      where order_id = any(${ids}::uuid[]) order by created_at asc
-    `,
-  ]);
-
-  return rows.map((order) => {
-    const shaped = assembleSync(order, items.filter((i) => i.order_id === order.id), events.filter((e) => e.order_id === order.id));
-    return shaped;
-  });
+  return assembleMany(rows);
 }
 
 /**
