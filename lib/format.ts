@@ -17,3 +17,8 @@ export function formatDate(value: string | Date, language: string, options: Intl
     ...(Object.keys(options).length ? options : { day: "2-digit", month: "2-digit", year: "numeric" }),
   });
 }
+
+/** Price in the shop's language: "43,89 €" in German, "€43.89" in English. Use this everywhere prices are shown. */
+export function formatEuro(amount: number, language: string = "de"): string {
+  return new Intl.NumberFormat(language === "en" ? "en-IE" : "de-DE", { style: "currency", currency: "EUR" }).format(amount);
+}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/tokens";
+import { isAllowedImagePath } from "@/lib/images";
 
 // Keep these in sync with ADMIN_COOKIE_NAME / CUSTOMER_COOKIE_NAME in lib/auth.ts / lib/customer-auth.ts
 const ADMIN_COOKIE_NAME = "almadina_admin_session";
@@ -88,6 +89,11 @@ async function adminGate(req: NextRequest): Promise<NextResponse | null> {
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // /img proxies to Cloudinary: allow only the resize variants the site uses.
+  if (pathname.startsWith("/img/") && !isAllowedImagePath(pathname)) {
+    return new NextResponse(null, { status: 404 });
+  }
 
   if (pathname.startsWith("/api/")) {
     if (isCrossSiteWrite(req)) {

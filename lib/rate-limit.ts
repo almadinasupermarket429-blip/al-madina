@@ -38,22 +38,12 @@ export async function rateLimit(
   }
 }
 
-/**
- * True if `key` has already used up `limit` in its current window — without
- * counting this call. Used for "failed attempts only" limits: check with this
- * first, and call rateLimit() only when an attempt actually fails.
- */
-export async function isRateLimited(key: string, limit: number): Promise<boolean> {
+/** Clears a counter, e.g. the per-account login counter after a correct password. */
+export async function resetRateLimit(key: string): Promise<void> {
   const hashed = createHash("sha256").update(key).digest("hex");
-  try {
-    const rows = await prisma.$queryRaw<{ count: number }[]>`
-      select count from rate_limits where key = ${hashed} and reset_at > now()
-    `;
-    return (rows[0]?.count ?? 0) >= limit;
-  } catch (err) {
-    console.error("[rate-limit] check failed", err);
-    return false;
-  }
+  await prisma.$executeRaw`delete from rate_limits where key = ${hashed}`.catch((err: unknown) =>
+    console.error("[rate-limit] reset failed", err)
+  );
 }
 
 /**

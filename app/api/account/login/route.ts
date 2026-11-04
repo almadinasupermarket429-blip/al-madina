@@ -5,7 +5,8 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { signCustomerToken, CUSTOMER_COOKIE_NAME, CUSTOMER_COOKIE_OPTIONS } from "@/lib/customer-auth";
 import { mergeGuestCartIntoUser } from "@/lib/cart";
-import { rateLimit, isRateLimited, clientIp } from "@/lib/rate-limit";
+import { rateLimit, resetRateLimit, clientIp } from "@/lib/rate-limit";
+import { DUMMY_PASSWORD_HASH } from "@/lib/dummy-hash";
 
 const GUEST_CART_COOKIE_NAME = "almadina_guest_cart";
 
@@ -25,22 +26,23 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const { email, password } = body as { email?: string; password?: string };
 
-  if (!email || !password) {
+  if (typeof email !== "string" || typeof password !== "string" || !email || !password || email.length > 254 || password.length > 200) {
     return NextResponse.json({ error: "E-Mail und Passwort sind erforderlich." }, { status: 400 });
   }
 
   const normalizedEmail = email.trim().toLowerCase();
-  // Only failed attempts count, per IP and per account (rotating IPs doesn't help
-  // a guesser, and logging in often never locks a real customer out).
+  // Every attempt counts before the password is checked, so parallel guesses can't slip
+  // past the limit. A correct password clears the per-account counter.
   const ipKey = `account-login:${clientIp(req)}`;
   const accountKey = `account-login-email:${normalizedEmail}`;
-  if ((await isRateLimited(ipKey, 10)) || (await isRateLimited(accountKey, 10))) {
+  const [byIp, byAccount] = await Promise.all([
+    rateLimit(ipKey, 20, 15 * 60_000),
+    rateLimit(accountKey, 10, 15 * 60_000),
+  ]);
+  if (!byIp.allowed || !byAccount.allowed) {
     return NextResponse.json({ error: "Zu viele fehlgeschlagene Anmeldeversuche. Bitte versuchen Sie es in 15 Minuten erneut." }, { status: 429 });
   }
-  const failed = async () => {
-    await Promise.all([rateLimit(ipKey, 10, 15 * 60_000), rateLimit(accountKey, 10, 15 * 60_000)]);
-    return NextResponse.json({ error: "Ungültige E-Mail oder ungültiges Passwort." }, { status: 401 });
-  };
+  const failed = () => NextResponse.json({ error: "Ungültige E-Mail oder ungültiges Passwort." }, { status: 401 });
 
   const rows = await prisma.$queryRaw<UserRow[]>`
     select u.id, u.email, u.password_hash, u.full_name, u.phone, a.role,
@@ -52,10 +54,10 @@ export async function POST(req: NextRequest) {
   `;
   const user = rows[0];
 
-  if (!user) return failed();
-
-  const valid = await bcrypt.compare(password, user.password_hash);
-  if (!valid) return failed();
+  // Always run one bcrypt check so the response time doesn't reveal whether the email has an account.
+  const valid = await bcrypt.compare(password, user?.password_hash ?? DUMMY_PASSWORD_HASH);
+  if (!user || !valid) return failed();
+  await resetRateLimit(accountKey);
 
   // Fold whatever they'd added to cart before logging in into their account cart.
   const guestToken = req.cookies.get(GUEST_CART_COOKIE_NAME)?.value;

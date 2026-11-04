@@ -10,7 +10,8 @@ import { isEmailVerified } from "@/lib/email-verification";
 import { isDisposableEmail, isValidEmail } from "@/lib/disposable-email";
 import { rateLimit } from "@/lib/rate-limit";
 import { isPlausiblePhoneNumber } from "@/lib/phone";
-import { getOrderById, listOrders, publicOrder, type FullOrder } from "@/lib/orders";
+import { getOrderById, listOrders, publicOrder, isUuid, type FullOrder } from "@/lib/orders";
+import { toCsv } from "@/lib/csv";
 import { getStoreSettings, deliveryFeeFor } from "@/lib/settings";
 import { evaluateCoupon } from "@/lib/coupons";
 import { hasBookableSlots, isSlotBookable } from "@/lib/slots";
@@ -26,19 +27,12 @@ type VariantRow = {
   variant_active: boolean;
 };
 
-function csvCell(value: unknown): string {
-  const s = String(value ?? "");
-  // Leading =,+,-,@ would be evaluated as a formula by Excel/Sheets — neutralise it.
-  const safe = /^[=+\-@]/.test(s) ? `'${s}` : s;
-  return /[",;\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
-}
-
 function ordersToCsv(orders: FullOrder[]): string {
   const header = [
     "Bestellnummer", "Datum", "Status", "Art", "Kunde", "E-Mail", "Telefon", "Adresse", "Zeitfenster",
     "Artikel", "Zwischensumme", "Rabatt", "Gutschein", "Liefergebühr", "Gesamt",
   ];
-  const lines = orders.map((o) =>
+  const rows = orders.map((o) =>
     [
       o.orderNumber,
       new Date(o.createdAt).toLocaleString("de-DE", { timeZone: "Europe/Berlin" }),
@@ -56,11 +50,8 @@ function ordersToCsv(orders: FullOrder[]): string {
       o.deliveryFee.toFixed(2),
       o.total.toFixed(2),
     ]
-      .map(csvCell)
-      .join(";")
   );
-  // BOM so Excel opens umlauts correctly; ";" is the German Excel default separator.
-  return "﻿" + [header.join(";"), ...lines].join("\r\n");
+  return toCsv([header, ...rows]);
 }
 
 // Admin only: list orders, newest first. Supports ?status=, ?q=, ?from=, ?to=, ?format=csv
@@ -121,12 +112,26 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { customerName, customerEmail, customerPhone, fulfillment, address, notes, items, couponCode, slotId, substitution } = body;
+    const { customerName, customerPhone, fulfillment, address, notes, items, couponCode, slotId, substitution } = body;
+    // Order emails always go to the account's own (verified) address, never to one typed into the request,
+    // so the shop can't be used to send mail to strangers.
+    const [account] = await prisma.$queryRaw<{ email: string }[]>`
+      select email from users where id = ${customerSession.userId}::uuid and deleted_at is null
+    `;
+    if (!account) return NextResponse.json({ error: "Bitte melden Sie sich an, um eine Bestellung aufzugeben." }, { status: 401 });
+    const customerEmail = account.email;
 
-    if (!customerName || !customerEmail || !customerPhone) {
-      return NextResponse.json({ error: "Name, E-Mail und Telefon sind erforderlich." }, { status: 400 });
+    if (typeof customerName !== "string" || typeof customerPhone !== "string" || !customerName.trim() || !customerPhone.trim()) {
+      return NextResponse.json({ error: "Name und Telefon sind erforderlich." }, { status: 400 });
     }
-    if (String(customerName).length > 120 || String(notes ?? "").length > 1000 || String(address ?? "").length > 300) {
+    if (
+      customerName.length > 120 ||
+      customerPhone.length > 40 ||
+      (notes != null && typeof notes !== "string") ||
+      String(notes ?? "").length > 1000 ||
+      (address != null && typeof address !== "string") ||
+      String(address ?? "").length > 300
+    ) {
       return NextResponse.json({ error: "Eine der Angaben ist zu lang." }, { status: 400 });
     }
     if (!isValidEmail(customerEmail)) {
@@ -157,6 +162,20 @@ export async function POST(req: NextRequest) {
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Ihr Warenkorb ist leer." }, { status: 400 });
     }
+    if (items.length > 100) {
+      return NextResponse.json({ error: "Zu viele Artikel in einer Bestellung." }, { status: 400 });
+    }
+    // Merge repeated lines of the same size, so the 50-per-item cap can't be dodged by listing it twice.
+    const wanted = new Map<string, number>();
+    for (const it of items) {
+      const vId = typeof it?.sizeId === "string" ? it.sizeId : typeof it?.variantId === "string" ? it.variantId : "";
+      if (!isUuid(vId)) {
+        return NextResponse.json({ error: "Ungültige Artikel im Warenkorb." }, { status: 400 });
+      }
+      // Whole units only: a fractional qty would be charged as-is but stored rounded (1.5 → 2 items).
+      const qty = Math.max(1, Math.floor(Number(it.qty)) || 1);
+      wanted.set(vId, Math.min(50, (wanted.get(vId) ?? 0) + qty));
+    }
 
     if (slotId) {
       if (typeof slotId !== "string" || !(await isSlotBookable(slotId))) {
@@ -166,13 +185,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Bitte wählen Sie ein Zeitfenster." }, { status: 400 });
     }
 
-    const variantIds = items
-      .map((it: { sizeId?: string; variantId?: string }) => it.sizeId || it.variantId)
-      .filter(Boolean);
-
-    if (variantIds.length === 0) {
-      return NextResponse.json({ error: "Ungültige Artikel im Warenkorb." }, { status: 400 });
-    }
+    const variantIds = [...wanted.keys()];
 
     const variants = await prisma.$queryRaw<VariantRow[]>`
       select v.id, v.product_id, v.size_label, v.price, v.stock_quantity, v.is_active as variant_active,
@@ -186,14 +199,11 @@ export async function POST(req: NextRequest) {
 
     const orderItemsData: { productId: string; variantId: string; name: string; sizeLabel: string; price: number; qty: number }[] = [];
 
-    for (const it of items) {
-      const vId = it.sizeId || it.variantId;
+    for (const [vId, qty] of wanted) {
       const variant = variantMap.get(vId);
       if (!variant || !variant.product_active || !variant.variant_active) {
         return NextResponse.json({ error: "Einer der Artikel in Ihrem Warenkorb ist nicht mehr verfügbar." }, { status: 400 });
       }
-      // Whole units only: a fractional qty would be charged as-is but stored rounded (1.5 → 2 items).
-      const qty = Math.max(1, Math.min(50, Math.floor(Number(it.qty)) || 1));
       if (variant.stock_quantity < qty) {
         return NextResponse.json(
           { error: `Nur noch ${variant.stock_quantity}× "${variant.product_name}" (${variant.size_label}) auf Lager.` },
