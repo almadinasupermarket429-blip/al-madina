@@ -50,7 +50,9 @@ type ProductRow = {
 // storefront asks for ?view=shop so an admin browsing the shop sees what customers see.
 export async function GET(req: NextRequest) {
   const shopView = req.nextUrl.searchParams.get("view") === "shop";
-  const session = shopView ? null : await getAdminSession();
+  // Only the owner sees hidden products; staff see the shop like customers.
+  const owner = shopView ? false : isOwner(await getAdminSession());
+  const session = owner ? true : null;
   // Shoppers don't see hidden products, or products in a hidden category.
   const whereClause = session ? Prisma.empty : Prisma.sql`where p.is_active = true and coalesce(c.is_active, true)`;
 

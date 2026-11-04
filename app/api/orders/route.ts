@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { runCleanupIfDue } from "@/lib/cleanup";
 import { prisma } from "@/lib/prisma";
-import { getAdminSession } from "@/lib/auth";
+import { getAdminSession, isOwner } from "@/lib/auth";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { generateOrderNumber, generateDeliveryToken, LOW_STOCK_THRESHOLD, SUBSTITUTION_OPTIONS } from "@/lib/order-utils";
 import { broadcastOrderEvent } from "@/lib/events";
@@ -71,6 +71,8 @@ export async function GET(req: NextRequest) {
     });
 
     if (sp.get("format") === "csv") {
+      // The export holds every customer's contact details, so only the owner may download it.
+      if (!isOwner(session)) return NextResponse.json({ error: "Nur für Inhaber." }, { status: 403 });
       return new NextResponse(ordersToCsv(orders), {
         headers: {
           "Content-Type": "text/csv; charset=utf-8",
@@ -305,6 +307,13 @@ export async function POST(req: NextRequest) {
       }
 
       await tx.$executeRaw`insert into order_status_history (order_id, status) values (${newOrderId}::uuid, 'PLACED')`;
+
+      // Empty the ordered sizes from the customer's server basket, so a closed tab can't lead to a double order.
+      await tx.$executeRaw`
+        delete from cart_items
+        where cart_id in (select id from carts where user_id = ${customerSession.userId}::uuid)
+          and variant_id = any(${orderItemsData.map((it) => it.variantId)}::uuid[])
+      `;
       return newOrderId;
     });
 

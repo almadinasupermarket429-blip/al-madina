@@ -89,6 +89,14 @@ function formatSlot(slot: Order["slot"], language: string) {
 export default function AdminOrdersPage() {
   const { t } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
+  // The CSV export contains customer contact details and is owner-only.
+  const [isOwnerRole, setIsOwnerRole] = useState(false);
+  useEffect(() => {
+    fetch("/api/admin/me")
+      .then((r) => r.json())
+      .then((d) => setIsOwnerRole(d?.admin?.role === "OWNER"))
+      .catch(() => {});
+  }, []);
   const [tab, setTab] = useState("ACTIVE");
   const [query, setQuery] = useState("");
   const [from, setFrom] = useState("");
@@ -223,9 +231,11 @@ export default function AdminOrdersPage() {
           {t("Bis", "To")}
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input !w-auto !py-1.5" />
         </label>
-        <a href={`/api/orders?${serverParams}${serverParams ? "&" : ""}format=csv`} className="btn-outline">
-          <Download size={14} /> CSV
-        </a>
+        {isOwnerRole && (
+          <a href={`/api/orders?${serverParams}${serverParams ? "&" : ""}format=csv`} className="btn-outline">
+            <Download size={14} /> CSV
+          </a>
+        )}
       </div>
 
       <div className="flex gap-2 mb-6 overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0 scroll-x-hide">
