@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { signCustomerToken, CUSTOMER_COOKIE_NAME, CUSTOMER_COOKIE_OPTIONS } from "@/lib/customer-auth";
 import { mergeGuestCartIntoUser } from "@/lib/cart";
-import { rateLimit, resetRateLimit, clientIp } from "@/lib/rate-limit";
+import { rateLimit, resetRateLimit, refundRateLimit, clientIp } from "@/lib/rate-limit";
 import { DUMMY_PASSWORD_HASH } from "@/lib/dummy-hash";
 
 const GUEST_CART_COOKIE_NAME = "almadina_guest_cart";
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
   // Always run one bcrypt check so the response time doesn't reveal whether the email has an account.
   const valid = await bcrypt.compare(password, user?.password_hash ?? DUMMY_PASSWORD_HASH);
   if (!user || !valid) return failed();
-  await resetRateLimit(accountKey);
+  await Promise.all([resetRateLimit(accountKey), refundRateLimit(ipKey)]);
 
   // Fold whatever they'd added to cart before logging in into their account cart.
   const guestToken = req.cookies.get(GUEST_CART_COOKIE_NAME)?.value;

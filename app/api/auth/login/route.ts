@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { signAdminToken, envPasswordTag, ADMIN_COOKIE_NAME } from "@/lib/auth";
-import { rateLimit, resetRateLimit, clientIp } from "@/lib/rate-limit";
+import { rateLimit, resetRateLimit, refundRateLimit, clientIp } from "@/lib/rate-limit";
 import { DUMMY_PASSWORD_HASH } from "@/lib/dummy-hash";
 
 /** Constant-time string comparison so a wrong-length/wrong-content guess can't be timed. */
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
   const valid = await bcrypt.compare(password, account?.passwordHash ?? DUMMY_PASSWORD_HASH);
   if (account) {
     if (!valid) return failed();
-    await resetRateLimit(accountKey);
+    await Promise.all([resetRateLimit(accountKey), refundRateLimit(ipKey)]);
 
     const token = await signAdminToken({
       username: account.email,
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
     return failed();
   }
 
-  await resetRateLimit(accountKey);
+  await Promise.all([resetRateLimit(accountKey), refundRateLimit(ipKey)]);
   const token = await signAdminToken({ username, role: "OWNER", adminId: null, pw: envPasswordTag() });
   const res = NextResponse.json({ ok: true });
   res.cookies.set(ADMIN_COOKIE_NAME, token, ADMIN_COOKIE_OPTIONS);

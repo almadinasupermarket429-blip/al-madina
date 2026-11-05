@@ -6,6 +6,11 @@ import { randomUUID } from "crypto";
 const run = process.env.TEST_DB === "1";
 
 describe.skipIf(!run)("orders and email codes (database)", async () => {
+  // Vitest still runs this body while collecting a skipped suite: stop before touching the database.
+  if (!run) {
+    it.skip("needs TEST_DB=1 and a throwaway DATABASE_URL", () => {});
+    return;
+  }
   const { prisma } = await import("@/lib/prisma");
   const { cancelOrder, getOrderById, setOrderStatus } = await import("@/lib/orders");
   const { createEmailVerification, verifyEmailCode } = await import("@/lib/email-verification");

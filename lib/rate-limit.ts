@@ -47,6 +47,18 @@ export async function resetRateLimit(key: string): Promise<void> {
 }
 
 /**
+ * Gives back one attempt, e.g. the per-IP login counter after a correct password. Successful logins
+ * then don't use up the window (staff behind one office IP aren't locked out), while wrong guesses
+ * still pile up. Never goes below zero.
+ */
+export async function refundRateLimit(key: string): Promise<void> {
+  const hashed = createHash("sha256").update(key).digest("hex");
+  await prisma.$executeRaw`update rate_limits set count = greatest(count - 1, 0) where key = ${hashed}`.catch((err: unknown) =>
+    console.error("[rate-limit] refund failed", err)
+  );
+}
+
+/**
  * Best-effort client IP for rate-limit keys.
  *
  * `x-forwarded-for` is client-settable on any request that doesn't pass
