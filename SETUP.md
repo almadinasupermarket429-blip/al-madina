@@ -192,6 +192,15 @@ Runs on any Node.js host (VPS, Railway, Render) or Vercel. Notes:
   per request is set in `middleware.ts`; the other headers (HSTS, frame, sniffing)
   in `next.config.ts`. API writes from another website are refused (Origin check).
 - Set `NEXT_PUBLIC_SITE_URL` so emails, `sitemap.xml` and `robots.txt` point at
-  the real domain.
+  the real domain. **Required in production:** password-reset and account emails
+  only link to this address (never to the request's Host header, which can be
+  forged), so without it those emails are not sent.
+- Health check for an uptime monitor: `GET /api/health` answers 200 when the
+  database responds and 503 when it doesn't.
+- Before deploying new code, run `npm run db:migrate` against the production
+  database (the new code reads the columns the migrations add). Migration
+  `009_indexes.sql` drops the unused `delivery_fee_rules` table; migration
+  `010_google_accounts_backfill.sql` marks existing "Sign in with Google"
+  accounts as having no password, so "Delete account" asks for their email.
 
 Moving the shop to another owner's accounts (repo, database, photos, email): see [docs/HANDOVER.md](docs/HANDOVER.md).
