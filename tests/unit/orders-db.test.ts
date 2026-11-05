@@ -22,7 +22,7 @@ if (run) describe("orders and email codes (database)", async () => {
     const rows = await prisma.$queryRaw<{ id: string }[]>`
       insert into orders (order_number, customer_name, customer_email, customer_phone, fulfillment,
                           subtotal, discount, delivery_fee, total, delivery_token, user_id, status, substitution)
-      values (${`HS-TEST-${randomUUID().slice(0, 8)}`}, 'Test', 'test@example.com', '01520 0000000', 'PICKUP',
+      values (${`AM-TEST-${randomUUID().slice(0, 8)}`}, 'Test', 'test@example.com', '0163 0000000', 'PICKUP',
               10, 0, 0, 10, ${randomUUID()}, ${userId}::uuid, 'PLACED', 'CALL')
       returning id
     `;
