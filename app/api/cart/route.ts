@@ -1,4 +1,5 @@
 // app/api/cart/route.ts
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { NextRequest, NextResponse } from "next/server";
 import { isUuid } from "@/lib/orders";
 import { randomUUID } from "crypto";
@@ -77,6 +78,10 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const { identity, newGuestToken } = await resolveIdentity(req);
+  // Each cookieless add creates a guest cart row: cap new guest carts per IP.
+  if (newGuestToken && !(await rateLimit(`guest-cart:${clientIp(req)}`, 30, 60 * 60_000)).allowed) {
+    return NextResponse.json({ error: "Zu viele Anfragen. Bitte später erneut versuchen.", code: "UNKNOWN" }, { status: 429 });
+  }
 
   const { variantId, quantity } = await req.json().catch(() => ({}));
   if (!variantId || typeof variantId !== "string" || !isUuid(variantId) || !Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QTY_PER_ITEM) {

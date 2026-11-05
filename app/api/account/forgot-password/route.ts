@@ -1,3 +1,4 @@
+import { emailLinkOrigin } from "@/lib/site-url";
 import { NextRequest, NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
 
   // Per-address cap too, so one inbox can't be flooded from rotating IPs.
   if ((await rateLimit(`forgot-password-email:${normalized}`, 3, 60 * 60_000)).allowed) {
-    const origin = process.env.NEXT_PUBLIC_SITE_URL || req.nextUrl.origin;
+    const origin = emailLinkOrigin(req);
     // Lookup, token and email all run after the response: an existing address must not answer
     // measurably slower than an unknown one.
     after(async () => {
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
         select id, full_name, email from users where email = ${normalized} and deleted_at is null limit 1
       `;
       const user = rows[0];
-      if (!user) return;
+      if (!user || !origin) return;
       const token = await createPasswordReset(user.id);
       const url = `${origin}/account/reset-password?token=${encodeURIComponent(token)}`;
       await sendPasswordResetEmail(user.email, user.full_name, url, language).catch((e: unknown) =>

@@ -23,6 +23,10 @@ export async function POST(req: NextRequest) {
   if (!password || typeof password !== "string" || password.length < 8) {
     return NextResponse.json({ error: "Das Passwort muss mindestens 8 Zeichen lang sein." }, { status: 400 });
   }
+  // bcrypt ignores everything after 72 bytes, and hashing a huge string costs CPU.
+  if (Buffer.byteLength(password, "utf8") > 72) {
+    return NextResponse.json({ error: "Das Passwort darf höchstens 72 Zeichen lang sein." }, { status: 400 });
+  }
 
   const hash = await bcrypt.hash(password, 10);
   const userId = await consumeReset(token, hash);

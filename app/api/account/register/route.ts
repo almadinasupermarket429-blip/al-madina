@@ -7,6 +7,7 @@
 //     No session yet — POST /api/account/verify-email with { email, code } logs in.
 //   - existing email: nothing changes; the owner gets an "you already have an
 //     account" email with login and password-reset links instead.
+import { emailLinkOrigin } from "@/lib/site-url";
 import { NextRequest, NextResponse, after } from "next/server";
 import { runCleanupIfDue } from "@/lib/cleanup";
 import bcrypt from "bcryptjs";
@@ -67,8 +68,9 @@ export async function POST(req: NextRequest) {
     select id, full_name, language from users where email = ${normalizedEmail} limit 1
   `;
   if (existing[0]) {
-    const origin = process.env.NEXT_PUBLIC_SITE_URL || req.nextUrl.origin;
+    const origin = emailLinkOrigin(req);
     after(async () => {
+      if (!origin) return;
       // At most a few notices per address per hour, so this can't be used to spam someone.
       if (!(await rateLimit(`account-exists-mail:${normalizedEmail}`, 2, 60 * 60_000)).allowed) return;
       await sendAccountExistsEmail(

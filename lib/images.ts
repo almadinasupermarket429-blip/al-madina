@@ -14,9 +14,20 @@ const IMG_PATH = new RegExp(`^/img/f_auto,q_auto,c_limit,w_(${IMAGE_WIDTHS.join(
 /** Shown in the product gallery for products without a photo: the shop logo. */
 export const PLACEHOLDER_IMAGE = "/logo.png";
 
-/** True for /img paths the site itself generates; no "..", no extra transformations. */
+/** A Cloudinary transformation segment ("w_8000", "c_scale", "h_9000,c_fill") or anything with a comma. */
+const TRANSFORMATION_SEGMENT = /^[a-z]{1,3}_|,/;
+const IMAGE_FILE = /\.(jpe?g|png|webp|gif|avif)$/i;
+
+/**
+ * True for /img paths the site itself generates: our fixed transformation, then only the photo's
+ * own path (optional "v123/", folders, a file name with an image extension). Extra segments that
+ * look like transformations are refused, or "/w_600/w_8000/..." would still render any size.
+ */
 export function isAllowedImagePath(pathname: string): boolean {
-  return IMG_PATH.test(pathname) && !pathname.includes("..");
+  if (!IMG_PATH.test(pathname) || pathname.includes("..")) return false;
+  const rest = pathname.split("/").slice(3); // ["", "img", "f_auto,...,w_600", ...rest]
+  if (rest.length === 0 || !IMAGE_FILE.test(rest[rest.length - 1])) return false;
+  return rest.every((seg) => seg !== "" && !TRANSFORMATION_SEGMENT.test(seg));
 }
 
 /**
