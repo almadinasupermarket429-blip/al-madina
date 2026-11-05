@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { createTestCustomer } from "./helpers/test-customer";
 // A seeded product that is always in stock (same as STABLE_PRODUCT_TEXT in storefront.spec.ts).
-const STABLE_PRODUCT_TEXT = "Basmatireis";
+const STABLE_PRODUCT_TEXT = "Durra Indischer Basmati-Reis Sella XXL";
 
 // The shop's main job, end to end: basket -> checkout -> order placed -> basket empty.
 // The order is cancelled afterwards, which puts the stock back.
@@ -20,7 +20,7 @@ test("a logged-in customer can order for pickup and pay in cash", async ({ page 
     const checkout = page.getByRole("dialog", { name: "Kasse" });
     await expect(checkout).toBeVisible();
     await checkout.getByRole("button", { name: /Abholung im Laden/ }).click();
-    await checkout.getByLabel("Telefonnummer").fill("01520 1234567");
+    await checkout.getByLabel("Telefonnummer").fill("0163 1234567");
 
     // The order overview right above the button lists the item and says prices include VAT.
     await expect(checkout.getByRole("list", { name: "Ihre Artikel" })).toContainText(STABLE_PRODUCT_TEXT);
