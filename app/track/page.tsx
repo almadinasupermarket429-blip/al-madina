@@ -44,7 +44,7 @@ export default function TrackOrderPage() {
           <ArrowLeft size={16} /> {t("Zurück zum Shop", "Back to shop")}
         </Link>
 
-        <span className="eyebrow block mb-1">{t("Bestellverfolgung", "Order tracking")}</span>
+        <span className="eyebrow mb-1" style={{ display: "flex" }}>{t("Bestellverfolgung", "Order tracking")}</span>
         <h1 style={{ fontSize: 30, marginBottom: 24 }}>{t("Bestellung verfolgen", "Track your order")}</h1>
 
         {!order && (

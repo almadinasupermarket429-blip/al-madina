@@ -40,7 +40,7 @@ export default function ReviewsPage() {
   return (
     <AdminShell>
       <h1 className="font-serif text-3xl mb-1">{t("Bewertungen", "Reviews")}</h1>
-      <p className="text-black/50 text-sm mb-6">
+      <p className="text-black/60 text-sm mb-6">
         {reviews?.length
           ? t(`${reviews.length} Bewertungen · Ø ${average.toFixed(1)} Sterne`, `${reviews.length} reviews · avg ${average.toFixed(1)} stars`)
           : t("Kundenbewertungen moderieren.", "Moderate customer reviews.")}
@@ -58,8 +58,8 @@ export default function ReviewsPage() {
         ))}
       </div>
 
-      {reviews === null && <p className="text-black/40 text-sm">{t("Lädt…", "Loading…")}</p>}
-      {reviews && shown.length === 0 && <div className="admin-card text-center text-black/40 py-10">{t("Keine Bewertungen.", "No reviews.")}</div>}
+      {reviews === null && <p className="text-black/60 text-sm">{t("Lädt…", "Loading…")}</p>}
+      {reviews && shown.length === 0 && <div className="admin-card text-center text-black/60 py-10">{t("Keine Bewertungen.", "No reviews.")}</div>}
 
       <div className="grid gap-3">
         {shown.map((r) => (
@@ -77,7 +77,7 @@ export default function ReviewsPage() {
               </div>
               {r.title && <div className="font-medium mt-1">{r.title}</div>}
               {r.comment && <p className="text-sm text-black/70 mt-1 whitespace-pre-wrap">{r.comment}</p>}
-              <div className="text-xs text-black/40 mt-2">
+              <div className="text-xs text-black/60 mt-2">
                 {r.authorName} · {r.authorEmail} · {new Date(r.createdAt).toLocaleDateString(language === "de" ? "de-DE" : "en-GB")}
               </div>
             </div>

@@ -74,8 +74,8 @@ export default function CouponsPage() {
 
   function status(c: Coupon): [string, string] {
     const now = Date.now();
-    if (!c.isActive) return [t("Inaktiv", "Inactive"), "bg-black/5 text-black/50"];
-    if (c.expiresAt && new Date(c.expiresAt).getTime() < now) return [t("Abgelaufen", "Expired"), "bg-black/5 text-black/50"];
+    if (!c.isActive) return [t("Inaktiv", "Inactive"), "bg-black/5 text-black/60"];
+    if (c.expiresAt && new Date(c.expiresAt).getTime() < now) return [t("Abgelaufen", "Expired"), "bg-black/5 text-black/60"];
     if (c.startsAt && new Date(c.startsAt).getTime() > now) return [t("Geplant", "Scheduled"), "bg-blue-100 text-blue-800"];
     if (c.maxUses != null && c.uses >= c.maxUses) return [t("Aufgebraucht", "Used up"), "bg-amber-100 text-amber-800"];
     return [t("Aktiv", "Active"), "bg-green-100 text-green-800"];
@@ -124,7 +124,7 @@ export default function CouponsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="font-serif text-3xl">{t("Gutscheine", "Coupons")}</h1>
-          <p className="text-black/50 text-sm mt-1">
+          <p className="text-black/60 text-sm mt-1">
             {t("Rabattcodes für Aktionen — Kunden geben sie an der Kasse ein.", "Discount codes for promotions — customers enter them at checkout.")}
           </p>
         </div>
@@ -139,9 +139,9 @@ export default function CouponsPage() {
         </button>
       </div>
 
-      {coupons === null && <p className="text-black/40 text-sm">{t("Lädt…", "Loading…")}</p>}
+      {coupons === null && <p className="text-black/60 text-sm">{t("Lädt…", "Loading…")}</p>}
       {coupons?.length === 0 && (
-        <div className="admin-card text-center text-black/40 py-12">
+        <div className="admin-card text-center text-black/60 py-12">
           {t("Noch keine Gutscheine. Wie wäre es mit WILLKOMMEN10 für Neukunden?", "No coupons yet. How about WELCOME10 for new customers?")}
         </div>
       )}
@@ -158,7 +158,7 @@ export default function CouponsPage() {
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${style}`}>{label}</span>
                 </div>
                 {c.description && <div className="text-sm text-black/60 mt-0.5">{c.description}</div>}
-                <div className="text-xs text-black/40 mt-1 flex flex-wrap gap-x-3">
+                <div className="text-xs text-black/60 mt-1 flex flex-wrap gap-x-3">
                   <span>
                     {t("Eingelöst", "Used")}: {c.uses}
                     {c.maxUses != null ? ` / ${c.maxUses}` : ""}
@@ -222,7 +222,7 @@ export default function CouponsPage() {
                 </div>
                 <div>
                   <label className="admin-label">{t("Art", "Type")}</label>
-                  <select
+                  <select aria-label={t("Art", "Type")}
                     className="input"
                     value={editing.discountType}
                     onChange={(e) => setEditing({ ...editing, discountType: e.target.value as Form["discountType"] })}
@@ -235,7 +235,7 @@ export default function CouponsPage() {
               </div>
               <div>
                 <label className="admin-label">{t("Beschreibung (optional, für Kunden sichtbar)", "Description (optional, shown to customers)")}</label>
-                <input className="input" value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
+                <input aria-label={t("Beschreibung (optional, für Kunden sichtbar)", "Description (optional, shown to customers)")} className="input" value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
               </div>
               <div className="grid grid-cols-3 gap-3">
                 {editing.discountType !== "FREE_DELIVERY" && (
@@ -246,11 +246,11 @@ export default function CouponsPage() {
                 )}
                 <div>
                   <label className="admin-label">{t("Mindestwert €", "Min. order €")}</label>
-                  <input type="number" step="0.01" min="0" className="input" value={editing.minSubtotal} onChange={(e) => setEditing({ ...editing, minSubtotal: e.target.value })} />
+                  <input aria-label={t("Mindestwert €", "Min. order €")} type="number" step="0.01" min="0" className="input" value={editing.minSubtotal} onChange={(e) => setEditing({ ...editing, minSubtotal: e.target.value })} />
                 </div>
                 <div>
                   <label className="admin-label">{t("Max. Einlösungen", "Max. uses")}</label>
-                  <input
+                  <input aria-label={t("Max. Einlösungen", "Max. uses")}
                     type="number"
                     min="1"
                     className="input"
@@ -263,11 +263,11 @@ export default function CouponsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="admin-label">{t("Gültig ab (optional)", "Valid from (optional)")}</label>
-                  <input type="datetime-local" className="input" value={editing.startsAt} onChange={(e) => setEditing({ ...editing, startsAt: e.target.value })} />
+                  <input aria-label={t("Gültig ab (optional)", "Valid from (optional)")} type="datetime-local" className="input" value={editing.startsAt} onChange={(e) => setEditing({ ...editing, startsAt: e.target.value })} />
                 </div>
                 <div>
                   <label className="admin-label">{t("Gültig bis (optional)", "Valid until (optional)")}</label>
-                  <input type="datetime-local" className="input" value={editing.expiresAt} onChange={(e) => setEditing({ ...editing, expiresAt: e.target.value })} />
+                  <input aria-label={t("Gültig bis (optional)", "Valid until (optional)")} type="datetime-local" className="input" value={editing.expiresAt} onChange={(e) => setEditing({ ...editing, expiresAt: e.target.value })} />
                 </div>
               </div>
               <label className="flex items-center gap-2 text-sm">

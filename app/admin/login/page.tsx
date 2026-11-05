@@ -98,7 +98,7 @@ export default function AdminLoginPage() {
           </a>
         )}
 
-        <Link href="/" className="mt-5 flex items-center justify-center gap-2 text-xs text-black/40 hover:text-black/70">
+        <Link href="/" className="mt-5 flex items-center justify-center gap-2 text-xs text-black/60 hover:text-black/70">
           <ShoppingBag size={13} /> {t("Zurück zum Shop", "Back to storefront")}
         </Link>
       </form>

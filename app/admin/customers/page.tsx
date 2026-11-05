@@ -60,25 +60,25 @@ Name, email, phone, addresses, wishlist and reviews are removed. Orders are kept
   return (
     <AdminShell>
       <h1 className="font-serif text-3xl mb-1">{t("Kunden", "Customers")}</h1>
-      <p className="text-black/50 text-sm mb-6">{t("Alle Kundenkonten mit Bestellstatistik.", "All customer accounts with order stats.")}</p>
+      <p className="text-black/60 text-sm mb-6">{t("Alle Kundenkonten mit Bestellstatistik.", "All customer accounts with order stats.")}</p>
 
       <div className="grid grid-cols-3 gap-3 mb-5">
         <div className="admin-card !p-4">
-          <div className="text-[11px] uppercase text-black/50">{t("Kunden", "Customers")}</div>
+          <div className="text-[11px] uppercase text-black/60">{t("Kunden", "Customers")}</div>
           <div className="text-xl font-semibold">{customers?.length ?? "–"}</div>
         </div>
         <div className="admin-card !p-4">
-          <div className="text-[11px] uppercase text-black/50">{t("Stammkunden (2+)", "Repeat (2+)")}</div>
+          <div className="text-[11px] uppercase text-black/60">{t("Stammkunden (2+)", "Repeat (2+)")}</div>
           <div className="text-xl font-semibold">{repeat}</div>
         </div>
         <div className="admin-card !p-4">
-          <div className="text-[11px] uppercase text-black/50">{t("Gesamtumsatz", "Lifetime revenue")}</div>
+          <div className="text-[11px] uppercase text-black/60">{t("Gesamtumsatz", "Lifetime revenue")}</div>
           <div className="text-xl font-semibold">€{total.toFixed(2)}</div>
         </div>
       </div>
 
       <div className="flex items-center gap-2 bg-white border border-black/10 rounded-full px-3 py-2 mb-4 max-w-md">
-        <Search size={15} className="text-black/40" />
+        <Search size={15} className="text-black/60" />
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -94,7 +94,7 @@ Name, email, phone, addresses, wishlist and reviews are removed. Orders are kept
         </div>
       )}
 
-      <div className="admin-card overflow-x-auto !p-2">
+      <div className="admin-card overflow-x-auto !p-2" tabIndex={0} role="region" aria-label={t("Kundenliste", "Customer list")}>
         <table className="admin-table min-w-[820px]">
           <thead>
             <tr>
@@ -112,20 +112,20 @@ Name, email, phone, addresses, wishlist and reviews are removed. Orders are kept
               <tr key={c.id}>
                 <td>
                   <div className="font-medium">{c.name}</div>
-                  <div className="text-xs text-black/50 flex items-center gap-1">
+                  <div className="text-xs text-black/60 flex items-center gap-1">
                     {c.emailVerified ? <MailCheck size={12} className="text-green-700" /> : <MailWarning size={12} className="text-amber-600" />}
                     <a href={`mailto:${c.email}`} className="hover:underline break-all">
                       {c.email}
                     </a>
                   </div>
                 </td>
-                <td>{c.phone ? <a href={`tel:${c.phone.replace(/\s/g, "")}`}>{c.phone}</a> : <span className="text-black/30">–</span>}</td>
+                <td>{c.phone ? <a href={`tel:${c.phone.replace(/\s/g, "")}`}>{c.phone}</a> : <span className="text-black/60">–</span>}</td>
                 <td className="text-right">
                   {c.orderCount}
                   {c.orderCount >= 5 && <span className="ml-1 text-[10px] font-bold bg-[#e3b23c]/30 text-[#7a5a10] px-1.5 py-0.5 rounded-full">VIP</span>}
                 </td>
                 <td className="text-right">€{c.totalSpent.toFixed(2)}</td>
-                <td>{c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString(locale) : <span className="text-black/30">–</span>}</td>
+                <td>{c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString(locale) : <span className="text-black/60">–</span>}</td>
                 <td>{new Date(c.createdAt).toLocaleDateString(locale)}</td>
                 <td className="text-right whitespace-nowrap">
                   <a
@@ -149,7 +149,7 @@ Name, email, phone, addresses, wishlist and reviews are removed. Orders are kept
             ))}
           </tbody>
         </table>
-        {customers?.length === 0 && <p className="text-center text-black/40 text-sm py-8">{t("Keine Kunden gefunden.", "No customers found.")}</p>}
+        {customers?.length === 0 && <p className="text-center text-black/60 text-sm py-8">{t("Keine Kunden gefunden.", "No customers found.")}</p>}
       </div>
     </AdminShell>
   );

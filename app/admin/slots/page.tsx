@@ -100,7 +100,7 @@ export default function SlotsPage() {
   return (
     <AdminShell>
       <h1 className="font-serif text-3xl mb-1">{t("Zeitfenster", "Time slots")}</h1>
-      <p className="text-black/50 text-sm mb-6">
+      <p className="text-black/60 text-sm mb-6">
         {t(
           "Kunden wählen an der Kasse ein Liefer- bzw. Abholfenster. Volle oder deaktivierte Fenster werden nicht angeboten. Ohne Zeitfenster läuft die Kasse wie bisher.",
           "Customers pick a delivery/pickup window at checkout. Full or disabled windows aren't offered. With no slots, checkout works as before."
@@ -115,15 +115,15 @@ export default function SlotsPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div>
               <label className="admin-label">{t("Ab Datum", "From date")}</label>
-              <input type="date" className="input" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+              <input aria-label={t("Ab Datum", "From date")} type="date" className="input" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
             </div>
             <div>
               <label className="admin-label">{t("Anzahl Tage", "Number of days")}</label>
-              <input type="number" min={1} max={60} className="input" value={days} onChange={(e) => setDays(Number(e.target.value))} />
+              <input aria-label={t("Anzahl Tage", "Number of days")} type="number" min={1} max={60} className="input" value={days} onChange={(e) => setDays(Number(e.target.value))} />
             </div>
             <div>
               <label className="admin-label">{t("Bestellungen pro Fenster", "Orders per window")}</label>
-              <input type="number" min={1} max={500} className="input" value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} />
+              <input aria-label={t("Bestellungen pro Fenster", "Orders per window")} type="number" min={1} max={500} className="input" value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} />
             </div>
           </div>
           <div>
@@ -131,9 +131,9 @@ export default function SlotsPage() {
             <div className="grid gap-2">
               {windows.map((w, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <input type="time" className="input !w-auto" value={w.start} onChange={(e) => setWindows(windows.map((x, j) => (j === i ? { ...x, start: e.target.value } : x)))} />
+                  <input type="time" className="input !w-auto" aria-label={t("Beginn", "Start")} value={w.start} onChange={(e) => setWindows(windows.map((x, j) => (j === i ? { ...x, start: e.target.value } : x)))} />
                   –
-                  <input type="time" className="input !w-auto" value={w.end} onChange={(e) => setWindows(windows.map((x, j) => (j === i ? { ...x, end: e.target.value } : x)))} />
+                  <input type="time" className="input !w-auto" aria-label={t("Ende", "End")} value={w.end} onChange={(e) => setWindows(windows.map((x, j) => (j === i ? { ...x, end: e.target.value } : x)))} />
                   <button className="btn-outline !px-2.5" onClick={() => setWindows(windows.filter((_, j) => j !== i))} aria-label={t("Fenster entfernen", "Remove window")}>
                     <Trash2 size={13} />
                   </button>
@@ -167,8 +167,8 @@ export default function SlotsPage() {
         </div>
       )}
 
-      {slots === null && <p className="text-black/40 text-sm">{t("Lädt…", "Loading…")}</p>}
-      {slots?.length === 0 && <div className="admin-card text-center text-black/40 py-10">{t("Keine kommenden Zeitfenster.", "No upcoming slots.")}</div>}
+      {slots === null && <p className="text-black/60 text-sm">{t("Lädt…", "Loading…")}</p>}
+      {slots?.length === 0 && <div className="admin-card text-center text-black/60 py-10">{t("Keine kommenden Zeitfenster.", "No upcoming slots.")}</div>}
 
       <div className="grid gap-4">
         {byDate.map(([date, daySlots]) => (
@@ -207,7 +207,7 @@ export default function SlotsPage() {
                         {t("gebucht", "booked")}
                       </span>
                       {isOwner && (
-                        <button onClick={() => remove(s.id)} className="text-black/40 hover:text-red-600" aria-label={t("Löschen", "Delete")}>
+                        <button onClick={() => remove(s.id)} className="text-black/60 hover:text-red-600" aria-label={t("Löschen", "Delete")}>
                           <Trash2 size={13} />
                         </button>
                       )}

@@ -14,7 +14,7 @@ export function OrderExport({ t }: { t: (de: string, en: string) => string }) {
     <div className="admin-card !p-4 mb-8 flex flex-wrap items-end gap-3">
       <div className="mr-auto">
         <b className="block">{t("Bestellungen exportieren", "Export orders")}</b>
-        <span className="text-xs text-black/50">{t("Als CSV für Excel oder die Buchhaltung.", "As CSV for Excel or your bookkeeping.")}</span>
+        <span className="text-xs text-black/60">{t("Als CSV für Excel oder die Buchhaltung.", "As CSV for Excel or your bookkeeping.")}</span>
       </div>
       <label className="text-xs text-black/60 grid gap-1">
         {t("Von", "From")}

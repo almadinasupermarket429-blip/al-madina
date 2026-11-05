@@ -25,7 +25,7 @@ function Field({ label, children, hint, required }: { label: string; children: R
         {required && <span className="text-red-700"> *</span>}
       </label>
       {children}
-      {hint && <p className="text-[11px] text-black/40 mt-1">{hint}</p>}
+      {hint && <p className="text-[11px] text-black/60 mt-1">{hint}</p>}
     </div>
   );
 }
@@ -33,7 +33,7 @@ function Field({ label, children, hint, required }: { label: string; children: R
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <fieldset className="border border-black/10 rounded-xl p-4 grid gap-3">
-      <legend className="px-1 text-xs font-bold uppercase tracking-wider text-black/50">{title}</legend>
+      <legend className="px-1 text-xs font-bold uppercase tracking-wider text-black/60">{title}</legend>
       {children}
     </fieldset>
   );
@@ -181,7 +181,7 @@ export function ProductEditor({ initial, categories, error, onClose, onSave }: P
                 </button>
                 <input value={form.image} onChange={(e) => set("image", e.target.value)} placeholder={t("…oder Bild-URL einfügen", "…or paste an image URL")} className="input" />
                 {uploadError && <p className="text-xs text-red-700">{uploadError}</p>}
-                <p className="text-[11px] text-black/40">
+                <p className="text-[11px] text-black/60">
                   {t("Tipp: Produkt auf weißem Hintergrund fotografieren, ohne Preisschild.", "Tip: photograph the product on a white background, without a price sticker.")}
                 </p>
               </div>
@@ -232,7 +232,7 @@ export function ProductEditor({ initial, categories, error, onClose, onSave }: P
 
 
           <Section title={t("Pflichtangaben Lebensmittel (Online-Verkauf)", "Required food information (online sales)")}>
-            <p className="text-[11px] text-black/50 -mt-1">
+            <p className="text-[11px] text-black/60 -mt-1">
               {t(
                 "Gesetzlich vorgeschrieben (LMIV): Kunden müssen diese Angaben vor dem Kauf sehen. Einfach von der Packungsrückseite abschreiben. Pflichtfelder sind mit * markiert.",
                 "Required by law (EU food information rules): customers must see this before buying. Copy it from the back of the pack. Required fields are marked *."
@@ -287,7 +287,7 @@ export function ProductEditor({ initial, categories, error, onClose, onSave }: P
             <Field label={t("Nährwerte je 100 g / 100 ml", "Nutrition per 100 g / 100 ml")} required={!form.nutritionNotRequired}>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {NUTRIENTS.map((n) => (
-                  <label key={n.key} className="text-[11px] text-black/50">
+                  <label key={n.key} className="text-[11px] text-black/60">
                     {t(n.de, n.en)} ({n.unit})
                     <input
                       inputMode="decimal"
@@ -364,7 +364,7 @@ export function ProductEditor({ initial, categories, error, onClose, onSave }: P
                   className="input"
                   aria-label={t("Pfand", "Deposit")}
                 />
-                <span className="text-xs text-black/50">
+                <span className="text-xs text-black/60">
                   {(() => {
                     const unit = formatUnitPrice(Number(String(s.price).replace(",", ".")), String(s.sizeValue ?? "").replace(",", "."), s.sizeUnit);
                     return unit ? t(`Grundpreis: ${unit}`, `Unit price: ${unit}`) : "";
@@ -373,7 +373,7 @@ export function ProductEditor({ initial, categories, error, onClose, onSave }: P
               </div>
               </div>
             ))}
-            <p className="text-[11px] text-black/40">
+            <p className="text-[11px] text-black/60">
               {t(
                 "Nettomenge laut Packung (z. B. 500 g, 1,5 l), daraus wird der Grundpreis pro kg / l berechnet. Pfand nur bei Flaschen und Dosen (Einweg meist 0,25 €).",
                 "Net quantity from the pack (e.g. 500 g, 1.5 l), used to calculate the price per kg / l. Deposit only for bottles and cans (single-use usually 0.25 €)."

@@ -49,7 +49,7 @@ export default function DeliverPage() {
   if (error) {
     return (
       <main id="main" tabIndex={-1} className="min-h-screen flex items-center justify-center bg-[#f8f7f3] p-6 text-center">
-        <p className="text-black/50">{error}</p>
+        <p className="text-black/60">{error}</p>
       </main>
     );
   }
@@ -57,7 +57,7 @@ export default function DeliverPage() {
   if (!order) {
     return (
       <main id="main" tabIndex={-1} className="min-h-screen flex items-center justify-center bg-[#f8f7f3]">
-        <p className="text-black/40 text-sm">{t("Bestellung wird geladen…", "Loading order…")}</p>
+        <p className="text-black/60 text-sm">{t("Bestellung wird geladen…", "Loading order…")}</p>
       </main>
     );
   }
@@ -71,7 +71,7 @@ export default function DeliverPage() {
           <img src="/logo.png" alt="Al-Madina" className="w-10 h-12 object-contain" />
           <div>
             <div className="font-serif text-lg leading-tight">Al-Madina Markt</div>
-            <div className="text-xs text-black/40">
+            <div className="text-xs text-black/60">
               {t("Bestellung", "Order")} #{order.orderNumber}
             </div>
           </div>
@@ -92,16 +92,16 @@ export default function DeliverPage() {
               <MapPin size={13} className="mt-0.5" /> {order.address}
             </div>
           )}
-          {order.notes && <div className="text-black/50 italic">&quot;{order.notes}&quot;</div>}
+          {order.notes && <div className="text-black/60 italic">&quot;{order.notes}&quot;</div>}
         </div>
 
         <div className="border-t border-black/5 pt-3 mb-4 text-sm">
           {order.items.map((it) => (
             <div key={it.id} className="flex justify-between py-1">
               <span>
-                {it.name} {it.sizeLabel && <span className="text-black/40">· {it.sizeLabel}</span>}
+                {it.name} {it.sizeLabel && <span className="text-black/60">· {it.sizeLabel}</span>}
               </span>
-              <span className="text-black/50">×{it.qty}</span>
+              <span className="text-black/60">×{it.qty}</span>
             </div>
           ))}
         </div>

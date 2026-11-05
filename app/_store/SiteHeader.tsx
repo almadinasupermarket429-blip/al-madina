@@ -75,7 +75,7 @@ export function SiteHeader({ settings, account, cartCount, query, onQueryChange,
               ))}
             </nav>
             <div className="nav-search">
-              <Search size={18} className="text-black/40" />
+              <Search size={18} className="text-black/60" />
               <input
                 value={query}
                 onChange={(e) => onQueryChange(e.target.value)}

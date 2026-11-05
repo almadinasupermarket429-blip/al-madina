@@ -143,7 +143,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 <img src="/logo.png" alt="Al-Madina" className="w-10 h-12 object-contain" />
                 <div>
                   <div className="font-serif text-base font-medium leading-tight">Al-Madina</div>
-                  <div className="text-[10px] uppercase tracking-wider text-black/40">Admin</div>
+                  <div className="text-[10px] uppercase tracking-wider text-black/60">Admin</div>
                 </div>
               </a>
               <button
@@ -175,7 +175,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <img src="/logo.png" alt="Al-Madina" className="w-10 h-12 object-contain" />
           <div>
             <div className="font-serif text-base font-medium leading-tight">Al-Madina</div>
-            <div className="text-[10px] uppercase tracking-wider text-black/40">Admin</div>
+            <div className="text-[10px] uppercase tracking-wider text-black/60">Admin</div>
           </div>
         </a>
 
@@ -228,7 +228,7 @@ function AdminNavContents({
           <div className="text-sm font-medium truncate">{me.username}</div>
           <span
             className={`inline-block text-[10px] uppercase tracking-wider rounded-full px-2 py-0.5 mt-1 ${
-              isOwner ? "bg-[#a12e3d]/10 text-[#a12e3d]" : "bg-black/5 text-black/50"
+              isOwner ? "bg-[#a12e3d]/10 text-[#a12e3d]" : "bg-black/5 text-black/60"
             }`}
           >
             {me.role}
@@ -271,10 +271,10 @@ function AdminNavContents({
             {soundOn ? t("Bestellton: AN", "New-order sound: ON") : t("Bestellton aktivieren", "Enable order sound")}
           </span>
         </button>
-        <Link href="/" className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-black/50 hover:bg-black/5">
+        <Link href="/" className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-black/60 hover:bg-black/5">
           <ShoppingBag size={16} /> {t("Shop ansehen", "View storefront")}
         </Link>
-        <button onClick={handleLogout} className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-black/50 hover:bg-black/5">
+        <button onClick={handleLogout} className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-black/60 hover:bg-black/5">
           <LogOut size={16} /> {t("Abmelden", "Log out")}
         </button>
       </div>

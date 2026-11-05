@@ -77,7 +77,7 @@ export default function AnalyticsPage() {
           <h1 className="text-3xl font-serif">{t("Analyse", "Analytics")}</h1>
           {rangeTabs}
         </div>
-        <p className="text-black/40 text-sm">{t("Lädt…", "Loading…")}</p>
+        <p className="text-black/60 text-sm">{t("Lädt…", "Loading…")}</p>
       </AdminShell>
     );
 
@@ -111,7 +111,7 @@ export default function AnalyticsPage() {
         <Kpi icon={XCircle} label={t("Stornierungen", "Cancellations")} value={String(data.cancelledOrders)} t={t} />
         <Kpi icon={Ticket} label={t("Gewährte Rabatte", "Discounts given")} value={money(data.totalDiscount)} t={t} />
         <div className="bg-white rounded-xl border border-black/5 p-5 col-span-2">
-          <div className="text-black/50 text-xs uppercase tracking-wide mb-3">{t("Lieferung vs. Abholung", "Delivery vs. pickup")}</div>
+          <div className="text-black/60 text-xs uppercase tracking-wide mb-3">{t("Lieferung vs. Abholung", "Delivery vs. pickup")}</div>
           <div className="h-3 rounded-full bg-[#e3b23c]/40 overflow-hidden flex">
             <div className="h-full bg-[#a12e3d]" style={{ width: `${deliveryShare}%` }} />
           </div>
@@ -140,7 +140,7 @@ export default function AnalyticsPage() {
             {data.lowStock.map((s) => (
               <li key={s.id} className="flex justify-between">
                 <span>
-                  {s.productName} <span className="text-black/50">({s.sizeLabel})</span>
+                  {s.productName} <span className="text-black/60">({s.sizeLabel})</span>
                 </span>
                 <span className={`font-semibold ${s.stock === 0 ? "text-red-700" : ""}`}>{s.stock === 0 ? t("ausverkauft", "sold out") : t(`Noch ${s.stock}`, `${s.stock} left`)}</span>
               </li>
@@ -162,7 +162,7 @@ export default function AnalyticsPage() {
             </div>
           ))}
         </div>
-        <div className="flex justify-between text-[11px] text-black/40 mt-2">
+        <div className="flex justify-between text-[11px] text-black/60 mt-2">
           <span>{new Date(`${data.revenueByDay[0]?.date}T12:00:00Z`).toLocaleDateString(locale, { timeZone: "UTC" })}</span>
           <span>{t("heute", "today")}</span>
         </div>
@@ -171,7 +171,7 @@ export default function AnalyticsPage() {
       <div className="grid lg:grid-cols-2 gap-6 mb-8">
         <div className="bg-white rounded-xl border border-black/5 p-5">
           <h2 className="font-semibold mb-1">{t("Stoßzeiten", "Peak hours")}</h2>
-          <p className="text-xs text-black/50 mb-4">{t("Bestellungen nach Uhrzeit — hilft bei der Personalplanung.", "Orders by time of day — useful for staffing.")}</p>
+          <p className="text-xs text-black/60 mb-4">{t("Bestellungen nach Uhrzeit — hilft bei der Personalplanung.", "Orders by time of day — useful for staffing.")}</p>
           <div className="flex items-end gap-[2px] h-28">
             {data.ordersByHour.map((n, h) => (
               <div key={h} className="flex-1 h-full flex flex-col justify-end">
@@ -179,7 +179,7 @@ export default function AnalyticsPage() {
               </div>
             ))}
           </div>
-          <div className="flex justify-between text-[11px] text-black/40 mt-1">
+          <div className="flex justify-between text-[11px] text-black/60 mt-1">
             <span>0:00</span>
             <span>6:00</span>
             <span>12:00</span>
@@ -208,7 +208,7 @@ export default function AnalyticsPage() {
       <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6">
         <div className="bg-white rounded-xl border border-black/5 p-5">
           <h2 className="font-semibold mb-4">{t("Top-Produkte", "Top products")}</h2>
-          {data.topProducts.length === 0 && <p className="text-black/50 text-sm">{t("Noch keine Verkäufe in diesem Zeitraum.", "No sales in this period yet.")}</p>}
+          {data.topProducts.length === 0 && <p className="text-black/60 text-sm">{t("Noch keine Verkäufe in diesem Zeitraum.", "No sales in this period yet.")}</p>}
           <div className="overflow-x-auto">
             <table className="admin-table min-w-[360px]">
               <thead>
@@ -233,7 +233,7 @@ export default function AnalyticsPage() {
         <div className="bg-white rounded-xl border border-black/5 p-5">
           <h2 className="font-semibold mb-4">{t("Gutscheine", "Coupons")}</h2>
           {data.coupons.length === 0 ? (
-            <p className="text-black/50 text-sm">{t("Keine Gutscheine eingelöst.", "No coupons redeemed.")}</p>
+            <p className="text-black/60 text-sm">{t("Keine Gutscheine eingelöst.", "No coupons redeemed.")}</p>
           ) : (
             <table className="admin-table">
               <thead>
@@ -284,7 +284,7 @@ function Kpi({
 }) {
   return (
     <div className="bg-white rounded-xl border border-black/5 p-5">
-      <div className="flex items-center gap-2 text-black/50 text-xs uppercase tracking-wide mb-2">
+      <div className="flex items-center gap-2 text-black/60 text-xs uppercase tracking-wide mb-2">
         <Icon size={14} /> {label}
       </div>
       <div className="text-2xl font-semibold">{value}</div>

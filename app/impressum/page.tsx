@@ -14,7 +14,7 @@ export default function ImpressumPage() {
           <ArrowLeft size={16} /> {t("Zurück zum Shop", "Back to shop")}
         </Link>
 
-        <span className="eyebrow block mb-1">{t("Rechtliches", "Legal")}</span>
+        <span className="eyebrow mb-1" style={{ display: "flex" }}>{t("Rechtliches", "Legal")}</span>
         <h1 style={{ fontSize: 32, marginBottom: 24 }}>Impressum</h1>
 
         <div className="checkout-error" style={{ marginBottom: 24 }}>

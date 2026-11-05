@@ -46,7 +46,7 @@ export function DeleteAccount({
 
   if (!open) {
     return (
-      <button type="button" className="text-btn" style={{ fontSize: 12, color: "#8a918c", padding: 0 }} onClick={() => setOpen(true)}>
+      <button type="button" className="text-btn" style={{ fontSize: 12, color: "#5f6762", padding: 0 }} onClick={() => setOpen(true)}>
         <Trash2 size={13} /> {t("Konto löschen", "Delete account")}
       </button>
     );

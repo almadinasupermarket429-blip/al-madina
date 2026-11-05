@@ -78,7 +78,7 @@ export function ImportDialog({ onClose, onApplied }: { onClose: () => void; onAp
         </label>
 
         {busy && (
-          <p className="text-sm text-black/50 mt-4 flex items-center gap-2">
+          <p className="text-sm text-black/60 mt-4 flex items-center gap-2">
             <Loader2 size={14} className="animate-spin" /> {t("Wird geprüft…", "Checking…")}
           </p>
         )}

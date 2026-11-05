@@ -66,7 +66,7 @@ export default function TeamPage() {
   return (
     <AdminShell>
       <h1 className="text-2xl font-serif mb-2">{t("Team", "Team")}</h1>
-      <p className="text-black/50 text-sm mb-6">
+      <p className="text-black/60 text-sm mb-6">
         {t(
           "Inhaber haben vollen Zugriff. Mitarbeiter können Bestellungen verwalten, sehen aber keine Analysen, können keine Produkte bearbeiten, Bewertungen moderieren oder das Team verwalten.",
           "Owners have full access. Staff can manage orders but can't see analytics, edit products, moderate reviews, or manage the team."
@@ -78,10 +78,10 @@ export default function TeamPage() {
           <UserPlus size={16} /> {t("Admin-Konto hinzufügen", "Add an admin account")}
         </h2>
         <form onSubmit={addAccount} className="flex flex-wrap gap-2 items-start">
-          <input required placeholder={t("Name", "Name")} value={name} onChange={(e) => setName(e.target.value)} className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[140px]" />
-          <input required type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[180px]" />
-          <input required type="password" placeholder={t("Passwort (mind. 8 Zeichen)", "Password (min. 8 chars)")} value={password} onChange={(e) => setPassword(e.target.value)} className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[180px]" />
-          <select value={role} onChange={(e) => setRole(e.target.value as "OWNER" | "STAFF")} className="border rounded-lg px-3 py-2 text-sm">
+          <input required aria-label={t("Name", "Name")} placeholder={t("Name", "Name")} value={name} onChange={(e) => setName(e.target.value)} className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[140px]" />
+          <input required type="email" aria-label="E-Mail" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[180px]" />
+          <input required type="password" aria-label={t("Passwort (mind. 8 Zeichen)", "Password (min. 8 chars)")} placeholder={t("Passwort (mind. 8 Zeichen)", "Password (min. 8 chars)")} value={password} onChange={(e) => setPassword(e.target.value)} className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[180px]" />
+          <select aria-label={t("Rolle", "Role")} value={role} onChange={(e) => setRole(e.target.value as "OWNER" | "STAFF")} className="border rounded-lg px-3 py-2 text-sm">
             <option value="STAFF">{t("Mitarbeiter", "Staff")}</option>
             <option value="OWNER">{t("Inhaber", "Owner")}</option>
           </select>
@@ -93,13 +93,13 @@ export default function TeamPage() {
       </div>
 
       <div className="bg-white rounded-xl border border-black/5">
-        {accounts === null && <p className="p-5 text-sm text-black/50">{t("Lädt…", "Loading…")}</p>}
-        {accounts?.length === 0 && <p className="p-5 text-sm text-black/50">{t("Noch keine Konten — fügen Sie oben eines hinzu.", "No accounts yet — add one above.")}</p>}
+        {accounts === null && <p className="p-5 text-sm text-black/60">{t("Lädt…", "Loading…")}</p>}
+        {accounts?.length === 0 && <p className="p-5 text-sm text-black/60">{t("Noch keine Konten — fügen Sie oben eines hinzu.", "No accounts yet — add one above.")}</p>}
         {accounts && accounts.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[480px]">
               <thead>
-                <tr className="text-left text-black/50 border-b border-black/5">
+                <tr className="text-left text-black/60 border-b border-black/5">
                   <th className="py-3 px-5">{t("Name", "Name")}</th>
                   <th className="py-3 px-5">Email</th>
                   <th className="py-3 px-5">{t("Rolle", "Role")}</th>
@@ -112,12 +112,12 @@ export default function TeamPage() {
                     <td className="py-3 px-5">{a.name}</td>
                     <td className="py-3 px-5">{a.email}</td>
                     <td className="py-3 px-5">
-                      <span className={`text-[10px] uppercase tracking-wider rounded-full px-2 py-0.5 ${a.role === "OWNER" ? "bg-[#a12e3d]/10 text-[#a12e3d]" : "bg-black/5 text-black/50"}`}>
+                      <span className={`text-[10px] uppercase tracking-wider rounded-full px-2 py-0.5 ${a.role === "OWNER" ? "bg-[#a12e3d]/10 text-[#a12e3d]" : "bg-black/5 text-black/60"}`}>
                         {a.role}
                       </span>
                     </td>
                     <td className="py-3 px-5 text-right">
-                      <button onClick={() => removeAccount(a.id)} className="text-black/40 hover:text-[#a12e3d]" aria-label={t("Entfernen", "Remove")}>
+                      <button onClick={() => removeAccount(a.id)} className="text-black/60 hover:text-[#a12e3d]" aria-label={t("Entfernen", "Remove")}>
                         <Trash2 size={15} />
                       </button>
                     </td>

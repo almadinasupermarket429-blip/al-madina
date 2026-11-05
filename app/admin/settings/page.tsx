@@ -46,7 +46,7 @@ export default function SettingsPage() {
   if (!form) {
     return (
       <AdminShell>
-        <p className="text-black/40 text-sm">{t("Lädt…", "Loading…")}</p>
+        <p className="text-black/60 text-sm">{t("Lädt…", "Loading…")}</p>
       </AdminShell>
     );
   }
@@ -54,7 +54,7 @@ export default function SettingsPage() {
   return (
     <AdminShell>
       <h1 className="font-serif text-3xl mb-1">{t("Einstellungen", "Settings")}</h1>
-      <p className="text-black/50 text-sm mb-6">
+      <p className="text-black/60 text-sm mb-6">
         {t("Gebühren, Mindestbestellwert und Shop-Hinweise — Änderungen gelten sofort.", "Fees, minimum order and shop notices — changes apply immediately.")}
       </p>
 
@@ -69,7 +69,7 @@ export default function SettingsPage() {
           />
           <div>
             <label className="admin-label">{t("Hinweis, wenn pausiert", "Message when paused")}</label>
-            <input className="input" value={form.closedMessage} onChange={(e) => set("closedMessage", e.target.value)} maxLength={500} />
+            <input aria-label={t("Hinweis, wenn pausiert", "Message when paused")} className="input" value={form.closedMessage} onChange={(e) => set("closedMessage", e.target.value)} maxLength={500} />
           </div>
           <Toggle label={t("Lieferung anbieten", "Offer delivery")} checked={form.deliveryEnabled} onChange={(v) => set("deliveryEnabled", v)} />
           <Toggle label={t("Abholung anbieten", "Offer pickup")} checked={form.pickupEnabled} onChange={(v) => set("pickupEnabled", v)} />
@@ -100,19 +100,19 @@ export default function SettingsPage() {
           </div>
           <div>
             <label className="admin-label">{t("Liefergebiet (Hinweis an der Kasse)", "Delivery area (shown at checkout)")}</label>
-            <input className="input" value={form.deliveryArea} onChange={(e) => set("deliveryArea", e.target.value)} maxLength={200} />
+            <input aria-label={t("Liefergebiet (Hinweis an der Kasse)", "Delivery area (shown at checkout)")} className="input" value={form.deliveryArea} onChange={(e) => set("deliveryArea", e.target.value)} maxLength={200} />
           </div>
         </section>
 
         <section className="admin-card grid gap-3">
           <h2 className="font-semibold">{t("Shop-Banner", "Shop banner")}</h2>
-          <p className="text-xs text-black/50">
+          <p className="text-xs text-black/60">
             {t(
               "Erscheint ganz oben im Shop, z. B. „Frisches Lammfleisch eingetroffen!“ oder „Am Feiertag geschlossen“. Leer = Standardbanner.",
               "Shown at the very top of the shop, e.g. “Fresh lamb just arrived!” or “Closed on the holiday”. Empty = default banner."
             )}
           </p>
-          <input className="input" value={form.announcement} onChange={(e) => set("announcement", e.target.value)} maxLength={200} />
+          <input className="input" aria-label={t("Shop-Banner", "Shop banner")} value={form.announcement} onChange={(e) => set("announcement", e.target.value)} maxLength={200} />
         </section>
 
         {error && <div className="rounded-xl bg-red-50 text-red-700 text-sm px-4 py-3">{error}</div>}
@@ -136,7 +136,7 @@ function Toggle({ label, hint, checked, onChange }: { label: string; hint?: stri
     <div className="flex items-center justify-between gap-4">
       <div>
         <div className="text-sm font-medium">{label}</div>
-        {hint && <div className="text-xs text-black/50">{hint}</div>}
+        {hint && <div className="text-xs text-black/60">{hint}</div>}
       </div>
       <button type="button" role="switch" aria-checked={checked} aria-label={label} className="admin-switch" onClick={() => onChange(!checked)} />
     </div>
@@ -148,10 +148,10 @@ function Money({ label, hint, value, onChange }: { label: string; hint?: string;
     <div>
       <label className="admin-label">{label}</label>
       <div className="flex items-center gap-1">
-        <span className="text-black/40 text-sm">€</span>
-        <input type="number" step="0.01" min="0" className="input" value={value} onChange={(e) => onChange(Number(e.target.value))} />
+        <span className="text-black/60 text-sm">€</span>
+        <input type="number" step="0.01" min="0" className="input" aria-label={label} value={value} onChange={(e) => onChange(Number(e.target.value))} />
       </div>
-      {hint && <div className="text-[11px] text-black/40 mt-1">{hint}</div>}
+      {hint && <div className="text-[11px] text-black/60 mt-1">{hint}</div>}
     </div>
   );
 }

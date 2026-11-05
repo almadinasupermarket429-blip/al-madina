@@ -24,7 +24,7 @@ export default function DatenschutzPage() {
           <ArrowLeft size={16} /> {t("Zurück zum Shop", "Back to shop")}
         </Link>
 
-        <span className="eyebrow block mb-1">{t("Rechtliches", "Legal")}</span>
+        <span className="eyebrow mb-1" style={{ display: "flex" }}>{t("Rechtliches", "Legal")}</span>
         <h1 style={{ fontSize: 32, marginBottom: 6 }}>{t("Datenschutzerklärung", "Privacy Policy")}</h1>
         <p style={{ fontSize: 12, color: "rgba(24,32,27,.7)", marginBottom: 24 }}>
           {t(

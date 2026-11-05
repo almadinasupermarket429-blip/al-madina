@@ -71,7 +71,7 @@ export default function CategoriesPage() {
   return (
     <AdminShell>
       <h1 className="font-serif text-3xl mb-1">{t("Kategorien", "Categories")}</h1>
-      <p className="text-black/50 text-sm mb-6">
+      <p className="text-black/60 text-sm mb-6">
         {t("Reihenfolge bestimmt die Sortierung im Shop. Ausgeblendete Kategorien verstecken ihre Produkte.", "Order controls how the shop is sorted. Hidden categories hide their products.")}
       </p>
 
@@ -83,15 +83,15 @@ export default function CategoriesPage() {
       </form>
       {error && <div className="rounded-xl bg-red-50 text-red-700 text-sm px-4 py-3 mb-4">{error}</div>}
 
-      {categories === null && <p className="text-black/40 text-sm">{t("Lädt…", "Loading…")}</p>}
+      {categories === null && <p className="text-black/60 text-sm">{t("Lädt…", "Loading…")}</p>}
       <div className="grid gap-2">
         {categories?.map((c, i) => (
           <div key={c.id} className={`admin-card !p-3 flex flex-wrap items-center gap-3 ${c.isActive ? "" : "opacity-60"}`}>
             <div className="flex flex-col">
-              <button onClick={() => move(i, -1)} disabled={i === 0} className="text-black/40 disabled:opacity-20" aria-label={t("Nach oben", "Move up")}>
+              <button onClick={() => move(i, -1)} disabled={i === 0} className="w-6 h-6 inline-flex items-center justify-center text-black/60 disabled:opacity-20" aria-label={t("Nach oben", "Move up")}>
                 <ArrowUp size={14} />
               </button>
-              <button onClick={() => move(i, 1)} disabled={i === categories.length - 1} className="text-black/40 disabled:opacity-20" aria-label={t("Nach unten", "Move down")}>
+              <button onClick={() => move(i, 1)} disabled={i === categories.length - 1} className="w-6 h-6 inline-flex items-center justify-center text-black/60 disabled:opacity-20" aria-label={t("Nach unten", "Move down")}>
                 <ArrowDown size={14} />
               </button>
             </div>
@@ -109,7 +109,7 @@ export default function CategoriesPage() {
               onBlur={(e) => e.target.value.trim() !== (c.imageUrl ?? "") && patch(c.id, { imageUrl: e.target.value })}
               aria-label={t("Bild-URL", "Image URL")}
             />
-            <span className="text-xs text-black/50 w-20">
+            <span className="text-xs text-black/60 w-20">
               {c.productCount} {t("Produkte", "products")}
             </span>
             <button role="switch" aria-checked={c.isActive} aria-label={t("Im Shop sichtbar", "Visible in shop")} className="admin-switch" onClick={() => patch(c.id, { isActive: !c.isActive })} />

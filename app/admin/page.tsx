@@ -188,7 +188,7 @@ export default function AdminOrdersPage() {
       <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
         <div>
           <h1 className="font-serif text-3xl">{t("Bestellungen", "Orders")}</h1>
-          <p className="text-black/50 text-sm mt-1">
+          <p className="text-black/60 text-sm mt-1">
             {t("Barzahlung bei Lieferung/Abholung — es wird keine Online-Zahlung verarbeitet.", "Cash on delivery / pickup — no online payment is processed.")}
           </p>
         </div>
@@ -196,7 +196,7 @@ export default function AdminOrdersPage() {
           <div className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${acceptingOrders ? "bg-white border-black/5" : "bg-red-50 border-red-200"}`}>
             <div className="text-sm">
               <div className="font-semibold">{acceptingOrders ? t("Online-Bestellungen: AN", "Online orders: ON") : t("Online-Bestellungen: PAUSIERT", "Online orders: PAUSED")}</div>
-              <div className="text-xs text-black/50">{t("z. B. bei Hochbetrieb kurz pausieren", "Pause briefly when it's too busy")}</div>
+              <div className="text-xs text-black/60">{t("z. B. bei Hochbetrieb kurz pausieren", "Pause briefly when it's too busy")}</div>
             </div>
             <button
               role="switch"
@@ -218,7 +218,7 @@ export default function AdminOrdersPage() {
 
       <div className="flex flex-wrap gap-2 mb-4 items-center">
         <div className="flex items-center gap-2 bg-white border border-black/10 rounded-full px-3 py-2 flex-1 min-w-[220px]">
-          <Search size={15} className="text-black/40" />
+          <Search size={15} className="text-black/60" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -227,11 +227,11 @@ export default function AdminOrdersPage() {
             aria-label={t("Bestellungen durchsuchen", "Search orders")}
           />
         </div>
-        <label className="flex items-center gap-1 text-xs text-black/50">
+        <label className="flex items-center gap-1 text-xs text-black/60">
           {t("Von", "From")}
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input !w-auto !py-1.5" />
         </label>
-        <label className="flex items-center gap-1 text-xs text-black/50">
+        <label className="flex items-center gap-1 text-xs text-black/60">
           {t("Bis", "To")}
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input !w-auto !py-1.5" />
         </label>
@@ -260,9 +260,9 @@ export default function AdminOrdersPage() {
       </div>
 
       {error && <div className="mb-4 rounded-xl bg-red-50 text-red-700 text-sm px-4 py-3">{error}</div>}
-      {loading && <div className="text-black/40 text-sm">{t("Bestellungen werden geladen…", "Loading orders…")}</div>}
+      {loading && <div className="text-black/60 text-sm">{t("Bestellungen werden geladen…", "Loading orders…")}</div>}
       {!loading && filtered.length === 0 && (
-        <div className="bg-white rounded-2xl border border-black/5 p-12 text-center text-black/40">{t("Keine Bestellungen gefunden.", "No orders found.")}</div>
+        <div className="bg-white rounded-2xl border border-black/5 p-12 text-center text-black/60">{t("Keine Bestellungen gefunden.", "No orders found.")}</div>
       )}
 
       <div className="grid gap-4">
@@ -277,7 +277,7 @@ export default function AdminOrdersPage() {
 function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div className={`rounded-xl border p-4 ${highlight ? "bg-amber-50 border-amber-200" : "bg-white border-black/5"}`}>
-      <div className="text-[11px] uppercase tracking-wide text-black/50">{label}</div>
+      <div className="text-[11px] uppercase tracking-wide text-black/60">{label}</div>
       <div className="text-xl font-semibold mt-1">{value}</div>
     </div>
   );
@@ -346,7 +346,7 @@ function OrderCard({
               </span>
             )}
           </div>
-          <div className="text-xs text-black/40 mt-1">
+          <div className="text-xs text-black/60 mt-1">
             {new Date(order.createdAt).toLocaleString(language === "de" ? "de-DE" : "en-GB", { timeZone: "Europe/Berlin" })}
             {order.language === "en" && <span className="ml-2">{t("Kunde schreibt Englisch", "Customer uses English")}</span>}
           </div>
@@ -361,7 +361,7 @@ function OrderCard({
         </div>
         <div className="text-right">
           <div className="text-xl font-serif font-medium">{formatEuro(order.total, language)}</div>
-          <div className="text-[11px] text-black/40">
+          <div className="text-[11px] text-black/60">
             {order.fulfillment === "PICKUP" ? t("bar bei Abholung", "cash on pickup") : t("bar bei Lieferung", "cash on delivery")}
           </div>
         </div>
@@ -380,7 +380,7 @@ function OrderCard({
               </div>
             </>
           ) : (
-            <div className="text-black/40 italic">{t("Kontaktdaten entfernt (Datenschutz)", "Contact details removed (privacy)")}</div>
+            <div className="text-black/60 italic">{t("Kontaktdaten entfernt (Datenschutz)", "Contact details removed (privacy)")}</div>
           )}
           {order.fulfillment === "DELIVERY" && order.address && (
             <a
@@ -397,7 +397,7 @@ function OrderCard({
               <Repeat size={13} className="mt-0.5 shrink-0" /> {t("Falls nicht da:", "If unavailable:")} {t(sub[0], sub[1])}
             </div>
           )}
-          {order.notes && <div className="text-black/50 italic mt-1">“{order.notes}”</div>}
+          {order.notes && <div className="text-black/60 italic mt-1">“{order.notes}”</div>}
           {order.cancelReason && <div className="text-red-700 text-xs mt-1">{t("Stornogrund:", "Cancel reason:")} {order.cancelReason}</div>}
         </div>
 
@@ -407,15 +407,15 @@ function OrderCard({
               {order.items.map((it) => (
                 <tr key={it.id} className="border-b border-black/5 last:border-0">
                   <td className="py-1.5">
-                    {it.name} {it.sizeLabel && <span className="text-black/40">· {it.sizeLabel}</span>}
+                    {it.name} {it.sizeLabel && <span className="text-black/60">· {it.sizeLabel}</span>}
                   </td>
-                  <td className="py-1.5 text-center text-black/50">×{it.qty}</td>
+                  <td className="py-1.5 text-center text-black/60">×{it.qty}</td>
                   <td className="py-1.5 text-right">{formatEuro(it.price * it.qty, language)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <div className="text-xs text-black/50 mt-2 space-y-0.5 text-right">
+          <div className="text-xs text-black/60 mt-2 space-y-0.5 text-right">
             {order.discount > 0 && (
               <div className="text-green-700 flex items-center justify-end gap-1">
                 <Ticket size={12} /> {order.couponCode} −{formatEuro(order.discount, language)}
@@ -469,7 +469,7 @@ function OrderCard({
           </button>
         )}
         {order.status === "PACKED" && order.fulfillment === "PICKUP" && (
-          <span className="text-xs text-black/50 bg-black/5 rounded-full px-3 py-2">
+          <span className="text-xs text-black/60 bg-black/5 rounded-full px-3 py-2">
             {t("Bereit zur Abholung — der Kunde wurde per E-Mail informiert.", "Ready for pickup — the customer was emailed.")}
           </span>
         )}

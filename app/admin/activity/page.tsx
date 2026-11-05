@@ -55,13 +55,13 @@ export default function ActivityPage() {
       <h1 className="font-serif text-3xl mb-1 flex items-center gap-2">
         <History size={26} /> {t("Aktivitätsprotokoll", "Activity log")}
       </h1>
-      <p className="text-black/50 text-sm mb-6">
+      <p className="text-black/60 text-sm mb-6">
         {t("Jede Änderung in der Verwaltung — wer, was und wann. Einträge werden nach 2 Jahren gelöscht.", "Every change made in the admin — who, what and when. Entries are deleted after 2 years.")}
       </p>
 
       <div className="flex flex-wrap gap-2 mb-4 items-center">
         <div className="flex items-center gap-2 bg-white border border-black/10 rounded-full px-3 py-2 flex-1 min-w-[200px] max-w-md">
-          <Search size={15} className="text-black/40" />
+          <Search size={15} className="text-black/60" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -81,7 +81,7 @@ export default function ActivityPage() {
         ))}
       </div>
 
-      <div className="admin-card overflow-x-auto !p-2">
+      <div className="admin-card overflow-x-auto !p-2" tabIndex={0} role="region" aria-label={t("Aktivitätsprotokoll", "Activity log")}>
         <table className="admin-table min-w-[640px]">
           <thead>
             <tr>
@@ -100,8 +100,8 @@ export default function ActivityPage() {
             ))}
           </tbody>
         </table>
-        {!loading && entries.length === 0 && <p className="text-center text-black/40 text-sm py-8">{t("Noch keine Einträge.", "No entries yet.")}</p>}
-        {loading && <p className="text-center text-black/40 text-sm py-4">{t("Wird geladen…", "Loading…")}</p>}
+        {!loading && entries.length === 0 && <p className="text-center text-black/60 text-sm py-8">{t("Noch keine Einträge.", "No entries yet.")}</p>}
+        {loading && <p className="text-center text-black/60 text-sm py-4">{t("Wird geladen…", "Loading…")}</p>}
       </div>
       {hasMore && !loading && (
         <div className="flex justify-center mt-4">

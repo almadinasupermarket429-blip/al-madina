@@ -167,7 +167,7 @@ export default function AdminProductsPage() {
       className={`px-3 py-1.5 rounded-full text-sm border ${filter === key ? "bg-[#a12e3d] text-white border-[#a12e3d]" : "bg-white border-black/10 text-black/60"}`}
     >
       {label}
-      {count ? <span className="ml-1 opacity-70">({count})</span> : null}
+      {count ? <span className="ml-1 opacity-90">({count})</span> : null}
     </button>
   );
 
@@ -176,7 +176,7 @@ export default function AdminProductsPage() {
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="font-serif text-3xl">{t("Produkte", "Products")}</h1>
-          <p className="text-black/50 text-sm mt-1">
+          <p className="text-black/60 text-sm mt-1">
             {t(`${products.length} Produkte · Preise, Bestand und Texte verwalten.`, `${products.length} products · manage prices, stock and texts.`)}
           </p>
         </div>
@@ -204,7 +204,7 @@ export default function AdminProductsPage() {
 
       <div className="flex flex-wrap gap-2 mb-3 items-center">
         <div className="flex items-center gap-2 bg-white border border-black/10 rounded-full px-3 py-2 flex-1 min-w-[200px] max-w-md">
-          <Search size={15} className="text-black/40" />
+          <Search size={15} className="text-black/60" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -255,7 +255,7 @@ export default function AdminProductsPage() {
         </div>
       )}
 
-      {loading && <div className="text-black/40 text-sm">{t("Produkte werden geladen…", "Loading products…")}</div>}
+      {loading && <div className="text-black/60 text-sm">{t("Produkte werden geladen…", "Loading products…")}</div>}
 
       {!loading && shown.length > 0 && (
         <label className="flex items-center gap-2 text-sm text-black/60 mb-2 ml-1">
@@ -272,7 +272,7 @@ export default function AdminProductsPage() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-medium">{p.name}</span>
-                {!p.active && <span className="text-[10px] font-bold bg-black/10 text-black/50 px-2 py-0.5 rounded-full">{t("VERSTECKT", "HIDDEN")}</span>}
+                {!p.active && <span className="text-[10px] font-bold bg-black/10 text-black/60 px-2 py-0.5 rounded-full">{t("VERSTECKT", "HIDDEN")}</span>}
                 {p.badge && <span className="text-[10px] font-bold bg-[#e3b23c]/30 text-[#7a5a10] px-2 py-0.5 rounded-full">{p.badge}</span>}
                 {!p.nameEn && <span className="text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{t("EN fehlt", "EN missing")}</span>}
                 {(() => {
@@ -287,7 +287,7 @@ export default function AdminProductsPage() {
                   ) : null;
                 })()}
               </div>
-              <div className="text-xs text-black/40 mt-0.5">
+              <div className="text-xs text-black/60 mt-0.5">
                 {p.category}
                 {p.brand ? ` · ${p.brand}` : ""}
               </div>
@@ -321,14 +321,14 @@ export default function AdminProductsPage() {
                         <>
                           <button
                             onClick={() => patchVariant(p.id, s.id!, { adjust: -1 })}
-                            className="w-5 h-5 rounded-full bg-white/80 inline-flex items-center justify-center"
+                            className="w-6 h-6 shrink-0 rounded-full bg-white/80 inline-flex items-center justify-center"
                             aria-label={t(`${p.name} ${s.label}: Bestand −1`, `${p.name} ${s.label}: stock −1`)}
                           >
                             <Minus size={10} />
                           </button>
                           <button
                             onClick={() => patchVariant(p.id, s.id!, { adjust: 1 })}
-                            className="w-5 h-5 rounded-full bg-white/80 inline-flex items-center justify-center"
+                            className="w-6 h-6 shrink-0 rounded-full bg-white/80 inline-flex items-center justify-center"
                             aria-label={t(`${p.name} ${s.label}: Bestand +1`, `${p.name} ${s.label}: stock +1`)}
                           >
                             <Plus size={10} />
@@ -338,7 +338,7 @@ export default function AdminProductsPage() {
                               const v = prompt(t(`Neuer Bestand für ${p.name} (${s.label}):`, `New stock for ${p.name} (${s.label}):`), String(stock ?? 0));
                               if (v !== null && v.trim() !== "" && Number(v) >= 0) patchVariant(p.id, s.id!, { stock: Number(v) });
                             }}
-                            className="px-1.5 h-5 rounded-full bg-white/80 text-[10px] font-semibold"
+                            className="px-2 h-6 min-w-6 rounded-full bg-white/80 text-[10px] font-semibold"
                           >
                             {t("setzen", "set")}
                           </button>
@@ -349,7 +349,7 @@ export default function AdminProductsPage() {
                 })}
               </div>
             </div>
-            <button onClick={() => setEditing(p)} className="btn-outline">
+            <button onClick={() => setEditing(p)} className="btn-outline" aria-label={t(`${p.name} bearbeiten`, `Edit ${p.name}`)}>
               <Pencil size={13} /> <span className="hidden sm:inline">{t("Bearbeiten", "Edit")}</span>
             </button>
             <button onClick={() => handleDelete(p)} className="btn-danger" aria-label={t(`${p.name} löschen`, `Delete ${p.name}`)}>
@@ -358,10 +358,10 @@ export default function AdminProductsPage() {
           </div>
         ))}
         {!loading && products.length > 0 && shown.length === 0 && (
-          <div className="bg-white rounded-2xl border border-black/5 p-8 text-center text-black/40">{t("Keine Treffer.", "No matches.")}</div>
+          <div className="bg-white rounded-2xl border border-black/5 p-8 text-center text-black/60">{t("Keine Treffer.", "No matches.")}</div>
         )}
         {!loading && products.length === 0 && (
-          <div className="bg-white rounded-2xl border border-black/5 p-12 text-center text-black/40">
+          <div className="bg-white rounded-2xl border border-black/5 p-12 text-center text-black/60">
             {t("Noch keine Produkte — klicken Sie auf „Produkt hinzufügen“.", "No products yet — click “Add product”.")}
           </div>
         )}

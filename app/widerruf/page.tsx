@@ -67,7 +67,7 @@ export default function WiderrufPage() {
           <span className="eyebrow">{t("Rechtliches", "Legal")}</span>
         </div>
         <h1 style={{ fontSize: 32, marginBottom: 6 }}>{t("Widerrufsbelehrung", "Right of withdrawal")}</h1>
-        <p style={{ fontSize: 12, color: "rgba(24,32,27,.5)", marginBottom: 24 }}>
+        <p style={{ fontSize: 12, color: "rgba(24,32,27,.7)", marginBottom: 24 }}>
           {t(
             "Entwurf auf Grundlage der gesetzlichen Muster-Widerrufsbelehrung. Muss vor Veröffentlichung juristisch geprüft werden.",
             "Draft based on the statutory model withdrawal notice. Must be legally reviewed before going live."
@@ -205,7 +205,7 @@ export default function WiderrufPage() {
             <p>{t("Anschrift des/der Verbraucher(s):", "Address of consumer(s):")}</p>
             <p>{t("Unterschrift des/der Verbraucher(s) (nur bei Mitteilung auf Papier):", "Signature of consumer(s) (only if this form is notified on paper):")}</p>
             <p>{t("Datum:", "Date:")}</p>
-            <p style={{ marginTop: 8, color: "rgba(24,32,27,.5)" }}>{t("(*) Unzutreffendes streichen.", "(*) Delete as appropriate.")}</p>
+            <p style={{ marginTop: 8, color: "rgba(24,32,27,.7)" }}>{t("(*) Unzutreffendes streichen.", "(*) Delete as appropriate.")}</p>
           </div>
         </Section>
       </div>
