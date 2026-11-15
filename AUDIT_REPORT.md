@@ -16,14 +16,19 @@ Horseed Afro Shop was built from this code, and both received the same audit fix
 | GitHub CI on `main` | green (last run 2026-11-05) |
 | Security review | Same results as Horseed: every admin route guarded, customer data limited to the signed-in account, server-side prices and stock, rate limits, no default admin password (see `horseed-afro-shop/AUDIT_REPORT.md`) |
 
-## Important: the live site is switched off
+## Correction: the live site is online
 
-`https://al-madina.vercel.app` answers **402 Payment required / DEPLOYMENT_DISABLED**: Vercel has disabled the deployment, usually because of the plan, billing or usage limits on the account that owns it. The shop is offline until that is resolved in that Vercel account's billing settings. The code itself is fine.
+The shop's real address is **al-madina-delta.vercel.app** (200, health `ok`). `al-madina.vercel.app`, checked first, belongs to someone else.
 
-## Not run, and why
+## Fixed 2026-11-15: links pointed at localhost (high)
 
-- **Live browser check:** the deployment is disabled (see above).
-- **Playwright e2e:** needs a test database. `.env` holds the live Neon database, and running the suite there would create orders.
+`NEXT_PUBLIC_SITE_URL` on Vercel is `http://localhost:3000`, so the live canonical link, Open Graph URL, JSON-LD, sitemap and **every email button** (password reset, email verification, order status, withdrawal form) pointed at localhost: customers couldn't reset passwords or verify accounts. `lib/site-url.ts` now resolves the public origin in one place; a deployed build ignores a localhost value and uses Vercel's production domain. Tests: `tests/unit/site-url.test.ts` (5). Commit 1a50e69.
+
+**Not live yet:** this project deploys from the Vercel CLI, not from GitHub. Run `vercel deploy --prod` in this folder, and set `NEXT_PUBLIC_SITE_URL` in Vercel to `https://al-madina-delta.vercel.app` (or the shop's own domain).
+
+## Browser suite (Playwright), 2026-11-15
+
+Run against a throwaway local Postgres (PGlite) with the demo seed, email and Cloudinary off: 43 of 55 pass. The other 12 name real products from the live catalog ("Durra Indischer Basmati-Reis Sella XXL", 24+ products per page, 100+ in the spreadsheet), which the 6-product demo seed doesn't have; two are screenshot comparisons. None pointed at a code fault. The GDPR test flagged Unsplash photos, but those come only from the demo seed: the live homepage loads nothing from other servers.
 
 ## Optional
 
