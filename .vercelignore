@@ -1,0 +1,9 @@
+# `vercel deploy` uploads this folder. Keep local secrets out of the upload:
+# every variable is set in the Vercel project, which is what the build uses.
+.env
+.env.*
+!.env.example
+node_modules
+.next
+test-results
+playwright-report
