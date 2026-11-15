@@ -24,7 +24,7 @@ The shop's real address is **al-madina-delta.vercel.app** (200, health `ok`). `a
 
 `NEXT_PUBLIC_SITE_URL` on Vercel is `http://localhost:3000`, so the live canonical link, Open Graph URL, JSON-LD, sitemap and **every email button** (password reset, email verification, order status, withdrawal form) pointed at localhost: customers couldn't reset passwords or verify accounts. `lib/site-url.ts` now resolves the public origin in one place; a deployed build ignores a localhost value and uses Vercel's production domain. Tests: `tests/unit/site-url.test.ts` (5). Commit 1a50e69.
 
-**Not live yet:** this project deploys from the Vercel CLI, not from GitHub. Run `vercel deploy --prod` in this folder, and set `NEXT_PUBLIC_SITE_URL` in Vercel to `https://al-madina-delta.vercel.app` (or the shop's own domain).
+**Live since 2026-11-15** (deployed with `vercel deploy --prod`; this project deploys from the CLI, not GitHub). Verified: no `localhost` left in the live HTML; canonical, JSON-LD, robots and sitemap use `https://al-madina-delta.vercel.app`. A `.vercelignore` now keeps `.env` files out of CLI uploads (all variables are set in Vercel). Optional tidy-up: set `NEXT_PUBLIC_SITE_URL` in Vercel to the real address.
 
 ## Browser suite (Playwright), 2026-11-15
 
