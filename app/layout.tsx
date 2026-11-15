@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
+import { siteUrl } from "@/lib/site-url";
 import { headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "./providers";
 import { CookieNotice } from "./components/CookieNotice";
 import { STORE, openingHoursSpecification } from "@/lib/store-info";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const SITE_URL = siteUrl();
 
 // Local-business structured data: lets Google show address, hours and phone for the shop.
 const storeJsonLd = {

@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { configuredSiteUrl } from "./site-url";
 import { formatEuro } from "./format";
 import { STORE, hoursSummary } from "./store-info";
 
@@ -33,7 +34,7 @@ type OrderWithItems = {
   items: OrderItem[];
 };
 
-const SITE_URL = () => process.env.NEXT_PUBLIC_SITE_URL || "";
+const SITE_URL = () => configuredSiteUrl() ?? "";
 
 const SUBSTITUTION_TEXT: Record<string, string> = {
   SUBSTITUTE: "Durch ähnlichen Artikel ersetzen",

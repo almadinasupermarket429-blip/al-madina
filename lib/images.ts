@@ -1,3 +1,5 @@
+import { configuredSiteUrl } from "./site-url";
+
 // Set from CLOUDINARY_CLOUD_NAME in next.config.ts. Read per call (not at import) so it also works in tests.
 function cloudinaryPrefix(): string | null {
   const cloud = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
@@ -49,6 +51,6 @@ export function absoluteImage(url: string | null | undefined, width: ImageWidth)
   if (!url) return "";
   const path = sizedImage(url, width);
   if (!path.startsWith("/")) return path;
-  const site = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "";
+  const site = configuredSiteUrl() ?? "";
   return `${site}${path}`;
 }
