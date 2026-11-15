@@ -1,7 +1,13 @@
 // Visual regression ("UI") tests: compare key screens against approved screenshots.
 // Approve new looks with: npx playwright test visual --update-snapshots
 // Baselines are per operating system (fonts render differently), so they're stored per platform.
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page, type APIRequestContext } from "@playwright/test";
+import { shopProducts } from "./helpers/catalog";
+
+// The product screenshots were approved on the live catalog; on another one (the demo seed) they can't match.
+const BASELINE_PRODUCT = "Durra Indischer Basmati-Reis Sella XXL";
+const onBaselineCatalog = async (request: APIRequestContext) =>
+  (await shopProducts(request)).some((p) => p.name.startsWith(BASELINE_PRODUCT));
 
 // Things that legitimately change between runs (time-of-day badge, review counts, the cookie banner).
 const dynamic = (page: Page) => [page.locator(".open-badge"), page.locator(".cookie-notice"), page.locator(".product-card small")];
@@ -25,6 +31,7 @@ test.describe("visual", () => {
   });
 
   test("product grid (first row)", async ({ page }) => {
+    test.skip(!(await onBaselineCatalog(page.request)), "screenshots were approved on the live catalog");
     await page.goto("/#shop");
     await page.waitForSelector(".product-grid .product-card img");
     await settle(page);
@@ -35,8 +42,9 @@ test.describe("visual", () => {
   });
 
   test("product detail popup", async ({ page }) => {
+    test.skip(!(await onBaselineCatalog(page.request)), "screenshots were approved on the live catalog");
     await page.goto("/");
-    await page.locator(".product-card", { hasText: "Durra Indischer Basmati-Reis Sella XXL" }).first().locator(".product-image").click();
+    await page.locator(".product-card", { hasText: BASELINE_PRODUCT }).first().locator(".product-image").click();
     const modal = page.locator(".checkout-modal");
     await expect(modal.locator(".pd-specs")).toBeVisible();
     await settle(page);

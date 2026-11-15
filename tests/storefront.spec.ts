@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { stableProduct } from "./helpers/catalog";
 
 test("homepage loads with German as the default language", async ({ page }) => {
   await page.goto("/");
@@ -19,18 +20,17 @@ test("language toggle switches to English and persists across navigation", async
   await expect(page.getByText("Track your order")).toBeVisible();
 });
 
-// Both tests below target one real catalog product by its exact name rather than
-// the positionally-"first" card: the admin product-CRUD test (tests/admin.spec.ts)
-// creates and deletes its own product concurrently, and a "first()" locator could
-// land on it just before it is deleted. This product belongs to the "Reis" category,
-// which is sorted first, so it is always on the first page of the grid.
-export const STABLE_PRODUCT_TEXT = "Durra Indischer Basmati-Reis Sella XXL";
+// Both tests below target one catalog product by name (picked from /api/products, see
+// helpers/catalog.ts) rather than the positionally-"first" card: the admin product-CRUD
+// test creates and deletes its own product concurrently, and a "first()" locator could
+// land on it just before it is deleted.
 
 test("add to cart updates the cart badge and drawer", async ({ page }) => {
+  const product = await stableProduct(page.request);
   await page.goto("/");
   await page.waitForSelector(".product-grid .product-card");
 
-  await page.locator(".product-grid").first().locator(".product-card", { hasText: STABLE_PRODUCT_TEXT }).locator(".add-btn").click();
+  await page.locator(".product-grid").first().locator(".product-card", { hasText: product.name }).locator(".add-btn").click();
 
   // First /api/cart call compiles the route on the dev server.
   await expect(page.locator(".cart-btn i")).toHaveText("1", { timeout: 15_000 });
@@ -41,9 +41,10 @@ test("add to cart updates the cart badge and drawer", async ({ page }) => {
 });
 
 test("product detail page loads via a real product link", async ({ page }) => {
+  const product = await stableProduct(page.request);
   await page.goto("/");
   await page.waitForSelector(".product-grid .product-card");
-  await page.locator(".product-card", { hasText: STABLE_PRODUCT_TEXT }).locator(".product-image").click();
+  await page.locator(".product-card", { hasText: product.name }).first().locator(".product-image").click();
 
   const modal = page.locator(".checkout-modal");
   await expect(modal).toBeVisible();

@@ -28,7 +28,11 @@ The shop's real address is **al-madina-delta.vercel.app** (200, health `ok`). `a
 
 ## Browser suite (Playwright), 2026-11-15
 
-Run against a throwaway local Postgres (PGlite) with the demo seed, email and Cloudinary off: 43 of 55 pass. The other 12 name real products from the live catalog ("Durra Indischer Basmati-Reis Sella XXL", 24+ products per page, 100+ in the spreadsheet), which the 6-product demo seed doesn't have; two are screenshot comparisons. None pointed at a code fault. The GDPR test flagged Unsplash photos, but those come only from the demo seed: the live homepage loads nothing from other servers.
+Run against a throwaway local Postgres (PGlite) with the demo seed, email and Cloudinary off: **52 passed, 0 failed, 3 skipped by design** (two runs; two admin tests needed a second, one-worker run because `next dev` compiles pages on first use).
+
+- The tests no longer name live products: `tests/helpers/catalog.ts` picks an in-stock product from `/api/products`, and counts (24 per page, rows in the spreadsheet export) follow the catalog size. On the live catalog they still pick the Basmati rice.
+- Skipped on demo data: the /img proxy test (no Cloudinary photos) and the two product screenshots (approved on the live catalog).
+- The demo seed linked its photos straight to Unsplash, so a fresh shop sent visitors' IP addresses to another server, against the shop's own GDPR promise. It now adds products without photos (cards show the logo until the owner uploads).
 
 ## Optional
 

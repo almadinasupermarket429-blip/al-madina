@@ -1,3 +1,4 @@
+import { stableProduct } from "./helpers/catalog";
 import { test, expect } from "@playwright/test";
 import { deleteUserByEmail } from "./helpers/test-customer";
 
@@ -96,7 +97,8 @@ test("cart drawer shows free-delivery progress", async ({ page }) => {
   const store = await (await page.request.get("/api/store")).json();
   test.skip(!(store.settings.deliveryEnabled && store.settings.freeDeliveryThreshold > 0), "free delivery disabled in settings");
 
-  await page.locator(".product-card", { hasText: "Durra Indischer Basmati-Reis Sella XXL" }).first().locator(".add-btn").click();
+  const product = await stableProduct(page.request);
+  await page.locator(".product-card", { hasText: product.name }).first().locator(".add-btn").click();
   await expect(page.locator(".cart-btn i")).toHaveText("1");
   await page.locator(".cart-btn").click();
   await expect(page.locator(".free-delivery .progress")).toBeVisible();

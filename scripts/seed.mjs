@@ -14,15 +14,16 @@ if (existsSync(".env")) {
   }
 }
 
-const IMG = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=800&q=80`;
+// No photos: linking stock photos from another server would send every visitor's IP address there
+// (the shop promises nothing loads from third parties). Cards show the logo until the owner uploads.
 
 const CATALOG = [
-  { category: "Obst & Gemüse", name: "Tomaten", tags: ["Frisch"], unit: "pro kg", img: "photo-1592924357228-91a4daadcfea", sizes: [["1 kg", 2.49, 60]] },
-  { category: "Bäckerei", name: "Fladenbrot", tags: ["Frisch", "Vegan"], img: "photo-1593504049359-74330189a345", sizes: [["1 Stück", 1.29, 80], ["3 Stück", 3.49, 40]] },
-  { category: "Vorratskammer", name: "Tahini", tags: ["Vegan"], img: "photo-1511690078903-71dc5a49f5e3", sizes: [["300 g", 4.49, 30]] },
-  { category: "Gewürze", name: "Za'atar", tags: ["Vegan"], img: "photo-1596040033229-a9821ebd058d", sizes: [["150 g", 3.99, 25]] },
-  { category: "Fleisch & Geflügel", name: "Rindersteak", tags: ["Halal"], unit: "pro kg", img: "photo-1603048297172-c92544798d5a", sizes: [["1 kg", 24.9, 10]], old: 27.9 },
-  { category: "Fleisch & Geflügel", name: "Hähnchenbrust", tags: ["Halal"], unit: "pro kg", img: "photo-1604503468506-a8da13d82791", sizes: [["500 g", 5.49, 20], ["1 kg", 9.99, 15]] },
+  { category: "Obst & Gemüse", name: "Tomaten", tags: ["Frisch"], unit: "pro kg", sizes: [["1 kg", 2.49, 60]] },
+  { category: "Bäckerei", name: "Fladenbrot", tags: ["Frisch", "Vegan"], sizes: [["1 Stück", 1.29, 80], ["3 Stück", 3.49, 40]] },
+  { category: "Vorratskammer", name: "Tahini", tags: ["Vegan"], sizes: [["300 g", 4.49, 30]] },
+  { category: "Gewürze", name: "Za'atar", tags: ["Vegan"], sizes: [["150 g", 3.99, 25]] },
+  { category: "Fleisch & Geflügel", name: "Rindersteak", tags: ["Halal"], unit: "pro kg", sizes: [["1 kg", 24.9, 10]], old: 27.9 },
+  { category: "Fleisch & Geflügel", name: "Hähnchenbrust", tags: ["Halal"], unit: "pro kg", sizes: [["500 g", 5.49, 20], ["1 kg", 9.99, 15]] },
 ];
 
 const slug = (s) =>
@@ -45,7 +46,7 @@ try {
       const product = await prisma.$queryRawUnsafe(
         `insert into products (category_id, name, slug, image_url, unit_note, tags)
          values ($1::uuid, $2, $3, $4, $5, $6::text[]) returning id`,
-        cat[0].id, item.name, slug(item.name), IMG(item.img), item.unit ?? null, item.tags
+        cat[0].id, item.name, slug(item.name), null, item.unit ?? null, item.tags
       );
       for (const [i, [label, price, stock]] of item.sizes.entries()) {
         await prisma.$executeRawUnsafe(

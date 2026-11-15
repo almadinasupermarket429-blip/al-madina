@@ -1,17 +1,17 @@
 import { expect, test } from "@playwright/test";
+import { stableProduct } from "./helpers/catalog";
 import { createTestCustomer } from "./helpers/test-customer";
-// A seeded product that is always in stock (same as STABLE_PRODUCT_TEXT in storefront.spec.ts).
-const STABLE_PRODUCT_TEXT = "Durra Indischer Basmati-Reis Sella XXL";
 
 // The shop's main job, end to end: basket -> checkout -> order placed -> basket empty.
 // The order is cancelled afterwards, which puts the stock back.
 test("a logged-in customer can order for pickup and pay in cash", async ({ page }) => {
   test.setTimeout(90_000);
+  const product = await stableProduct(page.request);
   const customer = await createTestCustomer(page.request, "Playwright Besteller");
   try {
     await page.goto("/");
     await page.waitForSelector(".product-grid .product-card");
-    await page.locator(".product-grid").first().locator(".product-card", { hasText: STABLE_PRODUCT_TEXT }).locator(".add-btn").click();
+    await page.locator(".product-grid").first().locator(".product-card", { hasText: product.name }).locator(".add-btn").click();
     await expect(page.locator(".cart-btn i")).toHaveText("1", { timeout: 15_000 });
 
     await page.locator(".cart-btn").click();
@@ -23,7 +23,7 @@ test("a logged-in customer can order for pickup and pay in cash", async ({ page 
     await checkout.getByLabel("Telefonnummer").fill("0163 1234567");
 
     // The order overview right above the button lists the item and says prices include VAT.
-    await expect(checkout.getByRole("list", { name: "Ihre Artikel" })).toContainText(STABLE_PRODUCT_TEXT);
+    await expect(checkout.getByRole("list", { name: "Ihre Artikel" })).toContainText(product.name);
     await expect(checkout).toContainText("inkl. MwSt.");
 
     await checkout.getByRole("button", { name: /Zahlungspflichtig bestellen/ }).click();

@@ -1,3 +1,4 @@
+import { searchWord, stableProduct } from "./helpers/catalog";
 import { test, expect } from "@playwright/test";
 
 // This file exists because a real user reported (with screenshots) that on
@@ -58,6 +59,7 @@ test("hamburger menu opens, contains search, closes cleanly", async ({ page }) =
 });
 
 test("search: opens from hamburger, closes hamburger, filters, and self-closes", async ({ page }) => {
+  const word = searchWord(await stableProduct(page.request));
   await page.goto("/");
   await page.waitForLoadState("networkidle");
 
@@ -71,12 +73,10 @@ test("search: opens from hamburger, closes hamburger, filters, and self-closes",
   await expect(searchInput).toBeVisible();
   await expect(searchInput).toBeFocused();
 
-  // Product catalog data (names/descriptions) is stored in English regardless
-  // of UI language — only static chrome text is translated — so search terms
-  // here must match actual catalog content, not the German UI strings.
-  await searchInput.fill("Coffee");
+  // A word from a real product name in this catalog (helpers/catalog.ts).
+  await searchInput.fill(word);
   // Filtering is live — the grid should narrow to matches as you type.
-  await expect(page.locator(".product-grid").first()).toContainText(/Coffee/i);
+  await expect(page.locator(".product-grid").first()).toContainText(word);
 
   await searchInput.press("Enter");
   await expect(page.locator(".mobile-search")).toBeHidden();

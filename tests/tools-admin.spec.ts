@@ -1,5 +1,6 @@
 // The advanced admin tools: spreadsheet export/import, bulk actions, activity log,
 // customer GDPR requests and order export.
+import { shopProducts, stableProduct } from "./helpers/catalog";
 import { test, expect, type Page } from "@playwright/test";
 import { createTestCustomer } from "./helpers/test-customer";
 import { parseCsv, toCsv } from "../lib/csv";
@@ -25,7 +26,9 @@ test.describe("admin tools", () => {
     const rows = parseCsv(await res.text());
     // The first nine columns drive price and stock edits; food-information columns follow them.
     expect(rows[0].slice(0, 9)).toEqual(["variant_id", "produkt", "groesse", "kategorie", "preis", "vorher_preis", "bestand", "bestand_beim_export", "sichtbar"]);
-    expect(rows.length).toBeGreaterThan(100);
+    // One row per size; the export also lists hidden products, so at least every size the shop shows.
+    const shownSizes = (await shopProducts(page.request)).flatMap((p) => p.sizes).length;
+    expect(rows.length - 1).toBeGreaterThanOrEqual(shownSizes);
 
     const [header, first] = rows;
     const original = first[4];
@@ -126,11 +129,12 @@ test.describe("admin tools", () => {
   });
 
   test("products page: search, select and the bulk toolbar appear", async ({ page }) => {
+    const product = await stableProduct(page.request);
     await page.goto("/admin/products");
-    await page.getByLabel("Produkte suchen").fill("Durra Indischer Basmati");
-    const row = page.getByText("Durra Indischer Basmati-Reis Sella XXL 4,5 kg");
+    await page.getByLabel("Produkte suchen").fill(product.name);
+    const row = page.getByText(product.name, { exact: true }).first();
     await expect(row).toBeVisible({ timeout: 15_000 });
-    await page.getByLabel("Durra Indischer Basmati-Reis Sella XXL 4,5 kg auswählen").check();
+    await page.getByLabel(`${product.name} auswählen`).check();
     await expect(page.getByRole("toolbar", { name: "Mehrfachaktionen" })).toContainText("1 ausgewählt");
   });
 });

@@ -1,5 +1,6 @@
 // GDPR & privacy behaviour of the public shop, plus the bilingual catalog.
 import { test, expect } from "@playwright/test";
+import { shopProducts } from "./helpers/catalog";
 import { createTestCustomer } from "./helpers/test-customer";
 
 test("homepage loads nothing from third-party servers (no IP addresses leave our domain)", async ({ page, baseURL }) => {
@@ -17,8 +18,10 @@ test("homepage loads nothing from third-party servers (no IP addresses leave our
 });
 
 test("product photos come through the own-domain /img proxy", async ({ page, request }) => {
+  const withPhoto = (await shopProducts(request)).slice(0, 24).find((p) => p.image?.includes("res.cloudinary.com"));
+  test.skip(!withPhoto, "no Cloudinary product photos on the first page of this catalog");
   await page.goto("/");
-  const src = await page.locator(".product-grid .product-card img").first().getAttribute("src");
+  const src = await page.locator(".product-grid .product-card", { hasText: withPhoto!.name }).first().locator("img").getAttribute("src");
   expect(src).toMatch(/^\/img\/f_auto,q_auto,c_limit,w_600\//);
   const res = await request.get(src!);
   expect(res.ok()).toBeTruthy();
@@ -86,12 +89,22 @@ test("catalog switches product names to English and loads more on demand", async
   await page.goto("/");
   await page.waitForSelector(".product-grid .product-card");
   const grid = page.locator(".product-grid").first();
-  await expect(grid.locator(".product-card")).toHaveCount(24);
-
-  await page.getByRole("button", { name: /Mehr anzeigen/ }).click();
-  await expect(grid.locator(".product-card")).toHaveCount(48);
+  const products = await shopProducts(page.request);
+  // 24 per page; "Mehr anzeigen" adds the next 24 and only shows when there are more.
+  await expect(grid.locator(".product-card")).toHaveCount(Math.min(24, products.length));
+  const more = page.getByRole("button", { name: /Mehr anzeigen/ });
+  if (products.length > 24) {
+    await more.click();
+    await expect(grid.locator(".product-card")).toHaveCount(Math.min(48, products.length));
+  } else {
+    await expect(more).toHaveCount(0);
+  }
 
   await page.locator(".language-btn").click();
-  await expect(grid.getByText("Durra Indian Basmati Rice Sella XXL 4.5 kg")).toBeVisible();
-  await expect(page.locator(".category", { hasText: "Pulses & Beans" })).toBeVisible();
+  await expect(page.getByText("Your Arabic & Turkish market,")).toBeVisible();
+  const translated = products.slice(0, 24).find((p) => p.nameEn && p.nameEn !== p.name && p.categoryEn);
+  if (translated) {
+    await expect(grid.getByText(translated.nameEn!, { exact: true }).first()).toBeVisible();
+    await expect(page.locator(".category", { hasText: translated.categoryEn! }).first()).toBeVisible();
+  }
 });
